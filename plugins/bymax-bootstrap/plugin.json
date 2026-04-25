@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-plugin.json",
+  "name": "bymax-bootstrap",
+  "displayName": "Bymax Bootstrap",
+  "description": "Scaffold new projects with strict TypeScript, ESLint flat-config (security + import-order + suppression bans), Prettier, .vscode (format-on-save), Husky + commitlint + lint-staged, and CLAUDE.md / AGENTS.md / README.md templates. Detects the stack (Next.js, Expo/RN, Vite+React, Node) and uses the right ESLint preset. Includes /upgrade-standards for non-destructive upgrades on existing projects.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Maximiliano Salvatti",
+    "url": "https://github.com/bymaxone"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-bootstrap",
+  "keywords": [
+    "bootstrap",
+    "scaffold",
+    "eslint",
+    "prettier",
+    "typescript",
+    "vscode",
+    "husky"
+  ],
+  "commands": ["./commands/bootstrap.md", "./commands/upgrade-standards.md"]
+}

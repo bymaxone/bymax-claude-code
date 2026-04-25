@@ -1,0 +1,100 @@
+{
+  "_comment_1": "Template — copy to ~/.claude/settings.json and replace {{PLACEHOLDERS}}.",
+  "_comment_2": "JSON does not support comments natively; underscored keys are convention-only.",
+  "_comment_3": "After editing, restart Claude Code so it re-reads the settings.",
+
+  "model": "sonnet",
+  "theme": "dark-daltonized",
+  "effortLevel": "high",
+
+  "hooks": {
+    "_comment": "PreToolUse blocks via exit 2; PostToolUse is informational; Stop runs on conversation end.",
+
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/secret-scanner.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/prettier-format.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "_comment": "macOS notification on conversation end. Localise the text or remove this block on Linux.",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"Task complete\" with title \"Claude Code\" sound name \"Glass\"'",
+            "async": true
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/console-log-scan.sh"
+          }
+        ]
+      }
+    ]
+  },
+
+  "extraKnownMarketplaces": {
+    "_comment": "Each marketplace is a git repo with a .claude-plugin/marketplace.json. Add as needed.",
+
+    "bymax-claude-code": {
+      "source": {
+        "source": "github",
+        "repo": "bymaxone/bymax.claude-code"
+      }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "sentry-mcp": {
+      "source": {
+        "source": "github",
+        "repo": "getsentry/sentry-mcp"
+      }
+    }
+  },
+
+  "enabledPlugins": {
+    "_comment_1": "Set to true to enable; set the value to false (or remove the key) to disable.",
+    "_comment_2": "After a fresh install, also run: claude plugin install <name>@<marketplace>",
+
+    "bymax-all@bymax-claude-code": true,
+    "frontend-design@claude-plugins-official": true,
+    "sentry-mcp@sentry-mcp": true
+  },
+
+  "_comment_mcp_overview": "MCP servers come from THREE places — restore each one separately:",
+  "_comment_mcp_step_1": "1) ~/.mcp.json (user-scope MCPs running locally via npx). Restore with: cp personal/mcp.template.json ~/.mcp.json",
+  "_comment_mcp_step_2": "2) ~/.claude/settings.local.json (per-machine list of which MCPs are enabled). Restore with: echo '{\"enabledMcpjsonServers\":[\"context7\",\"sequential-thinking\"]}' > ~/.claude/settings.local.json",
+  "_comment_mcp_step_3": "3) MCPs that need API tokens (e.g. github) — install via: claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN={{YOUR_GITHUB_PAT}} -- npx -y @modelcontextprotocol/server-github",
+
+  "_comment_post_install": "After settings.json + .mcp.json + settings.local.json are in place, install marketplace plugins:",
+  "_comment_post_install_cmd_1": "  claude plugin marketplace add bymaxone/bymax.claude-code",
+  "_comment_post_install_cmd_2": "  claude plugin install bymax-all@bymax-claude-code",
+  "_comment_post_install_cmd_3": "  claude plugin install frontend-design@claude-plugins-official",
+  "_comment_post_install_cmd_4": "  claude plugin install sentry-mcp@sentry-mcp"
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-plugin.json",
+  "name": "bymax-mobile",
+  "displayName": "Bymax Mobile",
+  "description": "Slash commands to boot the iOS Simulator (/sim-ios) and Android Emulator (/sim-android) for Expo / React Native projects. Auto-detects whether `expo start` (Metro reattach) or `expo run:ios|run:android` (full rebuild + install) is the right call. macOS-first; Android also works on Linux when the SDK is configured.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Maximiliano Salvatti",
+    "url": "https://github.com/bymaxone"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-mobile",
+  "keywords": [
+    "mobile",
+    "expo",
+    "react-native",
+    "ios",
+    "android",
+    "simulator",
+    "emulator",
+    "metro"
+  ],
+  "commands": ["./commands/sim-ios.md", "./commands/sim-android.md"]
+}

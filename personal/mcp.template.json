@@ -1,0 +1,17 @@
+{
+  "_comment_1": "Template — copy to ~/.mcp.json and restart Claude Code.",
+  "_comment_2": "JSON does not support comments natively; underscored keys are convention-only.",
+  "_comment_3": "Each server is fetched on demand by Claude Code via npx. Add your own as needed.",
+  "_comment_4": "These are the user-scope MCPs. The personal/settings.template.json (settings.local.json) must list them in `enabledMcpjsonServers` to activate.",
+
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    }
+  }
+}

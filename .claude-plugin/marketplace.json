@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json.schemastore.org/claude-marketplace.json",
+  "name": "bymax-claude-code",
+  "displayName": "Bymax Claude Code",
+  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), quality gates (TDD + code-review + security-review), specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends (Express / Fastify / Hono / NestJS / plain Node).",
+  "version": "1.0.0",
+  "homepage": "https://github.com/bymaxone/bymax.claude-code",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bymaxone/bymax.claude-code"
+  },
+  "author": {
+    "name": "Maximiliano Salvatti",
+    "url": "https://github.com/bymaxone"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugins",
+    "skills",
+    "agents",
+    "hooks",
+    "workflow",
+    "tdd",
+    "code-review",
+    "security-review",
+    "eslint",
+    "typescript",
+    "nextjs",
+    "expo",
+    "react-native",
+    "nestjs",
+    "ios-simulator",
+    "android-emulator"
+  ],
+  "plugins": [
+    {
+      "name": "bymax-workflow",
+      "path": "./plugins/bymax-workflow",
+      "description": "Spec → Roadmap → Phase-Tasks → Task — a phased planning + execution workflow with explicit user-approval gates and JIRA-style task dashboards. Includes /brainstorm, /plan, /verify, /checkpoint, and the universal /standards reference."
+    },
+    {
+      "name": "bymax-quality",
+      "path": "./plugins/bymax-quality",
+      "description": "Quality gates: /code-review (CRITICAL → LOW severity, blocks suppression comments), /tdd (red-green-refactor), the multi-stack `tester` skill, six specialist sub-agents, and two pre/post hooks (secret-scanner, console-log-scan)."
+    },
+    {
+      "name": "bymax-bootstrap",
+      "path": "./plugins/bymax-bootstrap",
+      "description": "Scaffold new projects (Next.js, Expo/RN, Vite+React, Node) with strict TS, ESLint flat-config + security plugin, Prettier, .vscode (format-on-save), Husky + commitlint + lint-staged, and CLAUDE.md/AGENTS.md/README.md templates. Also upgrades existing projects non-destructively."
+    },
+    {
+      "name": "bymax-mobile",
+      "path": "./plugins/bymax-mobile",
+      "description": "Slash commands to boot the iOS Simulator (/sim-ios) and Android Emulator (/sim-android) for Expo / React Native projects. Auto-detects whether to reattach Metro (fast) or run a full rebuild + install (slow). Honors $BYMAX_SIM_IOS, $BYMAX_SIM_ANDROID, and $APP_VARIANT."
+    },
+    {
+      "name": "bymax-all",
+      "path": "./plugins/bymax-all",
+      "description": "Meta-plugin: installs bymax-workflow + bymax-quality + bymax-bootstrap + bymax-mobile in one shot. Recommended starting point."
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  .gitignore — what NOT to track in this repo.
+#
+#  This repo is a public Claude Code marketplace + personal dotfiles backup.
+#  We track: plugins/, vendor/, sanitized personal/ templates, scripts/, docs/,
+#  templates/, and the standard repo metadata (README, LICENSE, CHANGELOG…).
+#  Everything matched below is generated, machine-local, or secret.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── OS / editor cruft ───────────────────────────────────────────────────────
+# Auto-created by macOS, Windows, vim, and JetBrains IDEs. Never useful to
+# someone else's machine.
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/*.code-workspace          # workspace session state (the canonical
+                                  # vscode-settings.json template IS tracked,
+                                  # under plugins/bymax-bootstrap/templates/)
+
+
+# ── Build output + dependency caches ────────────────────────────────────────
+# Reproducible from sources on demand. Tracking these would bloat the repo
+# and create spurious diffs on every install / build.
+__pycache__/
+*.pyc
+*.pyo
+.cache/
+node_modules/
+dist/
+build/
+out/
+coverage/
+.nyc_output/
+*.log
+
+
+# ── Environment / secrets — NEVER commit ────────────────────────────────────
+# Real credentials live in macOS Keychain, ~/.zshrc, or `claude mcp add -e`
+# (which writes to ~/.claude.json, outside this repo). The secret-scanner.sh
+# PreToolUse hook is belt-and-suspenders for accidental Write/Edit calls.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets.json
+
+
+# ── Personal local-only overrides ───────────────────────────────────────────
+# Drop machine-specific tweaks at these paths without touching the canonical
+# templates we publish under personal/. They will be ignored on commit.
+personal/settings.local.json
+personal/*.local.*
+
+
+# ── Per-project Claude Code state — machine-local; never commit ─────────────
+# When you open this repo with `claude` itself, it creates a per-project
+# .claude/ folder with permission grants, paste cache, session state, and
+# machine paths. None of it is portable across machines.
+.claude/
+
+
+# ── install.sh safety backups ───────────────────────────────────────────────
+# When scripts/install.sh finds an existing real file where a symlink should
+# go, it moves the original to <name>.bak-<TIMESTAMP> before writing the
+# symlink. Throwaway safety copies — not source of truth.
+*.bak-*

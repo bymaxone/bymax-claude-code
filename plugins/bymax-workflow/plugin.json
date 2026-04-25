@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/claude-plugin.json",
+  "name": "bymax-workflow",
+  "displayName": "Bymax Workflow",
+  "description": "Phased planning + execution workflow for Claude Code. Spec → Roadmap → Phase-Tasks → Task, each step with explicit user-approval gates and JIRA-style dashboards.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Maximiliano Salvatti",
+    "url": "https://github.com/bymaxone"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-workflow",
+  "keywords": [
+    "workflow",
+    "planning",
+    "spec",
+    "roadmap",
+    "tasks",
+    "tdd",
+    "verify"
+  ],
+  "commands": [
+    "./commands/spec.md",
+    "./commands/roadmap.md",
+    "./commands/phase-tasks.md",
+    "./commands/task.md",
+    "./commands/brainstorm.md",
+    "./commands/plan.md",
+    "./commands/verify.md",
+    "./commands/checkpoint.md"
+  ],
+  "skills": ["./skills/standards"]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-plugin.json",
+  "name": "bymax-all",
+  "displayName": "Bymax All-in-One",
+  "description": "Meta-plugin: installs bymax-workflow + bymax-quality + bymax-bootstrap + bymax-mobile in one shot. Recommended starting point — gives you the complete planning + execution + quality + scaffolding + mobile toolkit.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Maximiliano Salvatti",
+    "url": "https://github.com/bymaxone"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/bymaxone/bymax.claude-code",
+  "keywords": ["meta", "all-in-one", "complete"],
+  "dependencies": {
+    "bymax-workflow": "^1.0.0",
+    "bymax-quality": "^1.0.0",
+    "bymax-bootstrap": "^1.0.0",
+    "bymax-mobile": "^1.0.0"
+  }
+}
