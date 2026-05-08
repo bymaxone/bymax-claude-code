@@ -31,7 +31,7 @@
 - `CLAUDE.md` § {{SECTION}}
 - `docs/guidelines/{{GUIDELINE}}.md` § "{{ANCHOR}}"
 - `docs/knowledge-base/{{CHAPTER}}.md` (if domain-specific)
-- `/standards` skill (universal coding rules)
+- `/bymax-workflow:standards` skill (universal coding rules)
 
 ---
 
@@ -89,7 +89,7 @@ PRECONDITIONS
 REQUIRED READING (only these sections — do not load more):
 - `CLAUDE.md` § {{SECTION}}
 - `docs/guidelines/{{GUIDELINE}}.md` § "{{ANCHOR}}"
-- `/standards` skill (TypeScript discipline, JSDoc policy, layered architecture, suppression bans)
+- `/bymax-workflow:standards` skill (TypeScript discipline, JSDoc policy, layered architecture, suppression bans)
 
 TASK
 {{ONE_TWO_SENTENCE_OBJECTIVE}}
@@ -126,13 +126,13 @@ Constraints:
 - File-header JSDoc on every new non-trivial file. JSDoc on every export.
 - English comments only.
 - No suppression comments (`eslint-disable`, `@ts-ignore`, `as any`). Fix root cause if a rule fires.
-- Match the project's naming conventions (see `/standards` §2).
+- Match the project's naming conventions (see `/bymax-workflow:standards` §2).
 - {{PROJECT_SPECIFIC_CONSTRAINT}}
 
 Verification:
 - `pnpm type-check` — expected: 0 errors
 - `pnpm lint` — expected: 0 errors, 0 new warnings on touched files
-- `pnpm test src/features/{{feature}}` — expected: tests pass (write tests if missing — see /tester or /tdd)
+- `pnpm test src/features/{{feature}}` — expected: tests pass (write tests if missing — see /bymax-quality:tester or /bymax-quality:tdd)
 - {{MANUAL_VERIFICATION_STEP}}
 
 Completion Protocol (after the agent reports done):
@@ -203,7 +203,7 @@ DELIVERABLES
    {{WHAT_TO_CHANGE}}
 
 Constraints:
-- All universal rules from `/standards`.
+- All universal rules from `/bymax-workflow:standards`.
 - {{PHASE_SPECIFIC_CONSTRAINT}}
 
 Verification:

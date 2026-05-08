@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "bymax-claude-code",
   "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), quality gates (TDD + code-review + security-review), specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "owner": {
     "name": "Maximiliano Salvatti",
     "url": "https://github.com/bymaxone"
@@ -10,14 +10,14 @@
   "plugins": [
     {
       "name": "bymax-workflow",
-      "description": "Spec → Roadmap → Phase-Tasks → Task — a phased planning + execution workflow with explicit user-approval gates and JIRA-style task dashboards. Includes /brainstorm, /plan, /verify, /checkpoint, and the universal /standards reference.",
+      "description": "Spec → Roadmap → Phase-Tasks → Task — a phased planning + execution workflow with explicit user-approval gates and JIRA-style task dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, and the universal /bymax-workflow:standards reference.",
       "category": "workflow",
       "source": "./plugins/bymax-workflow",
       "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-workflow"
     },
     {
       "name": "bymax-quality",
-      "description": "Quality gates: /code-review (CRITICAL → LOW severity, blocks suppression comments), /tdd (red-green-refactor), the multi-stack `tester` skill, six specialist sub-agents, and two pre/post hooks (secret-scanner, console-log-scan).",
+      "description": "Quality gates: /bymax-quality:code-review (CRITICAL → LOW severity, blocks suppression comments), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, six specialist sub-agents, and two pre/post hooks (secret-scanner, console-log-scan).",
       "category": "quality",
       "source": "./plugins/bymax-quality",
       "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-quality"
@@ -31,7 +31,7 @@
     },
     {
       "name": "bymax-mobile",
-      "description": "Slash commands to boot the iOS Simulator (/sim-ios) and Android Emulator (/sim-android) for Expo / React Native projects. Auto-detects whether to reattach Metro (fast) or run a full rebuild + install (slow). Honors $BYMAX_SIM_IOS, $BYMAX_SIM_ANDROID, and $APP_VARIANT.",
+      "description": "Slash commands to boot the iOS Simulator (/bymax-mobile:sim-ios) and Android Emulator (/bymax-mobile:sim-android) for Expo / React Native projects. Auto-detects whether to reattach Metro (fast) or run a full rebuild + install (slow). Honors $BYMAX_SIM_IOS, $BYMAX_SIM_ANDROID, and $APP_VARIANT.",
       "category": "mobile",
       "source": "./plugins/bymax-mobile",
       "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-mobile"

@@ -1,8 +1,8 @@
 ---
-description: Boot the Android emulator (first AVD listed, or `$BYMAX_SIM_ANDROID`) and run the app from the current Expo project. Auto-detects whether `expo start` is enough (Metro reattach) or `expo run:android` is needed (rebuild + install + launch). Detects Android SDK at `$ANDROID_HOME` / `~/Library/Android/sdk`. If SDK or AVD is missing, prints exact install steps and stops. Honors `$APP_VARIANT`. Triggers, "rodar no android", "abrir emulador android", "sim android", "android emulator", "boot avd", "test on android", "iniciar emulador android", "/sim-android".
+description: Boot the Android emulator (first AVD listed, or `$BYMAX_SIM_ANDROID`) and run the app from the current Expo project. Auto-detects whether `expo start` is enough (Metro reattach) or `expo run:android` is needed (rebuild + install + launch). Detects Android SDK at `$ANDROID_HOME` / `~/Library/Android/sdk`. If SDK or AVD is missing, prints exact install steps and stops. Honors `$APP_VARIANT`. Triggers, "rodar no android", "abrir emulador android", "sim android", "android emulator", "boot avd", "test on android", "iniciar emulador android", "/bymax-mobile:sim-android".
 ---
 
-# /sim-android — boot Android emulator and run the Expo app
+# /bymax-mobile:sim-android — boot Android emulator and run the Expo app
 
 Boot an Android emulator and run the current Expo project. Execute every step **in sequence, without asking the user any questions**.
 
@@ -26,7 +26,7 @@ Boot an Android emulator and run the current Expo project. Execute every step **
    Finally, add to your shell profile (~/.zshrc):
      export ANDROID_HOME="$HOME/Library/Android/sdk"
      export PATH="$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools"
-   Re-source the shell or open a new tab, then re-run /sim-android.
+   Re-source the shell or open a new tab, then re-run /bymax-mobile:sim-android.
    ```
 
 2. **Required binaries.** Verify these exist (use `<ANDROID_SDK>` from step 1):
@@ -37,7 +37,7 @@ Boot an Android emulator and run the current Expo project. Execute every step **
 
 3. **Expo project root.** At least one of `app.config.ts`, `app.config.js`, or `app.json` must exist. If not, abort with: `Not in an Expo project root. cd into the project first.`
 
-4. **Package manager.** Same detection as `/sim-ios`: `pnpm` if `pnpm-lock.yaml`, else `yarn` if `yarn.lock`, else `npm`. Use as `<PM>`.
+4. **Package manager.** Same detection as `/bymax-mobile:sim-ios`: `pnpm` if `pnpm-lock.yaml`, else `yarn` if `yarn.lock`, else `npm`. Use as `<PM>`.
 
 ## Step 1 — Pick the AVD
 
@@ -55,7 +55,7 @@ If the list is empty, abort with:
 ```
 No AVDs configured. Open Android Studio → Device Manager → Create device.
 Recommended starter: Pixel 8, API 34, 2 GB RAM, 4 GB storage.
-After creating the AVD, re-run /sim-android.
+After creating the AVD, re-run /bymax-mobile:sim-android.
 ```
 
 Capture as `<AVD_NAME>`.

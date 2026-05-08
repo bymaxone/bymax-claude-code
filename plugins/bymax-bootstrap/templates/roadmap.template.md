@@ -58,7 +58,7 @@ P4 (independent — can run any time after P0)
 
 ## Global conventions
 
-> Project-wide rules that every phase respects. Lifted from `CLAUDE.md` + `/standards` + this project's `docs/guidelines/`.
+> Project-wide rules that every phase respects. Lifted from `CLAUDE.md` + `/bymax-workflow:standards` + this project's `docs/guidelines/`.
 
 | Area | Rule |
 |---|---|
@@ -96,7 +96,7 @@ P4 (independent — can run any time after P0)
   - Spec § {{SPEC_SECTION}}
   - `docs/guidelines/{{GUIDELINE}}.md`
 - **Estimated size**: S / M / L
-- **Tasks**: scaffolded via `/phase-tasks {{feature-slug}} P0` → `docs/tasks/phase-00-{{slug}}.md`
+- **Tasks**: scaffolded via `/bymax-workflow:phase-tasks {{feature-slug}} P0` → `docs/tasks/phase-00-{{slug}}.md`
 
 ---
 
@@ -109,7 +109,7 @@ P4 (independent — can run any time after P0)
 - **Rules-of-phase**: …
 - **References**: …
 - **Estimated size**: …
-- **Tasks**: `docs/tasks/phase-01-{{slug}}.md` (run `/phase-tasks {{feature-slug}} P1` after P0 is approved)
+- **Tasks**: `docs/tasks/phase-01-{{slug}}.md` (run `/bymax-workflow:phase-tasks {{feature-slug}} P1` after P0 is approved)
 
 ---
 
@@ -143,7 +143,7 @@ When a phase moves status:
 When this roadmap is approved, run:
 
 ```
-/phase-tasks {{feature-slug}} P0     ← scaffold first phase's tasks
+/bymax-workflow:phase-tasks {{feature-slug}} P0     ← scaffold first phase's tasks
 ```
 
 For each subsequent phase, repeat with `P1`, `P2`, etc. **One phase at a time.**

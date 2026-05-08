@@ -108,14 +108,14 @@ module.exports = function tailwindOverlay(options = {}) {
             selector:
               "Literal[value=/[a-zA-Z][a-zA-Z0-9-]*-\\[var\\(--[a-zA-Z0-9-]+\\)\\]/]",
             message:
-              'Tailwind v4 — use the canonical CSS variable shorthand: e.g., `bg-(--surface)` instead of `bg-[var(--surface)]`. See /standards § 11a.',
+              'Tailwind v4 — use the canonical CSS variable shorthand: e.g., `bg-(--surface)` instead of `bg-[var(--surface)]`. See /bymax-workflow:standards § 11a.',
           },
           {
             // Match: aria-[invalid=true]:, aria-[disabled=true]:, etc. for the standard boolean variants.
             selector:
               "Literal[value=/aria-\\[(invalid|disabled|pressed|expanded|hidden|selected|checked|busy|modal|required|readonly)=true\\]:/]",
             message:
-              'Tailwind v4 — use the canonical ARIA short variant: e.g., `aria-invalid:` instead of `aria-[invalid=true]:`. See /standards § 11a.',
+              'Tailwind v4 — use the canonical ARIA short variant: e.g., `aria-invalid:` instead of `aria-[invalid=true]:`. See /bymax-workflow:standards § 11a.',
           },
           {
             // Match: any-utility-[<N>rem] where N maps to a default-scale token.
@@ -125,14 +125,14 @@ module.exports = function tailwindOverlay(options = {}) {
             selector:
               "Literal[value=/[a-zA-Z][a-zA-Z0-9-]*-\\[(0\\.5|0\\.25|0\\.75|[1-9][0-9]?|0)(\\.[05])?rem\\]/]",
             message:
-              'Tailwind v4 — arbitrary `[Nrem]` likely matches a default-scale token. Use the canonical class (token = rem × 4 for spacing/sizing; e.g., `min-w-[8rem]` → `min-w-32`, `p-[1rem]` → `p-4`). Off-scale values are fine — keep `[Nrem]` only when no token matches. See /standards § 11a.',
+              'Tailwind v4 — arbitrary `[Nrem]` likely matches a default-scale token. Use the canonical class (token = rem × 4 for spacing/sizing; e.g., `min-w-[8rem]` → `min-w-32`, `p-[1rem]` → `p-4`). Off-scale values are fine — keep `[Nrem]` only when no token matches. See /bymax-workflow:standards § 11a.',
           },
           {
             // Match: bg-gradient-to-{r,l,t,b,tr,tl,br,bl} (renamed to bg-linear-to-* in v4).
             selector:
               "Literal[value=/(?<![a-zA-Z0-9-])bg-gradient-to-(?:r|l|t|b|tr|tl|br|bl)(?![a-zA-Z0-9-])/]",
             message:
-              'Tailwind v4 — `bg-gradient-to-*` was renamed to `bg-linear-to-*` (v4 added radial / conic gradients). See /standards § 11a "Renamed utilities".',
+              'Tailwind v4 — `bg-gradient-to-*` was renamed to `bg-linear-to-*` (v4 added radial / conic gradients). See /bymax-workflow:standards § 11a "Renamed utilities".',
           },
           {
             // Match: scale shifts — bare names (shadow, drop-shadow, blur, backdrop-blur, rounded)
@@ -140,7 +140,7 @@ module.exports = function tailwindOverlay(options = {}) {
             selector:
               "Literal[value=/(?<![a-zA-Z0-9-])(shadow|drop-shadow|blur|backdrop-blur|rounded)(-sm)?(?![a-zA-Z0-9/-])/]",
             message:
-              'Tailwind v4 — scale shift: `shadow`/`drop-shadow`/`blur`/`backdrop-blur`/`rounded` (or their `-sm` variants) were renamed (`shadow` → `shadow-sm`, `shadow-sm` → `shadow-xs`, etc.). See /standards § 11a "Renamed utilities".',
+              'Tailwind v4 — scale shift: `shadow`/`drop-shadow`/`blur`/`backdrop-blur`/`rounded` (or their `-sm` variants) were renamed (`shadow` → `shadow-sm`, `shadow-sm` → `shadow-xs`, etc.). See /bymax-workflow:standards § 11a "Renamed utilities".',
           },
           {
             // Match: outline-none, decoration-clone, decoration-slice, overflow-ellipsis,
@@ -148,7 +148,7 @@ module.exports = function tailwindOverlay(options = {}) {
             selector:
               "Literal[value=/(?<![a-zA-Z0-9-])(outline-none|decoration-(?:clone|slice)|overflow-ellipsis|flex-(?:shrink|grow)(?:-[0-9]+)?)(?![a-zA-Z0-9-])/]",
             message:
-              'Tailwind v4 — utility was renamed: `outline-none` → `outline-hidden`, `decoration-clone` → `box-decoration-clone`, `decoration-slice` → `box-decoration-slice`, `overflow-ellipsis` → `text-ellipsis`, `flex-shrink-*` → `shrink-*`, `flex-grow-*` → `grow-*`. See /standards § 11a "Renamed utilities".',
+              'Tailwind v4 — utility was renamed: `outline-none` → `outline-hidden`, `decoration-clone` → `box-decoration-clone`, `decoration-slice` → `box-decoration-slice`, `overflow-ellipsis` → `text-ellipsis`, `flex-shrink-*` → `shrink-*`, `flex-grow-*` → `grow-*`. See /bymax-workflow:standards § 11a "Renamed utilities".',
           },
           {
             // Match: standalone opacity utilities (bg-opacity-*, text-opacity-*, etc.).
@@ -156,21 +156,21 @@ module.exports = function tailwindOverlay(options = {}) {
             selector:
               "Literal[value=/(?<![a-zA-Z0-9-])(bg|text|border|divide|placeholder|ring)-opacity-[0-9]+(?![a-zA-Z0-9-])/]",
             message:
-              'Tailwind v4 — standalone opacity utilities are deprecated. Use the slash modifier on the color (e.g., `bg-blue-500/50` instead of `bg-blue-500 bg-opacity-50`). See /standards § 11a "Renamed utilities".',
+              'Tailwind v4 — standalone opacity utilities are deprecated. Use the slash modifier on the color (e.g., `bg-blue-500/50` instead of `bg-blue-500 bg-opacity-50`). See /bymax-workflow:standards § 11a "Renamed utilities".',
           },
           {
             // z-[N] → z-N (v4 supports bare integers for z-index without brackets).
             selector:
               "Literal[value=/(?<![a-zA-Z0-9-])z-\\[[0-9]+\\](?![a-zA-Z0-9-])/]",
             message:
-              'Tailwind v4 — `z-[N]` can drop the brackets: `z-[200]` → `z-200`. See /standards § 11a.',
+              'Tailwind v4 — `z-[N]` can drop the brackets: `z-[200]` → `z-200`. See /bymax-workflow:standards § 11a.',
           },
           {
             // backdrop-blur-[Npx] / blur-[Npx] → named filter token (on-scale px values only).
             selector:
               "Literal[value=/(?<![a-zA-Z0-9-])(backdrop-blur|blur)-\\[(4|8|12|16|24|40|64)px\\](?![a-zA-Z0-9-])/]",
             message:
-              'Tailwind v4 — use the named filter token: 4px=xs, 8px=sm, 12px=md, 16px=lg, 24px=xl, 40px=2xl, 64px=3xl. E.g., `backdrop-blur-[12px]` → `backdrop-blur-md`. See /standards § 11a.',
+              'Tailwind v4 — use the named filter token: 4px=xs, 8px=sm, 12px=md, 16px=lg, 24px=xl, 40px=2xl, 64px=3xl. E.g., `backdrop-blur-[12px]` → `backdrop-blur-md`. See /bymax-workflow:standards § 11a.',
           },
           {
             // -bottom-0, -top-0, -left-0, -right-0, -inset-0, -m-0, -p-0, etc. (negative zero = zero).

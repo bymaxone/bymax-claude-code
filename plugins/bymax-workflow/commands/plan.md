@@ -1,5 +1,5 @@
 ---
-description: 'Create a step-by-step implementation plan for a single task or small feature — restate requirements, identify risks, break work into phases with file paths and complexity estimates, and WAIT for user confirmation before any code is written. Loads the universal /standards as a refresher first. Use this for tasks that fit one PR. For BIG multi-phase features, use the /spec → /roadmap → /phase-tasks chain instead. Triggers: "plano de", "criar plano", "preciso planejar", "make a plan", "plan this", "step by step", "como implementar".'
+description: 'Create a step-by-step implementation plan for a single task or small feature — restate requirements, identify risks, break work into phases with file paths and complexity estimates, and WAIT for user confirmation before any code is written. Loads the universal /bymax-workflow:standards as a refresher first. Use this for tasks that fit one PR. For BIG multi-phase features, use the /bymax-workflow:spec → /bymax-workflow:roadmap → /bymax-workflow:phase-tasks chain instead. Triggers: "plano de", "criar plano", "preciso planejar", "make a plan", "plan this", "step by step", "como implementar".'
 ---
 
 # Plan Command
@@ -8,7 +8,7 @@ This command invokes the **planner** agent to create a comprehensive implementat
 
 ## What This Command Does
 
-1. **Load `/standards`** - Quick refresh of universal rules (TS strict, naming, JSDoc policy, layered architecture, error handling, English-only). Project's `CLAUDE.md` overrides where it conflicts.
+1. **Load `/bymax-workflow:standards`** - Quick refresh of universal rules (TS strict, naming, JSDoc policy, layered architecture, error handling, English-only). Project's `CLAUDE.md` overrides where it conflicts.
 2. **Restate Requirements** - Clarify what needs to be built
 3. **Identify Risks** - Surface potential issues and blockers
 4. **Create Step Plan** - Break down implementation into phases, naming files using the project's conventions and respecting layer/feature boundaries
@@ -16,7 +16,7 @@ This command invokes the **planner** agent to create a comprehensive implementat
 
 ## When to Use
 
-Use `/plan` when:
+Use `/bymax-workflow:plan` when:
 - Starting a new feature
 - Making significant architectural changes
 - Working on complex refactoring
@@ -37,7 +37,7 @@ The planner agent will:
 ## Example Usage
 
 ```
-User: /plan I need to add real-time notifications when markets resolve
+User: /bymax-workflow:plan I need to add real-time notifications when markets resolve
 
 Agent (planner):
 # Implementation Plan: Real-Time Market Resolution Notifications
@@ -106,24 +106,24 @@ If you want changes, respond with:
 Recommended end-to-end flow:
 
 ```
-/brainstorm   →  refine the idea, produce a spec (skip if requirements are already clear)
+/bymax-workflow:brainstorm   →  refine the idea, produce a spec (skip if requirements are already clear)
     ↓
-/plan         →  ← you are here
+/bymax-workflow:plan         →  ← you are here
     ↓
-/tdd          →  red-green-refactor implementation
+/bymax-quality:tdd          →  red-green-refactor implementation
     ↓
-/verify       →  prove it actually works (not just compiles)
+/bymax-workflow:verify       →  prove it actually works (not just compiles)
     ↓
-/code-review  →  final review
+/bymax-quality:code-review  →  final review
 ```
 
-If the request is vague, ambiguous, or has more than one reasonable approach, run `/brainstorm` **before** `/plan` so the plan is built on top of an approved spec.
+If the request is vague, ambiguous, or has more than one reasonable approach, run `/bymax-workflow:brainstorm` **before** `/bymax-workflow:plan` so the plan is built on top of an approved spec.
 
 After planning:
-- Use `/tdd` to implement with test-driven development
+- Use `/bymax-quality:tdd` to implement with test-driven development
 - Use `/build-fix` if build errors occur
-- Use `/verify` to prove the change works (not just type-checks)
-- Use `/code-review` to review completed implementation
+- Use `/bymax-workflow:verify` to prove the change works (not just type-checks)
+- Use `/bymax-quality:code-review` to review completed implementation
 
 ## Related Agents
 

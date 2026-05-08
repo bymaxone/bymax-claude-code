@@ -87,7 +87,7 @@ module.exports = tseslint.config(
             {
               group: ['@/features/*/!(index)', '@/features/*/!(index)/**'],
               message:
-                'Cross-feature imports must go through the feature barrel (index.ts). See /standards §5.',
+                'Cross-feature imports must go through the feature barrel (index.ts). See /bymax-workflow:standards §5.',
             },
           ],
         },

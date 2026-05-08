@@ -2,7 +2,7 @@
 
 Quick rules for Claude Code and any AI coding agent. Read before every task.
 
-Universal standards live in the global `/standards` skill. This file documents what is **specific to this project** and overrides the universal layer when needed.
+Universal standards live in the global `/bymax-workflow:standards` skill. This file documents what is **specific to this project** and overrides the universal layer when needed.
 
 ---
 
@@ -115,14 +115,14 @@ Never open every guideline up-front — load on demand. Keep the conversation le
 
 ## When to load global skills
 
-- New feature or non-trivial change → start with `/brainstorm` (if vague) or `/plan` (if clear).
-- Implementation → `/tdd` for new code, `tester` for adding tests to existing code.
-- Before declaring done → `/verify`.
-- Before commit / PR → `/code-review` and `/security-review`.
-- Reference for any universal rule → `/standards`.
+- New feature or non-trivial change → start with `/bymax-workflow:brainstorm` (if vague) or `/bymax-workflow:plan` (if clear).
+- Implementation → `/bymax-quality:tdd` for new code, `tester` for adding tests to existing code.
+- Before declaring done → `/bymax-workflow:verify`.
+- Before commit / PR → `/bymax-quality:code-review` and `/security-review`.
+- Reference for any universal rule → `/bymax-workflow:standards`.
 
 ---
 
 ## When in doubt
 
-Security and privacy win. Universal `/standards` win over personal preference. This project file wins over `/standards`. A rule you think is wrong → open an ADR, don't silently work around it.
+Security and privacy win. Universal `/bymax-workflow:standards` win over personal preference. This project file wins over `/bymax-workflow:standards`. A rule you think is wrong → open an ADR, don't silently work around it.

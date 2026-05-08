@@ -106,7 +106,7 @@ module.exports = function universal(options = {}) {
           {
             selector: 'TSEnumDeclaration',
             message:
-              'Do not use TypeScript enums. Use a string-literal union type instead. See /standards.',
+              'Do not use TypeScript enums. Use a string-literal union type instead. See /bymax-workflow:standards.',
           },
         ],
       },
@@ -128,7 +128,7 @@ module.exports = function universal(options = {}) {
               {
                 name: 'bcrypt',
                 message:
-                  'Use `argon2` via the project-approved hashing service, not bcrypt directly. See /standards §12.',
+                  'Use `argon2` via the project-approved hashing service, not bcrypt directly. See /bymax-workflow:standards §12.',
               },
               {
                 name: 'bcryptjs',

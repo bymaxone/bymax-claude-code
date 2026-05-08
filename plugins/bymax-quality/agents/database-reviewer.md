@@ -82,7 +82,7 @@ psql -c "SELECT indexrelname, idx_scan, idx_tup_read FROM pg_stat_user_indexes O
 
 ## Reference
 
-For detailed index patterns, schema design examples, connection management, concurrency strategies, JSONB patterns, and full-text search, lean on the `/standards` skill (universal rules) plus the `postgres-patterns` and `database-migrations` vendor skills (available when restored via `scripts/install.sh` or installed separately from upstream ECC). When neither is available, fall back to the patterns documented in this prompt.
+For detailed index patterns, schema design examples, connection management, concurrency strategies, JSONB patterns, and full-text search, lean on the `/bymax-workflow:standards` skill (universal rules) plus the `postgres-patterns` and `database-migrations` vendor skills (available when restored via `scripts/install.sh` or installed separately from upstream ECC). When neither is available, fall back to the patterns documented in this prompt.
 
 ---
 

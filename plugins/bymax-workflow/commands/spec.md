@@ -14,9 +14,9 @@ First step in the **spec → roadmap → phase-tasks** workflow. Produces the "w
 
 ## When NOT to use
 
-- A bug fix → use `/plan` directly.
-- A 1-task tweak → use `/plan` or just write the code.
-- A vague brainstorm — use `/brainstorm` first to refine the idea, then come back here.
+- A bug fix → use `/bymax-workflow:plan` directly.
+- A 1-task tweak → use `/bymax-workflow:plan` or just write the code.
+- A vague brainstorm — use `/bymax-workflow:brainstorm` first to refine the idea, then come back here.
 
 ## Workflow
 
@@ -81,32 +81,32 @@ Summary:
   Risks (HIGH):   <count>
 
 Next step (after you review):
-  /roadmap docs/specs/<feature-slug>.md
+  /bymax-workflow:roadmap docs/specs/<feature-slug>.md
   → breaks the spec into phases with a dashboard, dependency graph, and DoD per phase
 
 Do you want to:
-  - Approve as-is and run /roadmap?
+  - Approve as-is and run /bymax-workflow:roadmap?
   - Modify a section?
-  - Answer the open questions before /roadmap?
+  - Answer the open questions before /bymax-workflow:roadmap?
 ```
 
-**Do not** call `/roadmap` or any other command. Wait for explicit user direction.
+**Do not** call `/bymax-workflow:roadmap` or any other command. Wait for explicit user direction.
 
 ## Hard rules
 
 - **Never invent missing information.** If the user can't answer a clarifying question, write `TBD` and add it to "Open questions" — don't guess.
-- **No code, no file paths in the spec.** This document is for the *what*, not the *how*. Save file paths for `/phase-tasks`.
-- **No phases yet.** Phases live in `/roadmap`. The spec describes ONE feature, not the work breakdown.
-- **English-only** in the spec body (per `/standards`).
+- **No code, no file paths in the spec.** This document is for the *what*, not the *how*. Save file paths for `/bymax-workflow:phase-tasks`.
+- **No phases yet.** Phases live in `/bymax-workflow:roadmap`. The spec describes ONE feature, not the work breakdown.
+- **English-only** in the spec body (per `/bymax-workflow:standards`).
 
 ## Integration with the rest of the workflow
 
 ```
-/spec          ← you are here
+/bymax-workflow:spec          ← you are here
    ⏸ user approval
-/roadmap       (next — phased plan with dashboard)
+/bymax-workflow:roadmap       (next — phased plan with dashboard)
    ⏸ user approval
-/phase-tasks   (per-phase scaffolding with agent prompts)
+/bymax-workflow:phase-tasks   (per-phase scaffolding with agent prompts)
    ⏸ user approval per phase
-/plan, /tdd, /verify, /code-review (execution)
+/bymax-workflow:plan, /bymax-quality:tdd, /bymax-workflow:verify, /bymax-quality:code-review (execution)
 ```

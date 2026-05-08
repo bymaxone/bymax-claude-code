@@ -1,33 +1,33 @@
 ---
-description: 'Execute a phase or a single task end-to-end with all quality gates wired in. Loads /standards + project docs, runs the embedded agent prompt (using /tdd for new code or `tester` for adding tests), then enforces /verify → /security-review → /code-review with apply-all-findings on each, with re-verification after every fix. Closes the phase by auditing every acceptance criterion, updating dashboards (task status, completion log, master roadmap progress), and STOPS — never auto-commits, never skips a gate, never bypasses with --no-verify or @ts-ignore. Modes: `/task phase <N>` runs all tasks in a phase + close-phase audit; `/task <task-id>` runs one task only. Triggers: "executar task", "executar fase", "rodar task", "run task", "run phase", "task <id>", "fase <N>", "execute phase".'
+description: 'Execute a phase or a single task end-to-end with all quality gates wired in. Loads /bymax-workflow:standards + project docs, runs the embedded agent prompt (using /bymax-quality:tdd for new code or `tester` for adding tests), then enforces /bymax-workflow:verify → /security-review → /bymax-quality:code-review with apply-all-findings on each, with re-verification after every fix. Closes the phase by auditing every acceptance criterion, updating dashboards (task status, completion log, master roadmap progress), and STOPS — never auto-commits, never skips a gate, never bypasses with --no-verify or @ts-ignore. Modes: `/bymax-workflow:task phase <N>` runs all tasks in a phase + close-phase audit; `/bymax-workflow:task <task-id>` runs one task only. Triggers: "executar task", "executar fase", "rodar task", "run task", "run phase", "task <id>", "fase <N>", "execute phase".'
 ---
 
 # Task Command — Execute Phase / Task with Full Quality Gates
 
-End-to-end runner for tasks scaffolded by `/phase-tasks`. Treats every task as the embedded agent prompt + a strict review-and-verify cycle. Designed so that when execution returns control to you, the diff is **production-ready** — no errors, all tests green, lint and format clean, comments rich and English, dashboards up to date.
+End-to-end runner for tasks scaffolded by `/bymax-workflow:phase-tasks`. Treats every task as the embedded agent prompt + a strict review-and-verify cycle. Designed so that when execution returns control to you, the diff is **production-ready** — no errors, all tests green, lint and format clean, comments rich and English, dashboards up to date.
 
 ---
 
 ## Invocation
 
 ```
-/task phase <N>     # execute every task in phase N, then close-phase audit
-/task <task-id>     # execute a single task (e.g., 3.2 or P0-1) — no phase close
-/task               # ask the user which
+/bymax-workflow:task phase <N>     # execute every task in phase N, then close-phase audit
+/bymax-workflow:task <task-id>     # execute a single task (e.g., 3.2 or P0-1) — no phase close
+/bymax-workflow:task               # ask the user which
 ```
 
 ---
 
 ## Step 0 — Load context (once per invocation)
 
-1. **Apply `/standards` rules from memory** — TS strict + zero `any`, JSDoc on file headers and exports, English-only comments, naming conventions, layered architecture, no cross-feature imports, no suppression comments, Conventional Commits. Do **not** load the full `/standards` skill body — these rules are already internalized. Only invoke `/standards` (read the skill) when:
+1. **Apply `/bymax-workflow:standards` rules from memory** — TS strict + zero `any`, JSDoc on file headers and exports, English-only comments, naming conventions, layered architecture, no cross-feature imports, no suppression comments, Conventional Commits. Do **not** load the full `/bymax-workflow:standards` skill body — these rules are already internalized. Only invoke `/bymax-workflow:standards` (read the skill) when:
    - You hit a rule conflict and need to confirm the source of truth.
    - The task touches an area covered by a specific section (e.g., security baseline §12 for auth code).
-2. Read `CLAUDE.md` and `AGENTS.md` of the current project — these override `/standards` where they conflict.
+2. Read `CLAUDE.md` and `AGENTS.md` of the current project — these override `/bymax-workflow:standards` where they conflict.
 3. Read `docs/tasks/phase-<NN>-*.md` for the phase being worked on.
 4. For each task that will be executed, read the **REQUIRED READING** listed inside its embedded agent prompt — do not load more than that (preserves context budget).
 5. Confirm in one line: *"About to execute <N tasks of phase <X>> following the protocol below. Proceed?"*
-   - If the user's invocation was explicit (`/task phase 3`), proceed without asking.
+   - If the user's invocation was explicit (`/bymax-workflow:task phase 3`), proceed without asking.
    - If ambiguous, ⏸ wait for confirmation.
 
 ---
@@ -47,7 +47,7 @@ For each task in the phase (or for the single task requested):
 
 Treat the embedded agent prompt as your spec. Execute it as the engineer described in the Role.
 
-- **For new code** — drive a `/tdd` cycle (RED → GREEN → REFACTOR).
+- **For new code** — drive a `/bymax-quality:tdd` cycle (RED → GREEN → REFACTOR).
 - **For adding tests to existing code without changing behavior** — use the `tester` skill.
 - **For specialized concerns** — dispatch a sub-agent when there's a strong fit:
   - `typescript-reviewer` for heavy TS changes
@@ -56,7 +56,7 @@ Treat the embedded agent prompt as your spec. Execute it as the engineer describ
   - `Explore` for cross-codebase searches
   - `Plan` only when the task itself is too vague to execute (rare — escalate to user instead)
 
-Respect every constraint from the prompt **and** `/standards`:
+Respect every constraint from the prompt **and** `/bymax-workflow:standards`:
 
 - TypeScript strict, zero `any`, zero suppression comments
 - File-header JSDoc on every non-trivial new file
@@ -65,20 +65,20 @@ Respect every constraint from the prompt **and** `/standards`:
 - English-only comments, naming conventions, no cross-feature imports
 - Conventional Commits format prepared but **do not commit**
 
-### 1.3 — Gate 1: `/verify`
+### 1.3 — Gate 1: `/bymax-workflow:verify`
 
 Run the 5 verification gates: static checks → exercise → root-cause → regression scan → acceptance criteria.
 
 - `type-check`, `lint`, `format`, `tests` must be 0 errors / 0 new warnings on touched files.
 - Coverage minimum: 100% on critical paths, 80%+ otherwise (match project threshold).
-- If any gate fails: **fix the root cause**. Never `--no-verify`, never `// @ts-ignore`, never `// eslint-disable`. Then re-run `/verify`.
+- If any gate fails: **fix the root cause**. Never `--no-verify`, never `// @ts-ignore`, never `// eslint-disable`. Then re-run `/bymax-workflow:verify`.
 
 ### 1.4 — Gate 2: `/security-review`
 
 - Apply **every** finding (fix root cause, not the symptom).
-- If code changed during the fix → return to **1.3** (re-run `/verify`).
+- If code changed during the fix → return to **1.3** (re-run `/bymax-workflow:verify`).
 
-### 1.5 — Gate 3: `/code-review` (CRITICAL → HIGH → MEDIUM → LOW)
+### 1.5 — Gate 3: `/bymax-quality:code-review` (CRITICAL → HIGH → MEDIUM → LOW)
 
 - Apply **every** CRITICAL and HIGH finding.
 - Apply MEDIUM findings — especially: missing JSDoc, non-English comments, magic numbers, `enum` instead of union literal, cross-feature imports, swallowed errors.
@@ -104,11 +104,11 @@ Print one line: `✅ Task <id> done. Next: <id>` and proceed to the next task.
 
 ---
 
-## Step 2 — Phase finalization (only when running `/task phase <N>`)
+## Step 2 — Phase finalization (only when running `/bymax-workflow:task phase <N>`)
 
 After every task is ✅ Done:
 
-### 2.1 Final `/verify`
+### 2.1 Final `/bymax-workflow:verify`
 
 Run on the full scope of the phase (every file the phase touched).
 
@@ -116,7 +116,7 @@ Run on the full scope of the phase (every file the phase touched).
 
 Run against the full phase diff. Apply every finding.
 
-### 2.3 Final `/code-review`
+### 2.3 Final `/bymax-quality:code-review`
 
 Run against the full phase diff. Apply every CRITICAL/HIGH/MEDIUM finding.
 
@@ -180,7 +180,7 @@ Verification gates (final):
   format:           PASS
   tests:            <X passing> (<coverage>% on touched files)
   /security-review: 0 CRITICAL, 0 HIGH
-  /code-review:     0 CRITICAL, 0 HIGH (LOW deferred: <count>)
+  /bymax-quality:code-review:     0 CRITICAL, 0 HIGH (LOW deferred: <count>)
 
 Files touched: <count>
 Lines: +<adds> / -<dels>
@@ -199,7 +199,7 @@ Suggested commit message (Conventional Commits):
 Next:
   - Review the diff
   - When approved, ask me to commit
-  - Or run the next phase: /task phase <N+1>
+  - Or run the next phase: /bymax-workflow:task phase <N+1>
 ```
 
 ### 4.4 Stop
@@ -223,13 +223,13 @@ Next:
 ## Integration with the rest of the workflow
 
 ```
-/spec → /roadmap → /phase-tasks   (planning, already done before /task runs)
+/bymax-workflow:spec → /bymax-workflow:roadmap → /bymax-workflow:phase-tasks   (planning, already done before /bymax-workflow:task runs)
    ↓
-/task phase <N>                   ← you are here
+/bymax-workflow:task phase <N>                   ← you are here
    ⏸ user reviews
 commit (Conventional Commits)     ← only after explicit approval
    ↓
-/task phase <N+1>
+/bymax-workflow:task phase <N+1>
 ```
 
-`/task` is the executor. `/spec`, `/roadmap`, `/phase-tasks` are the planners. `/standards`, `/verify`, `/security-review`, `/code-review`, `/tdd`, `tester` are the building blocks `/task` orchestrates.
+`/bymax-workflow:task` is the executor. `/bymax-workflow:spec`, `/bymax-workflow:roadmap`, `/bymax-workflow:phase-tasks` are the planners. `/bymax-workflow:standards`, `/bymax-workflow:verify`, `/security-review`, `/bymax-quality:code-review`, `/bymax-quality:tdd`, `tester` are the building blocks `/bymax-workflow:task` orchestrates.

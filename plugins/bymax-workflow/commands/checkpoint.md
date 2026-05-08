@@ -8,13 +8,13 @@ Create or verify a checkpoint in your workflow.
 
 ## Usage
 
-`/checkpoint [create|verify|list] [name]`
+`/bymax-workflow:checkpoint [create|verify|list] [name]`
 
 ## Create Checkpoint
 
 When creating a checkpoint:
 
-1. Run `/verify quick` to ensure current state is clean
+1. Run `/bymax-workflow:verify quick` to ensure current state is clean
 2. Create a git stash or commit with checkpoint name
 3. Log checkpoint to `.claude/checkpoints.log`:
 
@@ -58,15 +58,15 @@ Show all checkpoints with:
 Typical checkpoint flow:
 
 ```
-[Start] --> /checkpoint create "feature-start"
+[Start] --> /bymax-workflow:checkpoint create "feature-start"
    |
-[Implement] --> /checkpoint create "core-done"
+[Implement] --> /bymax-workflow:checkpoint create "core-done"
    |
-[Test] --> /checkpoint verify "core-done"
+[Test] --> /bymax-workflow:checkpoint verify "core-done"
    |
-[Refactor] --> /checkpoint create "refactor-done"
+[Refactor] --> /bymax-workflow:checkpoint create "refactor-done"
    |
-[PR] --> /checkpoint verify "feature-start"
+[PR] --> /bymax-workflow:checkpoint verify "feature-start"
 ```
 
 ## Arguments

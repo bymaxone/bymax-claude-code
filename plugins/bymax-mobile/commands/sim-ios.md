@@ -1,8 +1,8 @@
 ---
-description: Boot the iOS Simulator (default "iPhone 17") and run the app from the current Expo project. Auto-detects whether `expo start` is enough (Metro reattach — app already installed) or `expo run:ios` is needed (first time, or native code changed). Reads no native config — heuristic based on `ios/` folder + build artifacts. Honors `$BYMAX_SIM_IOS` and `$APP_VARIANT`. macOS only — needs Xcode + xcrun simctl. Triggers, "abrir simulator iphone", "rodar no ios", "sim ios", "ios simulator", "boot iphone", "test on iphone", "iniciar simulador ios", "/sim-ios".
+description: Boot the iOS Simulator (default "iPhone 17") and run the app from the current Expo project. Auto-detects whether `expo start` is enough (Metro reattach — app already installed) or `expo run:ios` is needed (first time, or native code changed). Reads no native config — heuristic based on `ios/` folder + build artifacts. Honors `$BYMAX_SIM_IOS` and `$APP_VARIANT`. macOS only — needs Xcode + xcrun simctl. Triggers, "abrir simulator iphone", "rodar no ios", "sim ios", "ios simulator", "boot iphone", "test on iphone", "iniciar simulador ios", "/bymax-mobile:sim-ios".
 ---
 
-# /sim-ios — boot iOS Simulator and run the Expo app
+# /bymax-mobile:sim-ios — boot iOS Simulator and run the Expo app
 
 Boot the iOS Simulator and run the current Expo project. Execute every step **in sequence, without asking the user any questions**.
 

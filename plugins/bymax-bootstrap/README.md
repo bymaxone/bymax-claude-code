@@ -15,8 +15,8 @@ claude plugin install bymax-bootstrap@bymax-claude-code
 
 | Command              | Purpose                                                                                                  |
 | -------------------- | -------------------------------------------------------------------------------------------------------- |
-| `/bootstrap`         | New project — full scaffold. Detects (or asks) the stack, picks the right ESLint preset, writes everything. |
-| `/upgrade-standards` | Existing project — non-destructive incremental upgrade with confirmation per change.                     |
+| `/bymax-bootstrap:bootstrap`         | New project — full scaffold. Detects (or asks) the stack, picks the right ESLint preset, writes everything. |
+| `/bymax-bootstrap:upgrade-standards` | Existing project — non-destructive incremental upgrade with confirmation per change.                     |
 
 ### Templates (20)
 
@@ -52,14 +52,14 @@ All five base configs enforce: no cross-feature imports, ban `enum` (use unions)
 
 | File                       | Used by                                |
 | -------------------------- | -------------------------------------- |
-| `claude-md.template.md`    | `/bootstrap` — generates `CLAUDE.md` in the new project. |
-| `spec.template.md`         | `/spec` (in `bymax-workflow`)          |
-| `roadmap.template.md`      | `/roadmap` (in `bymax-workflow`)       |
-| `phase-tasks.template.md`  | `/phase-tasks` (in `bymax-workflow`)   |
+| `claude-md.template.md`    | `/bymax-bootstrap:bootstrap` — generates `CLAUDE.md` in the new project. |
+| `spec.template.md`         | `/bymax-workflow:spec` (in `bymax-workflow`)          |
+| `roadmap.template.md`      | `/bymax-workflow:roadmap` (in `bymax-workflow`)       |
+| `phase-tasks.template.md`  | `/bymax-workflow:phase-tasks` (in `bymax-workflow`)   |
 
 These render `CLAUDE.md`, then the spec → roadmap → phase-tasks docs your project's `docs/` ends up with.
 
-> Looking for the **public-facing** project starter templates (the elaborate `CLAUDE.md`, `AGENTS.md`, and `README.md`)? Those live at the repo root in [`/templates/`](../../templates/). The `claude-md.template.md` here is the leaner template that `/bootstrap` writes for new projects — the root templates are reference / fork material, not consumed by `/bootstrap`.
+> Looking for the **public-facing** project starter templates (the elaborate `CLAUDE.md`, `AGENTS.md`, and `README.md`)? Those live at the repo root in [`/templates/`](../../templates/). The `claude-md.template.md` here is the leaner template that `/bymax-bootstrap:bootstrap` writes for new projects — the root templates are reference / fork material, not consumed by `/bymax-bootstrap:bootstrap`.
 
 ## The flow
 
@@ -69,7 +69,7 @@ These render `CLAUDE.md`, then the spec → roadmap → phase-tasks docs your pr
 cd ~/projects/my-new-app
 # tell Claude Code:
 "bootstrap a new Next.js project here"
-# /bootstrap activates → detects stack → asks confirmation → writes all configs
+# /bymax-bootstrap:bootstrap activates → detects stack → asks confirmation → writes all configs
 # you `pnpm install` and run all four gates:
 pnpm type-check && pnpm lint && pnpm format:check && pnpm test --passWithNoTests
 ```
@@ -80,7 +80,7 @@ pnpm type-check && pnpm lint && pnpm format:check && pnpm test --passWithNoTests
 cd ~/projects/legacy-app
 # tell Claude Code:
 "upgrade this project to Bymax standards"
-# /upgrade-standards activates → audits → groups changes by risk → asks per bucket
+# /bymax-bootstrap:upgrade-standards activates → audits → groups changes by risk → asks per bucket
 ```
 
 🟢 Safe (auto-applied with one confirm): `.vscode/`, `.editorconfig`, `.gitignore` merge, Prettier, `CLAUDE.md` if missing.

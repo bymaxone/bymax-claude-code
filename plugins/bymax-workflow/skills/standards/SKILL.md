@@ -1,6 +1,6 @@
 ---
 name: standards
-description: Universal coding standards reference — TypeScript discipline, naming conventions, JSDoc policy, layered architecture, error handling, English-only comments, conventional commits. Load this BEFORE writing any non-trivial code, reviewing a PR, or scaffolding a new project. Other skills (/plan, /tdd, /code-review, /bootstrap) reference this.
+description: Universal coding standards reference — TypeScript discipline, naming conventions, JSDoc policy, layered architecture, error handling, English-only comments, conventional commits. Load this BEFORE writing any non-trivial code, reviewing a PR, or scaffolding a new project. Other skills (/bymax-workflow:plan, /bymax-quality:tdd, /bymax-quality:code-review, /bymax-bootstrap:bootstrap) reference this.
 user-invocable: true
 ---
 
@@ -52,7 +52,7 @@ If `any` shows up, something is wrong. Replacements:
 - A type parameter when the function is generic.
 - Import the upstream type from the library — never reinvent.
 
-Banned forever: `// @ts-ignore`, `// @ts-expect-error`, `// @ts-nocheck`, `as any`, `as unknown as <T>` (when used to launder a real type error). See `/code-review` and `/verify` for enforcement.
+Banned forever: `// @ts-ignore`, `// @ts-expect-error`, `// @ts-nocheck`, `as any`, `as unknown as <T>` (when used to launder a real type error). See `/bymax-quality:code-review` and `/bymax-workflow:verify` for enforcement.
 
 ### `interface` vs `type`
 
@@ -196,7 +196,7 @@ A wrong comment is worse than no comment. When you change behavior, update the c
 
 ## 4. Test documentation — MANDATORY
 
-(Mirrors `tester` and `/tdd` skills — kept here as the universal reference.)
+(Mirrors `tester` and `/bymax-quality:tdd` skills — kept here as the universal reference.)
 
 ### Every test file has a header
 

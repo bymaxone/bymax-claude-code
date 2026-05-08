@@ -13,8 +13,8 @@ claude plugin install bymax-mobile@bymax-claude-code
 
 | Command          | Platform | What it does                                                                                                                                                |
 | ---------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/sim-ios`       | iOS      | Boots `iPhone 17` (or `$BYMAX_SIM_IOS`), runs `expo start` if app already built, else `expo run:ios`. macOS only.                                            |
-| `/sim-android`   | Android  | Boots the first AVD listed by `emulator -list-avds` (or `$BYMAX_SIM_ANDROID`), runs `expo start` if app already built, else `expo run:android`. macOS / Linux. |
+| `/bymax-mobile:sim-ios`       | iOS      | Boots `iPhone 17` (or `$BYMAX_SIM_IOS`), runs `expo start` if app already built, else `expo run:ios`. macOS only.                                            |
+| `/bymax-mobile:sim-android`   | Android  | Boots the first AVD listed by `emulator -list-avds` (or `$BYMAX_SIM_ANDROID`), runs `expo start` if app already built, else `expo run:android`. macOS / Linux. |
 
 Both commands:
 
@@ -35,13 +35,13 @@ Both commands:
 
 ## Prerequisites
 
-### iOS (`/sim-ios`)
+### iOS (`/bymax-mobile:sim-ios`)
 
 - macOS.
 - Xcode command-line tools (`xcode-select --install`).
 - The simulator named `iPhone 17` (or whatever you set in `$BYMAX_SIM_IOS`) registered in `xcrun simctl list devices available`.
 
-### Android (`/sim-android`)
+### Android (`/bymax-mobile:sim-android`)
 
 - Android Studio (for AVD Manager) — or, headless, the command-line tools.
 - `platform-tools` (for `adb`) — `brew install --cask android-platform-tools`.
@@ -69,7 +69,7 @@ The command picks `start` (fast — only the JS bundler) vs `run` (slow — rebu
 | yes                  | `android/app/build/outputs`                  | `start`          |
 | yes                  | none                                         | **`run`**        |
 
-If the heuristic guesses wrong (e.g., you deleted the app from the simulator manually), just re-run with `--mode run` semantics — easiest fix is to delete `ios/build/` or `android/app/build/` and run `/sim-ios` (or `/sim-android`) again, which will fall into `run` mode.
+If the heuristic guesses wrong (e.g., you deleted the app from the simulator manually), just re-run with `--mode run` semantics — easiest fix is to delete `ios/build/` or `android/app/build/` and run `/bymax-mobile:sim-ios` (or `/bymax-mobile:sim-android`) again, which will fall into `run` mode.
 
 ## License
 

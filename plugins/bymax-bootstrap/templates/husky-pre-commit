@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Universal pre-commit hook — runs lint-staged on the staged files.
-# Bypassing with --no-verify is banned by /standards §8.
+# Bypassing with --no-verify is banned by /bymax-workflow:standards §8.
 
 . "$(dirname -- "$0")/_/husky.sh"
 

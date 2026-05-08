@@ -4,7 +4,7 @@ description: 'Scaffold a NEW project (or empty repo) with universal best practic
 
 # Bootstrap Command
 
-One-shot setup for new projects. Wires everything from the universal `/standards` into a fresh repo without touching product code.
+One-shot setup for new projects. Wires everything from the universal `/bymax-workflow:standards` into a fresh repo without touching product code.
 
 ## When to use
 
@@ -14,7 +14,7 @@ One-shot setup for new projects. Wires everything from the universal `/standards
 
 ## When NOT to use
 
-- The project already has ESLint / Prettier / Husky configured. Use **`/upgrade-standards`** instead, which is non-destructive.
+- The project already has ESLint / Prettier / Husky configured. Use **`/bymax-bootstrap:upgrade-standards`** instead, which is non-destructive.
 
 ## Workflow
 
@@ -174,22 +174,22 @@ Hooks:        pre-commit (lint-staged), commit-msg (commitlint)
 Next steps:
   - git add . && git commit -m "chore: bootstrap project with universal standards"
   - Open in VS Code — accept the recommended extensions
-  - When you start a feature: /brainstorm or /plan
+  - When you start a feature: /bymax-workflow:brainstorm or /bymax-workflow:plan
 ```
 
 ## Rules
 
-- **Never overwrite an existing config silently.** If `tsconfig.json`, `eslint.config.*`, `.prettierrc*`, etc. already exist, stop and route the user to `/upgrade-standards`.
+- **Never overwrite an existing config silently.** If `tsconfig.json`, `eslint.config.*`, `.prettierrc*`, etc. already exist, stop and route the user to `/bymax-bootstrap:upgrade-standards`.
 - **Merge, don't replace** for `.gitignore` and `package.json` — preserve existing content; add missing entries.
-- **Fix root cause if a gate fails.** No `--no-verify`, no `// @ts-ignore`. See `/standards` §8.
+- **Fix root cause if a gate fails.** No `--no-verify`, no `// @ts-ignore`. See `/bymax-workflow:standards` §8.
 - **Defer to project specifics.** This is the universal floor. Project-specific rules go into `CLAUDE.md`, not into the global templates.
 
 ## Integration with other commands
 
 ```
-/bootstrap   →  set up infrastructure (this command)
+/bymax-bootstrap:bootstrap   →  set up infrastructure (this command)
     ↓
-/brainstorm  →  refine first feature idea
+/bymax-workflow:brainstorm  →  refine first feature idea
     ↓
-/plan / /tdd / /verify / /code-review  →  build
+/bymax-workflow:plan / /bymax-quality:tdd / /bymax-workflow:verify / /bymax-quality:code-review  →  build
 ```

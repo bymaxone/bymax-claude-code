@@ -99,7 +99,7 @@ table {{name}} {
 | Regulatory | {{REGULATORY}} |
 | Platform | {{PLATFORM}} |
 | Dependencies | {{DEPS}} |
-| Tech stack alignment | Must follow project's `CLAUDE.md` + `/standards` |
+| Tech stack alignment | Must follow project's `CLAUDE.md` + `/bymax-workflow:standards` |
 
 ---
 
@@ -135,7 +135,7 @@ table {{name}} {
 When this spec is approved, run:
 
 ```
-/roadmap docs/specs/{{feature-slug}}.md
+/bymax-workflow:roadmap docs/specs/{{feature-slug}}.md
 ```
 
 to break it into a phased execution plan.

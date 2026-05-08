@@ -4,7 +4,7 @@ description: 'Audit an EXISTING project and apply universal best practices incre
 
 # Upgrade Standards Command
 
-For projects that already exist and may already have *some* of the standards. The goal is to bring the project closer to `/standards` **without breaking anything that currently works**.
+For projects that already exist and may already have *some* of the standards. The goal is to bring the project closer to `/bymax-workflow:standards` **without breaking anything that currently works**.
 
 ## When to use
 
@@ -15,14 +15,14 @@ For projects that already exist and may already have *some* of the standards. Th
 
 ## When NOT to use
 
-- Brand-new project — use **`/bootstrap`** instead.
+- Brand-new project — use **`/bymax-bootstrap:bootstrap`** instead.
 - Project that follows a different (intentional) convention you want to preserve. This skill respects "no" answers.
 
 ## Workflow
 
 ### Step 1 — Audit
 
-Read the project and produce a diff against `/standards`. Check each item:
+Read the project and produce a diff against `/bymax-workflow:standards`. Check each item:
 
 | Area | Check |
 |---|---|
@@ -92,7 +92,7 @@ For each approved change:
 - **Read** the corresponding template at `~/.claude/templates/`.
 - **Diff** with the existing file (if any).
 - **Merge** rather than replace whenever possible:
-  - `.gitignore` — append missing entries with a comment header `# Added by /upgrade-standards`.
+  - `.gitignore` — append missing entries with a comment header `# Added by /bymax-bootstrap:upgrade-standards`.
   - `package.json` — add scripts/devDeps without removing existing ones.
   - `tsconfig.json` — preserve existing `paths`, `include`, `exclude`; only modify `compilerOptions`.
   - `eslint.config.*` — if a flat config exists, append the universal layer at the end; if it's a legacy `.eslintrc`, ask whether to migrate.
@@ -108,7 +108,7 @@ Run all four gates:
 <pm> test --passWithNoTests
 ```
 
-Report any new failures introduced. If a 🔴 change introduced failures, give the user the choice to fix them now (suggest `/code-review` or `/tdd`) or revert that single change.
+Report any new failures introduced. If a 🔴 change introduced failures, give the user the choice to fix them now (suggest `/bymax-quality:code-review` or `/bymax-quality:tdd`) or revert that single change.
 
 ### Step 6 — Report
 
@@ -123,7 +123,7 @@ Skipped (n):
   ⏸ ... (reason)
 
 Pending — opted to defer:
-  ⏳ tsconfig.strict — surfaced 23 type errors. Suggest: /code-review then /tdd to address.
+  ⏳ tsconfig.strict — surfaced 23 type errors. Suggest: /bymax-quality:code-review then /bymax-quality:tdd to address.
 
 New gate status:
   type-check: PASS
@@ -138,5 +138,5 @@ Next: commit with `chore: upgrade to universal standards`.
 
 - **Never overwrite an existing config silently.** Always diff and confirm.
 - **Never weaken** existing settings the project already has. If their rule is stricter than the template, keep theirs.
-- **Never bypass a gate.** No `--no-verify`. If a fix surfaces real issues, route through `/code-review` or `/tdd`, don't paper over.
+- **Never bypass a gate.** No `--no-verify`. If a fix surfaces real issues, route through `/bymax-quality:code-review` or `/bymax-quality:tdd`, don't paper over.
 - **Preserve intentional deviations.** If the project has documented reasons for a non-standard choice (in `CLAUDE.md` or an ADR), do not "fix" it.

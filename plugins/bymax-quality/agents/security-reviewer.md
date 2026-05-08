@@ -101,7 +101,7 @@ If you find a CRITICAL vulnerability:
 
 ## Reference
 
-For detailed vulnerability patterns, code examples, report templates, and PR review templates, lean on the `/standards` skill (§ 13 Security baseline) plus the `security-review` vendor skill (available when restored via `scripts/install.sh` or installed separately from upstream ECC). When the vendor skill isn't available, fall back to the OWASP table and patterns documented in this prompt.
+For detailed vulnerability patterns, code examples, report templates, and PR review templates, lean on the `/bymax-workflow:standards` skill (§ 13 Security baseline) plus the `security-review` vendor skill (available when restored via `scripts/install.sh` or installed separately from upstream ECC). When the vendor skill isn't available, fall back to the OWASP table and patterns documented in this prompt.
 
 ---
 

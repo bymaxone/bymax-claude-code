@@ -1,5 +1,5 @@
 ---
-description: Prove a change actually works before declaring it done. Runs the project's verification gates, exercises the affected paths, and checks the root cause was fixed — not just the symptom. Use after implementation, before /code-review or commit.
+description: Prove a change actually works before declaring it done. Runs the project's verification gates, exercises the affected paths, and checks the root cause was fixed — not just the symptom. Use after implementation, before /bymax-quality:code-review or commit.
 ---
 
 # Verify Command
@@ -10,10 +10,10 @@ The rule: **"compiles" is not "works".** A green type-check, a passing lint, and
 
 ## When to Use
 
-Use `/verify` immediately after finishing an implementation, and before:
+Use `/bymax-workflow:verify` immediately after finishing an implementation, and before:
 
 - Saying "done" to the user.
-- Running `/code-review`.
+- Running `/bymax-quality:code-review`.
 - Preparing a commit or PR.
 
 Use it especially when:
@@ -89,7 +89,7 @@ If unsure, grep for usages and read the call sites.
 
 ### Gate 5 — Acceptance criteria
 
-Re-read the original spec / `/brainstorm` output / issue description. For each acceptance criterion, mark it:
+Re-read the original spec / `/bymax-workflow:brainstorm` output / issue description. For each acceptance criterion, mark it:
 
 - ✅ Met and verified (which gate proved it)
 - ⚠️ Partially met (what's missing)
@@ -134,20 +134,20 @@ Verdict: READY / NOT READY / NEEDS USER INPUT
 
 - **Never claim "verified" for a path you didn't actually run.** Saying "I cannot verify this in the current environment" is honest and useful. Saying "looks good" when you didn't run it is a lie that costs the user trust.
 - **Never bypass a failing gate** with `--force`, `--no-verify`, or by deleting/skipping the failing test. Fix the underlying issue.
-- **Do not edit code in this command.** If verification finds a problem, report it and let the user decide whether to loop back to `/tdd` or `/plan`.
+- **Do not edit code in this command.** If verification finds a problem, report it and let the user decide whether to loop back to `/bymax-quality:tdd` or `/bymax-workflow:plan`.
 
 ## Integration with other commands
 
 ```
-/brainstorm  →  spec
+/bymax-workflow:brainstorm  →  spec
     ↓
-/plan        →  step-by-step plan (waits for confirm)
+/bymax-workflow:plan        →  step-by-step plan (waits for confirm)
     ↓
-/tdd         →  red-green-refactor implementation
+/bymax-quality:tdd         →  red-green-refactor implementation
     ↓
-/verify      →  ← you are here
+/bymax-workflow:verify      →  ← you are here
     ↓
-/code-review →  final review
+/bymax-quality:code-review →  final review
     ↓
 commit / PR
 ```

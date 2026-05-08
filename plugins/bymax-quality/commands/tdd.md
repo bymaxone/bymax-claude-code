@@ -1,5 +1,5 @@
 ---
-description: 'Drive a strict red-green-refactor TDD cycle for NEW code — scaffold interfaces, write failing tests FIRST, run them and confirm they fail, then write the minimal implementation to make them pass, then refactor. Enforces 80% coverage minimum (100% on critical paths). Every it() must carry a block comment per /standards. Use for new features and bug fixes (write the regression test first). For tests on EXISTING code without changing behavior, use the `tester` skill instead. Triggers: "implementar com tdd", "tdd", "test first", "red green refactor", "vou implementar", "criar função", "criar serviço", "fix this bug".'
+description: 'Drive a strict red-green-refactor TDD cycle for NEW code — scaffold interfaces, write failing tests FIRST, run them and confirm they fail, then write the minimal implementation to make them pass, then refactor. Enforces 80% coverage minimum (100% on critical paths). Every it() must carry a block comment per /bymax-workflow:standards. Use for new features and bug fixes (write the regression test first). For tests on EXISTING code without changing behavior, use the `tester` skill instead. Triggers: "implementar com tdd", "tdd", "test first", "red green refactor", "vou implementar", "criar função", "criar serviço", "fix this bug".'
 ---
 
 # TDD Command
@@ -16,7 +16,7 @@ This command invokes the **tdd-guide** agent to enforce test-driven development 
 
 ## When to Use
 
-Use `/tdd` when:
+Use `/bymax-quality:tdd` when:
 - Implementing new features
 - Adding new functions/components
 - Fixing bugs (write test that reproduces bug first)
@@ -103,7 +103,7 @@ If coverage is below target, add the missing test → loop back to Step 2 (RED f
 
 ## Comment Policy — MANDATORY
 
-Every test you write under `/tdd` must follow the same rich-comment policy as the `tester` skill. There are no exceptions, even during the RED phase.
+Every test you write under `/bymax-quality:tdd` must follow the same rich-comment policy as the `tester` skill. There are no exceptions, even during the RED phase.
 
 ### Required structure
 
@@ -252,10 +252,10 @@ Never skip the RED phase. Never write code before tests.
 
 ## Integration with Other Commands
 
-- Use `/plan` first to understand what to build
-- Use `/tdd` to implement with tests
+- Use `/bymax-workflow:plan` first to understand what to build
+- Use `/bymax-quality:tdd` to implement with tests
 - Use `/build-fix` if build errors occur
-- Use `/code-review` to review implementation
+- Use `/bymax-quality:code-review` to review implementation
 - Use `/test-coverage` to verify coverage
 
 ## Related Agents

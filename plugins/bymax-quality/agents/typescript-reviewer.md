@@ -105,7 +105,7 @@ jest --ci                           # Tests (Jest)
 
 ## Reference
 
-For detailed TypeScript and JavaScript patterns, lean on the `/standards` skill (universal rules — § 1 TypeScript discipline, § 2 Naming) plus the `coding-standards`, `frontend-patterns`, or `backend-patterns` vendor skills (available when restored via `scripts/install.sh` or installed separately from upstream ECC). When the vendor skills aren't available, fall back to the patterns documented in this prompt.
+For detailed TypeScript and JavaScript patterns, lean on the `/bymax-workflow:standards` skill (universal rules — § 1 TypeScript discipline, § 2 Naming) plus the `coding-standards`, `frontend-patterns`, or `backend-patterns` vendor skills (available when restored via `scripts/install.sh` or installed separately from upstream ECC). When the vendor skills aren't available, fall back to the patterns documented in this prompt.
 
 ---
 

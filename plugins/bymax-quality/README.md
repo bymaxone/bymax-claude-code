@@ -15,8 +15,8 @@ claude plugin install bymax-quality@bymax-claude-code
 
 | Command         | Purpose                                                                                                                                                  |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/code-review`  | CRITICAL → HIGH → MEDIUM → LOW review. Blocks suppression comments (`@ts-ignore`, `eslint-disable`, `as any`). Reports JSDoc gaps, cross-feature imports, swallowed errors. |
-| `/tdd`          | Strict red-green-refactor cycle. Forces failing test before implementation. 80%+ coverage minimum (100% on critical paths). Every `it()` carries a block comment. |
+| `/bymax-quality:code-review`  | CRITICAL → HIGH → MEDIUM → LOW review. Blocks suppression comments (`@ts-ignore`, `eslint-disable`, `as any`). Reports JSDoc gaps, cross-feature imports, swallowed errors. |
+| `/bymax-quality:tdd`          | Strict red-green-refactor cycle. Forces failing test before implementation. 80%+ coverage minimum (100% on critical paths). Every `it()` carries a block comment. |
 
 ### Skill
 
@@ -42,25 +42,25 @@ claude plugin install bymax-quality@bymax-claude-code
 
 ## The chain
 
-Designed to be invoked one after another (or via `/task` which orchestrates them):
+Designed to be invoked one after another (or via `/bymax-workflow:task` which orchestrates them):
 
 ```
 implementation
    ↓
-/verify          (5 gates: static checks, exercise, root-cause, regression scan, acceptance criteria)
+/bymax-workflow:verify          (5 gates: static checks, exercise, root-cause, regression scan, acceptance criteria)
    ↓
 /security-review (apply every finding)
    ↓
-/code-review     (apply CRITICAL + HIGH + MEDIUM)
+/bymax-quality:code-review     (apply CRITICAL + HIGH + MEDIUM)
    ↓
 ready for commit
 ```
 
-If any of `/verify`, `/security-review`, `/code-review` finds something and fixes it, the flow loops back to `/verify`.
+If any of `/bymax-workflow:verify`, `/security-review`, `/bymax-quality:code-review` finds something and fixes it, the flow loops back to `/bymax-workflow:verify`.
 
 ## Banned suppression patterns
 
-`/code-review` flags any of these as **CRITICAL** (blocks commit):
+`/bymax-quality:code-review` flags any of these as **CRITICAL** (blocks commit):
 
 - `// eslint-disable*`, `// @ts-ignore`, `// @ts-expect-error`, `// @ts-nocheck`
 - `as any`, `as unknown as <T>` (used to launder errors)

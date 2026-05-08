@@ -1,6 +1,6 @@
 /**
  * commitlint — Conventional Commits with sensible defaults.
- * See /standards §9.
+ * See /bymax-workflow:standards §9.
  */
 module.exports = {
   extends: ['@commitlint/config-conventional'],

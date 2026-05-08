@@ -1,7 +1,7 @@
 {
   "name": "bymax-quality",
-  "description": "Quality gates and review tooling: /code-review (CRITICAL→LOW severity), /tdd (red-green-refactor), multi-stack tester skill, six specialist sub-agents, and pre/post hooks (secret-scanner blocks credential commits, console-log-scan warns on stale logs).",
-  "version": "1.1.0",
+  "description": "Quality gates and review tooling: /bymax-quality:code-review (CRITICAL→LOW severity), /bymax-quality:tdd (red-green-refactor), multi-stack tester skill, six specialist sub-agents, and pre/post hooks (secret-scanner blocks credential commits, console-log-scan warns on stale logs).",
+  "version": "1.1.1",
   "author": {
     "name": "Maximiliano Salvatti",
     "url": "https://github.com/bymaxone"

@@ -4,15 +4,15 @@ description: 'Layer 2 of the feature workflow — take an APPROVED spec and brea
 
 # Roadmap Command — Layer 2
 
-Second step in the **spec → roadmap → phase-tasks** workflow. Takes an approved spec and decomposes it into a phased execution plan with status tracking. The roadmap is the project-management layer — it does NOT contain task-level prompts (those live in `/phase-tasks`).
+Second step in the **spec → roadmap → phase-tasks** workflow. Takes an approved spec and decomposes it into a phased execution plan with status tracking. The roadmap is the project-management layer — it does NOT contain task-level prompts (those live in `/bymax-workflow:phase-tasks`).
 
 ## Prerequisite
 
-A spec at `docs/specs/<feature>.md` (or wherever the project keeps them) must exist and be approved by the user. If no spec exists, refuse and tell the user to run `/spec` first.
+A spec at `docs/specs/<feature>.md` (or wherever the project keeps them) must exist and be approved by the user. If no spec exists, refuse and tell the user to run `/bymax-workflow:spec` first.
 
 ## When to use
 
-- Right after `/spec` was approved.
+- Right after `/bymax-workflow:spec` was approved.
 - Re-running on an existing roadmap to add/remove phases or update the dashboard (with explicit confirmation).
 
 ## Workflow
@@ -76,7 +76,7 @@ Use `~/.claude/templates/roadmap.template.md` as the structure. Required section
 3. **Phase table** — columns: ID · Name · Status · Progress · Size · Last Updated
 4. **Dependency graph** — ASCII DAG
 5. **Parallelization notes** — what can run together, what blocks what
-6. **Global conventions** — TypeScript / naming / paths / lint / test rules that apply across phases (lift from `CLAUDE.md` + `/standards`)
+6. **Global conventions** — TypeScript / naming / paths / lint / test rules that apply across phases (lift from `CLAUDE.md` + `/bymax-workflow:standards`)
 7. **Per-phase detail** — for each phase: Goal / Scope / DoD / Context / Rules / References / Size
 8. **Update protocol** — exact steps to update the dashboard when a phase moves status (5-7 numbered steps)
 
@@ -106,8 +106,8 @@ Dashboard:
   ✅ Done:        0
 
 Next step (after you review):
-  /phase-tasks <feature> P1     ← scaffold the first phase's task file (recommended)
-  /phase-tasks <feature> --all  ← scaffold every phase at once (not recommended for >5 phases)
+  /bymax-workflow:phase-tasks <feature> P1     ← scaffold the first phase's task file (recommended)
+  /bymax-workflow:phase-tasks <feature> --all  ← scaffold every phase at once (not recommended for >5 phases)
 
 Do you want to:
   - Approve and scaffold P1?
@@ -115,23 +115,23 @@ Do you want to:
   - Adjust dependencies?
 ```
 
-**Do not** call `/phase-tasks` automatically. Wait for explicit user direction.
+**Do not** call `/bymax-workflow:phase-tasks` automatically. Wait for explicit user direction.
 
 ## Hard rules
 
 - **Never proceed without an approved spec.** If the spec is marked `📝 Draft`, refuse and ask user to confirm it's ready.
 - **Phases must be shippable independently.** If a phase makes no sense to merge alone, split or merge it.
-- **No agent prompts here.** Those live in `/phase-tasks`. The roadmap is for managers/reviewers.
+- **No agent prompts here.** Those live in `/bymax-workflow:phase-tasks`. The roadmap is for managers/reviewers.
 - **No code snippets in the roadmap.** Show file paths only when describing scope.
 - **English-only** in the document body.
 
 ## Integration with the rest of the workflow
 
 ```
-/spec          (already done)
+/bymax-workflow:spec          (already done)
    ⏸ user approval
-/roadmap       ← you are here
+/bymax-workflow:roadmap       ← you are here
    ⏸ user approval
-/phase-tasks   (next — per-phase task files with agent prompts)
+/bymax-workflow:phase-tasks   (next — per-phase task files with agent prompts)
    ⏸ user approval per phase
 ```

@@ -1,5 +1,5 @@
 ---
-description: 'Comprehensive security and quality review of uncommitted changes. Walks every changed file and flags issues across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments), and LOW (nits). Blocks the commit on any CRITICAL or HIGH. Run before /verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
+description: 'Comprehensive security and quality review of uncommitted changes. Walks every changed file and flags issues across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments), and LOW (nits). Blocks the commit on any CRITICAL or HIGH. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
 ---
 
 # Code Review
@@ -60,21 +60,21 @@ If the user is genuinely fighting a wrong rule, the right fix is to change the r
 - TODO / FIXME / XXX / HACK without an issue link.
 - An existing `eslint-disable` / `@ts-ignore` / `as any` retained without an issue-link justification (see Suppression Comments above).
 
-### Documentation (mandatory per `/standards`)
+### Documentation (mandatory per `/bymax-workflow:standards`)
 - **Non-trivial source file missing the file-header JSDoc** (Purpose + Layer + optional Constraints). Trivial barrel `index.ts` files are exempt — a one-line `// Public API of …` comment is enough.
 - **Exported function / hook / component / service / store missing JSDoc** with imperative summary, `@param`, `@returns`, and `@throws` where applicable.
 - **Test `it` / `test` block without a comment** explaining the scenario and the rule it protects.
 
-### Architecture (mandatory per `/standards`)
+### Architecture (mandatory per `/bymax-workflow:standards`)
 - **Cross-feature import** — `features/X/` importing from `features/Y/`. Must orchestrate one level up via `app/` or `shared/`.
 - **Domain import inside `shared/ui/`** — UI primitives must be portable; zero domain imports.
 - **Internal export leaked through a feature barrel** — `index.ts` should expose only the public API.
 
-### Error handling (mandatory per `/standards`)
+### Error handling (mandatory per `/bymax-workflow:standards`)
 - **Error swallowed silently** — empty `catch`, `catch` that only logs without re-throwing or surfacing, or rejected promises ignored.
 - **Missing input validation at a system boundary** (network response, file parse, IPC, user input). Must run through Zod or equivalent.
 
-### TypeScript discipline (mandatory per `/standards`)
+### TypeScript discipline (mandatory per `/bymax-workflow:standards`)
 - **`any` introduced** — use `unknown` + guard, a generic, or the upstream type.
 - **Non-null assertion (`!`) without an explanatory comment** describing the invariant that proves it safe.
 
@@ -87,16 +87,16 @@ If the user is genuinely fighting a wrong rule, the right fix is to change the r
 - Missing tests for new code.
 - Accessibility issues (a11y) — missing labels, keyboard traps, color contrast.
 - Magic numbers without a named constant.
-- **`enum` declared instead of a string-literal union type** (per `/standards` §1).
+- **`enum` declared instead of a string-literal union type** (per `/bymax-workflow:standards` §1).
 - **Comment not in English** — code, JSDoc, and inline notes must all be English. User-facing strings live in i18n bundles.
-- **`interface` used for a union/utility type, or `type` used for an entity-like shape** — see `/standards` §1 for the convention.
-- **Boolean variable not prefixed with `is` / `has` / `should` / `can`** (per `/standards` §2).
+- **`interface` used for a union/utility type, or `type` used for an entity-like shape** — see `/bymax-workflow:standards` §1 for the convention.
+- **Boolean variable not prefixed with `is` / `has` / `should` / `can`** (per `/bymax-workflow:standards` §2).
 - **Relative `../../../` import where a path alias exists** (`@/`, `@app/`, `@tests/`).
-- **Tailwind v4 — CSS variable in long form** `[var(--x)]`. Suggest the canonical shorthand `(--x)` (e.g., `border-[var(--glass-border)]` → `border-(--glass-border)`). See `/standards` § 12. **Skip this check on Tailwind v3 / NativeWind 4 projects** (the long form is the only valid form there).
-- **Tailwind v4 — ARIA boolean variant in long form** `aria-[<name>=true]:` where `<name>` is one of `invalid / disabled / pressed / expanded / hidden / selected / checked / busy / modal / required / readonly`. Suggest the canonical short variant (e.g., `aria-[invalid=true]:border-destructive` → `aria-invalid:border-destructive`). See `/standards` § 12.
-- **Tailwind v4 — arbitrary `rem` value that matches the default spacing/type scale** (e.g., `min-w-[8rem]`, `p-[1rem]`, `gap-[2rem]`, `text-[1rem]`, `h-[12rem]`). Suggest the canonical token (`min-w-32`, `p-4`, `gap-8`, `text-base`, `h-48`). Quick math: `token = rem × 4` for spacing/sizing. See `/standards` § 12 "Canonical numeric tokens". Only flag when the value cleanly maps to the default scale; **off-scale values stay arbitrary** (e.g., `w-[7.3rem]` is valid).
-- **Tailwind v4 — arbitrary `px` on the filter scale** (`backdrop-blur-[Npx]` or `blur-[Npx]`). Suggest the named token: `[4px]` = `xs`, `[8px]` = `sm`, `[12px]` = `md`, `[16px]` = `lg`, `[24px]` = `xl`, `[40px]` = `2xl`, `[64px]` = `3xl`. E.g., `backdrop-blur-[12px]` → `backdrop-blur-md`, `backdrop-blur-[16px]` → `backdrop-blur-lg`. See `/standards` § 12.
-- **Tailwind v4 — arbitrary z-index integer** `z-[N]`. v4 supports bare integers for z-index without brackets: `z-[200]` → `z-200`, `z-[9999]` → `z-9999`. See `/standards` § 12.
+- **Tailwind v4 — CSS variable in long form** `[var(--x)]`. Suggest the canonical shorthand `(--x)` (e.g., `border-[var(--glass-border)]` → `border-(--glass-border)`). See `/bymax-workflow:standards` § 12. **Skip this check on Tailwind v3 / NativeWind 4 projects** (the long form is the only valid form there).
+- **Tailwind v4 — ARIA boolean variant in long form** `aria-[<name>=true]:` where `<name>` is one of `invalid / disabled / pressed / expanded / hidden / selected / checked / busy / modal / required / readonly`. Suggest the canonical short variant (e.g., `aria-[invalid=true]:border-destructive` → `aria-invalid:border-destructive`). See `/bymax-workflow:standards` § 12.
+- **Tailwind v4 — arbitrary `rem` value that matches the default spacing/type scale** (e.g., `min-w-[8rem]`, `p-[1rem]`, `gap-[2rem]`, `text-[1rem]`, `h-[12rem]`). Suggest the canonical token (`min-w-32`, `p-4`, `gap-8`, `text-base`, `h-48`). Quick math: `token = rem × 4` for spacing/sizing. See `/bymax-workflow:standards` § 12 "Canonical numeric tokens". Only flag when the value cleanly maps to the default scale; **off-scale values stay arbitrary** (e.g., `w-[7.3rem]` is valid).
+- **Tailwind v4 — arbitrary `px` on the filter scale** (`backdrop-blur-[Npx]` or `blur-[Npx]`). Suggest the named token: `[4px]` = `xs`, `[8px]` = `sm`, `[12px]` = `md`, `[16px]` = `lg`, `[24px]` = `xl`, `[40px]` = `2xl`, `[64px]` = `3xl`. E.g., `backdrop-blur-[12px]` → `backdrop-blur-md`, `backdrop-blur-[16px]` → `backdrop-blur-lg`. See `/bymax-workflow:standards` § 12.
+- **Tailwind v4 — arbitrary z-index integer** `z-[N]`. v4 supports bare integers for z-index without brackets: `z-[200]` → `z-200`, `z-[9999]` → `z-9999`. See `/bymax-workflow:standards` § 12.
 - **Negative zero** — `-{utility}-0` equals `{utility}-0`. Flag and replace with the positive form: `-bottom-0` → `bottom-0`, `-top-0` → `top-0`, `-left-0` → `left-0`, `-right-0` → `right-0`, `-m-0` → `m-0`.
 - **Tailwind v4 — renamed utility from v3** still in use:
   - **Scale shifts**: `shadow` → `shadow-sm`, `shadow-sm` → `shadow-xs`; `drop-shadow` → `drop-shadow-sm`, `drop-shadow-sm` → `drop-shadow-xs`; `blur` → `blur-sm`, `blur-sm` → `blur-xs`; `backdrop-blur` → `backdrop-blur-sm`, `backdrop-blur-sm` → `backdrop-blur-xs`; `rounded` → `rounded-sm`, `rounded-sm` → `rounded-xs`.
@@ -104,7 +104,7 @@ If the user is genuinely fighting a wrong rule, the right fix is to change the r
   - **Ring default**: `ring` (was 3px) → `ring-3`; `ring-1` is now the default `ring`.
   - **Renames**: `outline-none` → `outline-hidden`; `decoration-clone` → `box-decoration-clone`; `decoration-slice` → `box-decoration-slice`; `overflow-ellipsis` → `text-ellipsis`; `flex-shrink-*` → `shrink-*`; `flex-grow-*` → `grow-*`.
   - **Opacity modifiers**: `bg-opacity-50`, `text-opacity-*`, `border-opacity-*`, `divide-opacity-*`, `placeholder-opacity-*`, `ring-opacity-*` → use `<color>/<n>` (e.g., `bg-blue-500/50`).
-  - See `/standards` § 12 "Renamed utilities (v3 → v4)" for the full table.
+  - See `/bymax-workflow:standards` § 12 "Renamed utilities (v3 → v4)" for the full table.
 - **Hardcoded hex value in JSX `className`** outside `tailwind.config.js`. Always use a token (`bg-primary`, `text-ink-base`).
 - **Dynamic Tailwind class string** the JIT can't see (e.g., `` `text-${size}` ``). Use full literals + `cn()` / `clsx()`.
 

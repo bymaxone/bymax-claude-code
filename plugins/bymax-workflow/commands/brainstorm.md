@@ -1,16 +1,16 @@
 ---
-description: Refine a rough idea before planning. Ask clarifying questions, explore alternatives, surface tradeoffs, and produce a short design spec the user signs off on. WAIT for explicit user approval before handing off to /plan.
+description: Refine a rough idea before planning. Ask clarifying questions, explore alternatives, surface tradeoffs, and produce a short design spec the user signs off on. WAIT for explicit user approval before handing off to /bymax-workflow:plan.
 ---
 
 # Brainstorm Command
 
 Pre-plan discipline. Inspired by the `brainstorming` skill from the Superpowers framework.
 
-This command runs **before** `/plan`. It refuses to jump into implementation details. Its only job is to make sure we are solving the right problem before any time is spent on a plan.
+This command runs **before** `/bymax-workflow:plan`. It refuses to jump into implementation details. Its only job is to make sure we are solving the right problem before any time is spent on a plan.
 
 ## When to Use
 
-Use `/brainstorm` when:
+Use `/bymax-workflow:brainstorm` when:
 
 - The request is vague, ambiguous, or one-line ("add notifications", "improve onboarding", "make it faster").
 - More than one reasonable approach exists and the tradeoffs are not obvious.
@@ -86,32 +86,32 @@ Keep it under 1 page. No code yet.
 
 ### 5. Wait for sign-off
 
-Present the spec and STOP. Do not call `/plan`. Do not write code. Do not refactor anything.
+Present the spec and STOP. Do not call `/bymax-workflow:plan`. Do not write code. Do not refactor anything.
 
 The user must respond with one of:
 
-- "approved" / "ok" / "go" → hand off to `/plan` with the spec as input.
+- "approved" / "ok" / "go" → hand off to `/bymax-workflow:plan` with the spec as input.
 - "modify: …" → revise the spec.
 - "different approach" → go back to step 3.
 
 ## Output discipline
 
 - No code in this phase. Not even pseudocode beyond a 1-line shape.
-- No file paths, no function signatures. That's `/plan`'s job.
+- No file paths, no function signatures. That's `/bymax-workflow:plan`'s job.
 - If the user starts answering before you finish asking, pause and integrate — don't bulldoze through your script.
 
 ## Integration with other commands
 
 ```
-/brainstorm  →  spec
+/bymax-workflow:brainstorm  →  spec
     ↓
-/plan        →  step-by-step plan (waits for confirm)
+/bymax-workflow:plan        →  step-by-step plan (waits for confirm)
     ↓
-/tdd         →  red-green-refactor implementation
+/bymax-quality:tdd         →  red-green-refactor implementation
     ↓
-/verify      →  prove it works, not just compiles
+/bymax-workflow:verify      →  prove it works, not just compiles
     ↓
-/code-review →  final review
+/bymax-quality:code-review →  final review
 ```
 
 ## Anti-patterns to refuse

@@ -8,17 +8,17 @@ Final step in the **spec → roadmap → phase-tasks** workflow. Takes a single 
 
 ## Prerequisite
 
-An approved roadmap must exist (`docs/plans/<feature>-plan.md` or `docs/plan.md`). If no roadmap exists, refuse and tell the user to run `/roadmap` first.
+An approved roadmap must exist (`docs/plans/<feature>-plan.md` or `docs/plan.md`). If no roadmap exists, refuse and tell the user to run `/bymax-workflow:roadmap` first.
 
 ## Invocation
 
 ```
-/phase-tasks <feature> <phase-id>     # scaffold one phase (recommended)
-/phase-tasks <feature> --all          # scaffold every phase (use only for small features)
-/phase-tasks <feature> next           # scaffold the next non-scaffolded phase
+/bymax-workflow:phase-tasks <feature> <phase-id>     # scaffold one phase (recommended)
+/bymax-workflow:phase-tasks <feature> --all          # scaffold every phase (use only for small features)
+/bymax-workflow:phase-tasks <feature> next           # scaffold the next non-scaffolded phase
 ```
 
-Default behavior when the user just says `/phase-tasks <feature>` is `next`.
+Default behavior when the user just says `/bymax-workflow:phase-tasks <feature>` is `next`.
 
 ## Workflow
 
@@ -107,7 +107,7 @@ DELIVERABLES
 
 Constraints:
 - <project-specific must-have>
-- Follow /standards: TS strict, JSDoc on every export, English comments only, no suppression comments.
+- Follow /bymax-workflow:standards: TS strict, JSDoc on every export, English comments only, no suppression comments.
 - <other constraints from rules-of-phase>
 
 Verification:
@@ -138,8 +138,8 @@ Estimated size: <total>
 Critical task: <id> (<short reason>)
 
 Next options:
-  /phase-tasks <feature> next    ← scaffold the next phase
-  Start working: /plan or /tdd on task <first-task-id>
+  /bymax-workflow:phase-tasks <feature> next    ← scaffold the next phase
+  Start working: /bymax-workflow:plan or /bymax-quality:tdd on task <first-task-id>
   Modify: tell me what to change in this file
 
 Do not auto-scaffold the next phase — wait for explicit confirmation.
@@ -157,11 +157,11 @@ Do not auto-scaffold the next phase — wait for explicit confirmation.
 ## Integration with the rest of the workflow
 
 ```
-/spec          (done)
-/roadmap       (done)
-/phase-tasks   ← you are here (run once per phase, with approval)
+/bymax-workflow:spec          (done)
+/bymax-workflow:roadmap       (done)
+/bymax-workflow:phase-tasks   ← you are here (run once per phase, with approval)
    ⏸ user approval
-/plan / /tdd   ← then execute the prompts inside each task
-/verify        ← prove each task is done
-/code-review   ← before marking ✅
+/bymax-workflow:plan / /bymax-quality:tdd   ← then execute the prompts inside each task
+/bymax-workflow:verify        ← prove each task is done
+/bymax-quality:code-review   ← before marking ✅
 ```
