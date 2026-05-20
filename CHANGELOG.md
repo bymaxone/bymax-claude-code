@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.2.0] — 2026-05-20
+
+### Added — `bymax-web-verify` plugin (real-browser verification)
+
+A new optional plugin that brings real-browser verification to the toolkit via the [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (Vercel Labs, Apache-2.0). It follows the same "require, don't embed" pattern as `bymax-mobile`: it depends on the external CLI rather than bundling it, so the CLI's own version-matched skills never drift.
+
+- **`/bymax-web-verify:setup`** — one-shot, idempotent installer for the `agent-browser` CLI **and** its Chrome for Testing engine, finished with a live smoke test. Designed as a portable backup step after a fresh macOS install. Refuses `sudo`; points at `nvm` on `EACCES`.
+- **`/bymax-web-verify:verify`** — drives a real browser to confirm a web change works: opens a URL (auto-probes local dev ports `3000, 5173, 8080, 4321, 3001`), exercises the path using snapshot refs, and reports PASS/FAIL with a screenshot plus console/page errors. Read-only by default.
+- **`SessionStart` hook** (`check-agent-browser.sh`) — silent when the CLI is present; when missing, injects `additionalContext` so Claude can proactively offer `/bymax-web-verify:setup`. Never installs unprompted, never blocks the session.
+- **`marketplace.json`** bumped to `1.2.0`; new `bymax-web-verify` entry added (category `quality`); `bymax-all` reference updated to list the fifth plugin.
+
 ## [1.1.1] — 2026-05-08
 
 ### Changed — qualified plugin slash references for namespace correctness
