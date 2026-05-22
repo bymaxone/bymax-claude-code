@@ -52,9 +52,11 @@ claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
+claude plugin install bymax-web-verify@bymax-claude-code
+claude plugin install bymax-pr@bymax-claude-code
 ```
 
-That's it. Restart Claude Code and you have **4 installable plugins** with **14 slash commands**, **2 skills**, **6 sub-agents**, **2 hooks**, and **20 templates** — the full workflow ready.
+That's it. Restart Claude Code and you have **6 installable plugins** with **16 slash commands**, **3 skills**, **6 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
 
 ---
 
@@ -68,13 +70,15 @@ claude plugin marketplace add bymaxone/bymax.claude-code
 
 ### 2. Install plugins
 
-Claude Code installs plugins individually — install the four you want:
+Claude Code installs plugins individually — install the ones you want:
 
 ```bash
-claude plugin install bymax-workflow@bymax-claude-code     # planning + execution
-claude plugin install bymax-quality@bymax-claude-code      # review + TDD + agents + hooks
-claude plugin install bymax-bootstrap@bymax-claude-code    # scaffold new projects
-claude plugin install bymax-mobile@bymax-claude-code       # iOS Simulator + Android Emulator
+claude plugin install bymax-workflow@bymax-claude-code      # planning + execution
+claude plugin install bymax-quality@bymax-claude-code       # review + TDD + agents + hooks
+claude plugin install bymax-bootstrap@bymax-claude-code     # scaffold new projects
+claude plugin install bymax-mobile@bymax-claude-code        # iOS Simulator + Android Emulator
+claude plugin install bymax-web-verify@bymax-claude-code    # real-browser verification (needs agent-browser)
+claude plugin install bymax-pr@bymax-claude-code            # autonomous PR babysitting (needs gh CLI)
 ```
 
 > Each `claude plugin install` accepts `--scope user` (default — global, every project) or `--scope project` (only this project, declared in `<project>/.claude/settings.json`).
@@ -97,7 +101,7 @@ In Claude Code, type `/` — you should see all the `bymax-*` commands. Try:
 
 ## 📦 Plugins
 
-The toolkit ships as **five composable plugins**. Use them à la carte or all at once via `bymax-all`.
+The toolkit ships as **six composable plugins** (plus a reference index). Use them à la carte or all at once via `bymax-all`.
 
 ### 🧭 [`bymax-workflow`](./plugins/bymax-workflow/) — Planning + Execution
 
@@ -171,9 +175,30 @@ Two slash commands that take an Expo / React Native project from cold to running
 
 Both commands auto-detect the package manager (`pnpm` / `yarn` / `npm`), use a build-artifact heuristic to choose between Metro reattach and full rebuild, and pre-flight tooling so they bail early with a clear, actionable error if Xcode CLI tools or the Android SDK are missing.
 
+### 🌐 [`bymax-web-verify`](./plugins/bymax-web-verify/) — Real-browser verification
+
+Confirms a web change actually works in a live browser, powered by the [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (Vercel Labs). Depends on the CLI but never bundles it — the same "require, don't embed" approach as `bymax-mobile`.
+
+| Item                       | Purpose                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `/bymax-web-verify:setup`  | One-shot, idempotent install of the `agent-browser` CLI **and** Chrome for Testing, finished by a live smoke test.              |
+| `/bymax-web-verify:verify` | Drives a real browser to confirm a change works (navigate, interact, screenshot, read console/page errors). Auto-probes local dev ports. |
+| `check-agent-browser` hook | **SessionStart** — silent when the CLI is present; nudges Claude to offer `/bymax-web-verify:setup` only when it's missing.      |
+
+### 🤖 [`bymax-pr`](./plugins/bymax-pr/) — Autonomous PR babysitting
+
+Drives an open PR to merge-readiness on **any** project, powered by the [`gh`](https://cli.github.com/) CLI. Wakes up every 270s, resolves conflicts, watches CI, fixes real failures (re-running flaky ones), triages bot review comments, and pings you when it's green. **Never merges**, never pushes to the base branch.
+
+| Item                              | Purpose                                                                                                                            |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `/bymax-pr:babysit-pr`    | Babysits the PR on the current branch (or a number / URL): conflict rebase → CI fix (real vs flaky) → bot-comment triage → notify. |
+| Phase −1 preflight                | Verifies the `gh` CLI is installed **and** authenticated; stops with exact install / `gh auth login` instructions if not.          |
+
+Project-agnostic: auto-detects the package manager + lint/test/typecheck/build scripts, and respects the project's own `CLAUDE.md` / `AGENTS.md`. Depends on `gh` + `git`; never bundles them.
+
 ### 🎁 [`bymax-all`](./plugins/bymax-all/) — Reference index
 
-A docs-only marketplace entry that lists the full set. Claude Code's plugin manifest does **not** auto-install dependencies, so installing `bymax-all` does nothing on its own — install the four sibling plugins individually for the complete toolkit.
+A docs-only marketplace entry that lists the full set. Claude Code's plugin manifest does **not** auto-install dependencies, so installing `bymax-all` does nothing on its own — install the six sibling plugins individually for the complete toolkit.
 
 ---
 
@@ -224,6 +249,8 @@ bymax.claude-code/
 │   ├── bymax-quality/                  ← review + TDD + agents + hooks
 │   ├── bymax-bootstrap/                ← project scaffolding
 │   ├── bymax-mobile/                   ← iOS Simulator + Android Emulator
+│   ├── bymax-web-verify/               ← real-browser verification (needs agent-browser)
+│   ├── bymax-pr/               ← autonomous PR babysitting (needs gh CLI)
 │   └── bymax-all/                      ← reference index (no auto-install in Claude Code)
 │
 ├── templates/                          ← project bootstrapping templates
@@ -258,6 +285,8 @@ claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
+claude plugin install bymax-web-verify@bymax-claude-code
+claude plugin install bymax-pr@bymax-claude-code
 ```
 
 Only the `plugins/` content is exposed via `/plugin install`. The vendor/ and personal/ folders are visible in the repo for backup but not installable.
@@ -274,8 +303,9 @@ cd ~/dotfiles-claude
 # 2. Preview what install.sh will do (no writes)
 ./scripts/install.sh --dry-run
 
-# 3. Restore vendor + personal + MCP config into ~/.claude/. (Plugins are
-#    NOT symlinked here — they are installed below via the marketplace.)
+# 3. Restore vendor + design skills + personal + MCP config into ~/.claude/.
+#    (Plugins are NOT symlinked here — they are installed below via the
+#    marketplace. Design skills are fetched from their upstream repos.)
 ./scripts/install.sh --write-mcp-enabled
 
 # 4. Configure your settings (template has comments inline)
@@ -288,6 +318,8 @@ claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
+claude plugin install bymax-web-verify@bymax-claude-code
+claude plugin install bymax-pr@bymax-claude-code
 claude plugin marketplace add anthropics/claude-plugins-official
 claude plugin install frontend-design@claude-plugins-official
 claude plugin marketplace add getsentry/sentry-mcp
@@ -301,11 +333,14 @@ claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=<your_pat> -- npx -y @mode
 
 #### What `install.sh` restores
 
-| Layer        | What                                                                | Mode     |
-| ------------ | ------------------------------------------------------------------- | -------- |
-| **vendor**   | `ecc-skills/*.md` + the full `ui-ux-pro-max/` directory             | symlinks |
-| **personal** | `prettier-format.sh` (hook)                                         | symlinks |
-| **MCP**      | `mcp.template.json` → `~/.mcp.json` (only if not already present)   | **copy** |
+| Layer            | What                                                                                          | Mode             |
+| ---------------- | --------------------------------------------------------------------------------------------- | ---------------- |
+| **vendor**       | `ecc-skills/*.md` + the full `ui-ux-pro-max/` directory                                       | symlinks         |
+| **design skills**| Emil Kowalski, Impeccable, Taste subset — fetched from upstream via `npx skills add --global` | fetched (upstream) |
+| **personal**     | `prettier-format.sh` (hook)                                                                   | symlinks         |
+| **MCP**          | `mcp.template.json` → `~/.mcp.json` (only if not already present)                             | **copy**         |
+
+Skip the design-skill fetch with `./scripts/install.sh --no-design-skills`.
 
 The bymax plugins themselves are installed via `claude plugin install` (Step 5 above), not via `install.sh` — Claude Code's plugin marketplace handles them natively. Settings (`~/.claude/settings.json`) and the marketplace plugin install commands are **manual** — the script prints them at the end so you can copy/paste.
 
@@ -392,6 +427,8 @@ claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
+claude plugin install bymax-web-verify@bymax-claude-code
+claude plugin install bymax-pr@bymax-claude-code
 ```
 
 ---
@@ -408,6 +445,12 @@ This repo bundles two MIT-licensed third-party skills as backup (not redistribut
 
 - **[Everything Claude Code](https://github.com/affaan-m/everything-claude-code)** by Affaan Mustafa — domain skills (api-design, backend-patterns, postgres-patterns, etc.)
 - **[ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** by nextlevelbuilder — UI/UX design intelligence
+
+It also **fetches** (never bundles) these third-party design skills from their upstream repos via `scripts/install.sh` (see [`vendor/README.md`](./vendor/README.md)):
+
+- **[Emil Design Engineering](https://github.com/emilkowalski/skill)** by Emil Kowalski — UI polish, component design, animation decisions
+- **[Impeccable](https://github.com/pbakaus/impeccable)** by Paul Bakaus — full frontend design language (Apache-2.0)
+- **[Taste-Skill](https://github.com/Leonxlnx/taste-skill)** by Leonxlnx — anti-slop design taste (MIT)
 
 Inspired by:
 

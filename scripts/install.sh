@@ -11,8 +11,9 @@
 # prints the exact commands at the end.
 #
 # Usage:
-#   ./scripts/install.sh                       (default — symlinks vendor + personal, copies MCP)
+#   ./scripts/install.sh                       (default — symlinks vendor + personal, fetches design skills, copies MCP)
 #   ./scripts/install.sh --no-vendor           (skip vendor third-party skills)
+#   ./scripts/install.sh --no-design-skills    (skip fetching the upstream design skills)
 #   ./scripts/install.sh --no-personal         (skip personal config)
 #   ./scripts/install.sh --no-mcp              (skip ~/.mcp.json copy)
 #   ./scripts/install.sh --write-mcp-enabled   (also write ~/.claude/settings.local.json with enabledMcpjsonServers)
@@ -20,6 +21,8 @@
 #
 # What it does:
 #   - Symlinks vendor skills into ~/.claude/skills/<name>/.
+#   - Fetches third-party design skills (Emil Kowalski, Impeccable, Taste subset) from their
+#     upstream repos via `npx skills add --global` (NOT vendored — license + freshness).
 #   - Symlinks personal hooks/commands into ~/.claude/hooks|commands/.
 #   - Copies (does NOT symlink) personal/mcp.template.json → ~/.mcp.json so you can edit
 #     it without affecting the repo. Skipped if ~/.mcp.json already exists.
@@ -43,6 +46,7 @@ TARGET="${HOME}/.claude"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 INCLUDE_VENDOR=true
+INCLUDE_DESIGN=true
 INCLUDE_PERSONAL=true
 INCLUDE_MCP=true
 WRITE_MCP_ENABLED=false
@@ -53,12 +57,13 @@ DRY_RUN=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-vendor)          INCLUDE_VENDOR=false; shift ;;
+    --no-design-skills)   INCLUDE_DESIGN=false; shift ;;
     --no-personal)        INCLUDE_PERSONAL=false; shift ;;
     --no-mcp)             INCLUDE_MCP=false; shift ;;
     --write-mcp-enabled)  WRITE_MCP_ENABLED=true; shift ;;
     --dry-run)            DRY_RUN=true; shift ;;
     -h|--help)
-      sed -n '2,38p' "$0"
+      sed -n '2,42p' "$0"
       exit 0 ;;
     *)
       printf "Unknown flag: %s\n" "$1" >&2
@@ -168,6 +173,41 @@ else
   echo
 fi
 
+# --- 1b. design skills (fetched from upstream, NOT vendored) ---------------
+#
+# These third-party design skills are fetched from their original repos via the
+# `skills` CLI rather than copied into this repo — Impeccable is Apache-2.0,
+# Taste is MIT, and the Emil Kowalski skill ships no license file, so the
+# compliant + always-fresh choice is to pull them from source on demand.
+
+if [[ "${INCLUDE_DESIGN}" == true ]]; then
+  log "Installing third-party design skills (fetched from upstream via 'npx skills')"
+
+  if ! command -v npx >/dev/null 2>&1; then
+    warn "npx not found (install Node.js) — skipping design skills."
+  else
+    # Each entry: a global, non-interactive `skills add` against the upstream repo.
+    design_cmds=(
+      "npx -y skills add emilkowalski/skill --global --skill emil-design-eng --yes"
+      "npx -y skills add pbakaus/impeccable --global --skill impeccable --yes"
+      "npx -y skills add Leonxlnx/taste-skill --global --skill design-taste-frontend,redesign-existing-projects,minimalist-ui,industrial-brutalist-ui,high-end-visual-design --yes"
+    )
+    for cmd in "${design_cmds[@]}"; do
+      if [[ "${DRY_RUN}" == true ]]; then
+        dry "${cmd}"
+      elif eval "${cmd}"; then
+        ok "ran: ${cmd}"
+      else
+        warn "failed (continuing): ${cmd}"
+      fi
+    done
+  fi
+  echo
+else
+  warn "Skipping design skills (--no-design-skills)"
+  echo
+fi
+
 # --- 2. personal -----------------------------------------------------------
 
 if [[ "${INCLUDE_PERSONAL}" == true ]]; then
@@ -233,6 +273,8 @@ echo "       claude plugin install bymax-workflow@bymax-claude-code"
 echo "       claude plugin install bymax-quality@bymax-claude-code"
 echo "       claude plugin install bymax-bootstrap@bymax-claude-code"
 echo "       claude plugin install bymax-mobile@bymax-claude-code"
+echo "       claude plugin install bymax-web-verify@bymax-claude-code"
+echo "       claude plugin install bymax-pr@bymax-claude-code"
 echo "       claude plugin marketplace add anthropics/claude-plugins-official"
 echo "       claude plugin install frontend-design@claude-plugins-official"
 echo "       claude plugin marketplace add getsentry/sentry-mcp"

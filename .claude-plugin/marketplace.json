@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "bymax-claude-code",
-  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), quality gates (TDD + code-review + security-review), specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
-  "version": "1.2.0",
+  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), quality gates (TDD + code-review + security-review), specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, autonomous PR babysitting, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
+  "version": "1.3.0",
   "owner": {
     "name": "Maximiliano Salvatti",
     "url": "https://github.com/bymaxone"
@@ -44,8 +44,15 @@
       "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-web-verify"
     },
     {
+      "name": "bymax-pr",
+      "description": "Autonomously shepherds an open PR to merge-readiness, powered by the gh CLI. /bymax-pr:babysit-pr resolves conflicts, polls CI every 270s, classifies failures as real vs flaky (re-running flaky checks), fixes real failures locally before pushing, triages bot review comments, and notifies you when the PR is green. Never merges, never pushes to the base branch. A built-in preflight verifies gh is installed and authenticated. Depends on gh + git; never bundles them.",
+      "category": "workflow",
+      "source": "./plugins/bymax-pr",
+      "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-pr"
+    },
+    {
       "name": "bymax-all",
-      "description": "Meta-plugin reference. Claude Code does not auto-install dependencies — install bymax-workflow, bymax-quality, bymax-bootstrap, bymax-mobile, and bymax-web-verify individually for the full toolkit.",
+      "description": "Meta-plugin reference. Claude Code does not auto-install dependencies — install bymax-workflow, bymax-quality, bymax-bootstrap, bymax-mobile, bymax-web-verify, and bymax-pr individually for the full toolkit.",
       "category": "meta",
       "source": "./plugins/bymax-all",
       "homepage": "https://github.com/bymaxone/bymax.claude-code"

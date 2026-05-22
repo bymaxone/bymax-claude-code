@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.3.0] — 2026-05-22
+
+### Added — `bymax-pr` plugin (autonomous PR babysitting)
+
+A new optional plugin that autonomously drives an open pull request to merge-readiness on **any** project, powered by the [`gh`](https://cli.github.com/) CLI. Like `bymax-mobile` and `bymax-web-verify`, it follows the "require, don't embed" pattern — it depends on `gh` + `git` but never bundles them.
+
+- **`/bymax-pr:babysit-pr`** — wakes up every 270s (`ScheduleWakeup`, inside the prompt-cache TTL) and runs four phases per pass: conflict auto-rebase → CI monitoring (classifies failures **real vs flaky**, re-running flaky checks up to 3× via `gh run rerun --failed`) → bot-comment triage (4-tier, resolves threads via GraphQL) → termination check (fires a `PushNotification` when green). State persists in a `<!-- babysit-state -->` PR comment, so the loop is idempotent across wake-ups and session restarts.
+- **Phase −1 preflight** — verifies the `gh` CLI is installed **and** authenticated, stopping with exact install / `gh auth login` instructions if not. `gh` is an execution prerequisite, so it's checked inside the skill (no SessionStart hook).
+- **Project-agnostic** — auto-detects the package manager and lint/test/typecheck/build scripts, and respects the project's own `CLAUDE.md` / `AGENTS.md`. **Never merges**, never pushes to the base branch, never force-greens a check.
+- **`marketplace.json`** bumped to `1.3.0`; new `bymax-pr` entry added (category `workflow`); `bymax-all` reference (manifest + README) updated to list all six functional plugins.
+
+### Added — third-party design skills fetched on restore
+
+`scripts/install.sh` now optionally fetches three third-party **design** skills from their upstream repos via the `skills` CLI (`npx skills add … --global`) — **not** vendored, for licensing + freshness:
+
+- **[Emil Design Engineering](https://github.com/emilkowalski/skill)** (Emil Kowalski), **[Impeccable](https://github.com/pbakaus/impeccable)** (Paul Bakaus, Apache-2.0), and a **[Taste-Skill](https://github.com/Leonxlnx/taste-skill)** subset (Leonxlnx, MIT: `design-taste-frontend`, `redesign-existing-projects`, `minimalist-ui`, `industrial-brutalist-ui`, `high-end-visual-design`).
+- New `--no-design-skills` flag skips the fetch. Documented in `vendor/README.md` and the README restore table.
+
+### Fixed — docs caught up with `bymax-web-verify`
+
+The `1.2.0` plugin was missing from the README plugin list, repo tree, install blocks, and `bymax-all`. All are now complete and consistent (6 installable plugins, 16 slash commands, 3 skills, 6 sub-agents, 3 hooks).
+
 ## [1.2.0] — 2026-05-20
 
 ### Added — `bymax-web-verify` plugin (real-browser verification)

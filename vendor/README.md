@@ -29,6 +29,29 @@ Bundles 50+ styles, 161 color palettes, 57 font pairings, 99 UX guidelines, 25 c
 
 ---
 
+## Design skills — fetched from upstream, **not** vendored
+
+A set of third-party **design** skills the author uses are deliberately **not** copied into this folder. Instead, [`scripts/install.sh`](../scripts/install.sh) fetches them from their original repos via the [`skills`](https://www.npmjs.com/package/skills) CLI (`npx skills add … --global`). Two reasons: licensing (Impeccable is Apache-2.0; the Emil skill ships no license file) and freshness (you always get the maintainer's latest version).
+
+| Skill | Author | License | Source |
+| ----- | ------ | ------- | ------ |
+| [Emil Design Engineering](https://github.com/emilkowalski/skill) | Emil Kowalski | _no license file_ | `emilkowalski/skill` |
+| [Impeccable](https://github.com/pbakaus/impeccable) | Paul Bakaus | Apache-2.0 | `pbakaus/impeccable` |
+| [Taste-Skill](https://github.com/Leonxlnx/taste-skill) (subset) | Leonxlnx | MIT | `Leonxlnx/taste-skill` |
+
+Install them yourself (or let `install.sh` do it):
+
+```bash
+npx skills add emilkowalski/skill --global --skill emil-design-eng --yes
+npx skills add pbakaus/impeccable --global --skill impeccable --yes
+npx skills add Leonxlnx/taste-skill --global \
+  --skill design-taste-frontend,redesign-existing-projects,minimalist-ui,industrial-brutalist-ui,high-end-visual-design --yes
+```
+
+Skip the automatic fetch with `./scripts/install.sh --no-design-skills`.
+
+---
+
 ## License compliance
 
 Both vendored skills are MIT-licensed. Per MIT terms, redistribution is permitted as long as:
