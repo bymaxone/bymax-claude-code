@@ -14,6 +14,7 @@
   <a href="https://github.com/bymaxone/bymax.claude-code/stargazers"><img src="https://img.shields.io/github/stars/bymaxone/bymax.claude-code?style=flat-square&colorA=000000&colorB=000000" alt="stars" /></a>
   <a href="https://github.com/bymaxone/bymax.claude-code"><img src="https://img.shields.io/badge/Claude_Code-marketplace-A3FF3C?style=flat-square&colorA=000000" alt="claude code marketplace" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-edition%202024-000000?style=flat-square&logo=rust&logoColor=white" alt="Rust" /></a>
   <a href="https://eslint.org/"><img src="https://img.shields.io/badge/ESLint-flat--config-4B32C3?style=flat-square&logo=eslint&logoColor=white" alt="ESLint" /></a>
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square&colorA=000000" alt="PRs welcome" />
 </p>
@@ -35,7 +36,8 @@
 
 - A **phased planning workflow** (spec → roadmap → phase-tasks → task) with explicit user-approval gates and JIRA-style dashboards.
 - **Strict quality gates** — `/code-review` (CRITICAL → LOW), `/tdd` (red-green-refactor), `/verify` (5 checks), and a `secret-scanner` hook that **blocks** writes containing credentials.
-- **Six specialist sub-agents** (architect, code-reviewer, security-reviewer, typescript-reviewer, database-reviewer, planner) ready to delegate to.
+- **Seven specialist sub-agents** (architect, code-reviewer, security-reviewer, typescript-reviewer, rust-reviewer, database-reviewer, planner) ready to delegate to.
+- **TypeScript _and_ Rust** — the quality + workflow skills are language-detecting: TypeScript rules for `package.json` projects, and a parallel **Rust track** (clippy/rustfmt with `-D warnings`, typed `thiserror` errors, `#![forbid(unsafe_code)]`, rustdoc, `cargo test` + `cargo-llvm-cov`, `cargo-deny`/`-audit`/`-vet`) for `Cargo.toml` projects.
 - **Project bootstrap** with strict TypeScript, ESLint flat-config (security plugin + import-order + suppression bans), Prettier, format-on-save VS Code, Husky + commitlint + lint-staged — for **Next.js, Expo / React Native, Vite + React, and Node backends (Express / Fastify / Hono / NestJS / plain Node)** stacks.
 - **Mobile sims** — `/sim-ios` and `/sim-android` boot the iOS Simulator and Android Emulator on Expo / React Native projects in one command (auto-detects whether to reattach Metro or do a full rebuild).
 - **Beautiful starter templates** for `CLAUDE.md`, `AGENTS.md`, and `README.md` — distilled from real production projects.
@@ -56,7 +58,7 @@ claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
 ```
 
-That's it. Restart Claude Code and you have **6 installable plugins** with **16 slash commands**, **3 skills**, **6 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
+That's it. Restart Claude Code and you have **6 installable plugins** with **16 slash commands**, **3 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
 
 ---
 
@@ -118,7 +120,7 @@ End-to-end feature pipeline with explicit approval gates between every layer.
 | `/verify`      | 5-gate verification (static checks, exercise, root-cause, regression scan, acceptance criteria).      |
 | `/checkpoint`  | Snapshot SHA + tests + coverage to compare against later (e.g., "did this refactor regress tests?").  |
 
-Plus the `/standards` skill — **universal coding rules** referenced by every other command.
+Plus the `/standards` skill — **universal coding rules** (TypeScript and Rust tracks) referenced by every other command.
 
 ### 🛡️ [`bymax-quality`](./plugins/bymax-quality/) — Review + Testing + Agents
 
@@ -126,13 +128,14 @@ Strict quality gates and specialist reviewers.
 
 | Item                    | Purpose                                                                                                                                    |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/code-review`          | CRITICAL → HIGH → MEDIUM → LOW review. Blocks suppression comments (`@ts-ignore`, `eslint-disable`, etc.).                                 |
-| `/tdd`                  | Strict red-green-refactor cycle. Forces failing test before implementation. 80%+ coverage minimum.                                         |
-| `tester` skill          | Multi-stack test writer — auto-detects Jest / Vitest / RN / pure logic. 100% file coverage. Rich `it()` comments.                          |
+| `/code-review`          | CRITICAL → HIGH → MEDIUM → LOW review (TypeScript **and Rust**). Blocks suppression comments (`@ts-ignore`, `eslint-disable`, Rust `#[allow]`/`unsafe`, etc.).                                 |
+| `/tdd`                  | Strict red-green-refactor cycle (Jest/Vitest or Rust `#[test]`/`cargo test`). Forces failing test before implementation. 80%+ coverage minimum. |
+| `tester` skill          | Multi-stack test writer — auto-detects Jest / Vitest / RN / pure logic / Rust `cargo test`. 100% file coverage. Rich `it()` / `#[test]` comments. |
 | `architect` agent       | System design, scalability, technical decisions.                                                                                           |
 | `code-reviewer`         | Quality + security + maintainability review (proactive).                                                                                   |
 | `security-reviewer`     | OWASP Top 10, secrets, SSRF, injection, unsafe crypto.                                                                                     |
 | `typescript-reviewer`   | Type safety, async correctness, idiomatic patterns.                                                                                        |
+| `rust-reviewer`         | Ownership/borrow correctness, typed errors, async/Tokio soundness, `unsafe` discipline, idiomatic crate design.                            |
 | `database-reviewer`     | PostgreSQL: query optimization, schema design, security.                                                                                   |
 | `planner`               | Complex feature and refactor planning.                                                                                                     |
 | `secret-scanner` hook   | **PreToolUse** — blocks Write/Edit/MultiEdit if AWS keys, GitHub PATs, OpenAI/Anthropic/Stripe tokens, JWTs, or private keys are detected. |
