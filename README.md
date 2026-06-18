@@ -370,7 +370,15 @@ Full reference: [`/standards`](./plugins/bymax-workflow/skills/standards/SKILL.m
 
 ## 🧱 Tech Stack
 
-The included ESLint configs and templates target modern stacks:
+The toolkit's review, standards, and TDD skills cover **TypeScript and Rust**. The bootstrap ESLint configs and project templates target the JS/TS stacks below:
+
+<p>
+  <img src="https://img.shields.io/badge/Rust-edition%202024-000000?style=flat-square&logo=rust&logoColor=white" alt="Rust" />
+  <img src="https://img.shields.io/badge/Clippy-strict-000000?style=flat-square&logo=rust&logoColor=white" alt="Clippy" />
+  <img src="https://img.shields.io/badge/rustfmt-checked-000000?style=flat-square&logo=rust&logoColor=white" alt="rustfmt" />
+  <img src="https://img.shields.io/badge/cargo--deny-supply%20chain-000000?style=flat-square&logo=rust&logoColor=white" alt="cargo-deny" />
+  <img src="https://img.shields.io/badge/cargo--llvm--cov-coverage-000000?style=flat-square&logo=rust&logoColor=white" alt="cargo-llvm-cov" />
+</p>
 
 <p>
   <img src="https://img.shields.io/badge/Node.js-24%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
