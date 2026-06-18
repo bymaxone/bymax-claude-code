@@ -22,7 +22,7 @@ End-to-end runner for tasks scaffolded by `/bymax-workflow:phase-tasks`. Treats 
 
 1. **Detect the stack, then apply `/bymax-workflow:standards` rules from memory.** Detect **Rust** (`Cargo.toml`) vs **TypeScript** (`package.json` / `tsconfig.json`) and apply the matching track for every gate, constraint, and reviewer in this run:
    - **TypeScript** — strict + zero `any`, JSDoc on file headers and exports, English-only comments, naming conventions, layered architecture, no cross-feature imports, no suppression comments, Conventional Commits.
-   - **Rust** (`/bymax-workflow:standards` §15) — `cargo clippy -D warnings` + `cargo fmt --check`, no `unwrap`/`expect`/`panic!` on library paths, typed errors via `thiserror`, `#![forbid(unsafe_code)]`, rustdoc `//!`/`///` on every public item (`#![deny(missing_docs)]`), English + timeless comments, no cross-crate dependency inversion, Conventional Commits.
+   - **Rust** (`/bymax-workflow:standards` §15) — `cargo clippy -- -D warnings` + `cargo fmt --all --check`, no `unwrap`/`expect`/`panic!` on library paths, typed errors via `thiserror`, `#![forbid(unsafe_code)]`, rustdoc `//!`/`///` on every public item (`#![deny(missing_docs)]`), English + timeless comments, no cross-crate dependency inversion, Conventional Commits.
 
    Do **not** load the full `/bymax-workflow:standards` skill body — these rules are already internalized. Only invoke `/bymax-workflow:standards` (read the skill) when:
    - You hit a rule conflict and need to confirm the source of truth.
@@ -68,7 +68,7 @@ Respect every constraint from the prompt **and** `/bymax-workflow:standards`:
 - Every new `it()` / `test()` carries a block comment (scenario + rule it protects)
 - English-only comments, naming conventions, no cross-feature imports
 - Conventional Commits format prepared but **do not commit**
-- **Rust track (`/bymax-workflow:standards` §15):** the JSDoc/`it()` rules above map to a crate `//!` doc + `///` on every public item (`#![deny(missing_docs)]`) and a block comment on every `#[test]`; plus `clippy -D warnings`, `cargo fmt --check`, `#![forbid(unsafe_code)]`, typed errors, and no `unwrap`/`expect`/`panic!` on library paths
+- **Rust track (`/bymax-workflow:standards` §15):** the JSDoc/`it()` rules above map to a crate `//!` doc + `///` on every public item (`#![deny(missing_docs)]`) and a block comment on every `#[test]`; plus `cargo clippy -- -D warnings`, `cargo fmt --all --check`, `#![forbid(unsafe_code)]`, typed errors, and no `unwrap`/`expect`/`panic!` on library paths
 
 ### 1.3 — Gate 1: `/bymax-workflow:verify`
 
