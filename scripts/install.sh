@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# bymax.claude-code — restore script.
+# bymax-claude-code — restore script.
 #
 # Restores the author's vendor / personal / MCP setup into ~/.claude/
 # (and ~/.mcp.json for user-scope MCP servers).
@@ -268,7 +268,7 @@ echo "  1. Configure ~/.claude/settings.json from personal/settings.template.jso
 echo "  2. (optional) Activate MCPs: write ~/.claude/settings.local.json (see warning above)."
 echo "  3. Restart Claude Code."
 echo "  4. Install bymax + companion plugins via the marketplace:"
-echo "       claude plugin marketplace add bymaxone/bymax.claude-code"
+echo "       claude plugin marketplace add bymaxone/bymax-claude-code"
 echo "       claude plugin install bymax-workflow@bymax-claude-code"
 echo "       claude plugin install bymax-quality@bymax-claude-code"
 echo "       claude plugin install bymax-bootstrap@bymax-claude-code"

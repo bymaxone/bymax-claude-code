@@ -7,7 +7,7 @@ This plugin **depends on** `agent-browser` but never bundles it — the same "re
 ## Install
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 ```
 

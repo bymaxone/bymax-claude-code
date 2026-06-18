@@ -34,8 +34,8 @@ We'll discuss before any code is written. This avoids duplicate work and keeps t
 
 ```bash
 # Clone
-git clone https://github.com/bymaxone/bymax.claude-code.git
-cd bymax.claude-code
+git clone https://github.com/bymaxone/bymax-claude-code.git
+cd bymax-claude-code
 
 # Validate the marketplace + every plugin
 ./scripts/validate.sh
@@ -109,4 +109,4 @@ Be kind, be precise, assume good intent. See [CODE_OF_CONDUCT.md](./CODE_OF_COND
 
 ---
 
-Questions? Open a [Discussion](https://github.com/bymaxone/bymax.claude-code/discussions).
+Questions? Open a [Discussion](https://github.com/bymaxone/bymax-claude-code/discussions).

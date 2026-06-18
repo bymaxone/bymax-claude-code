@@ -152,6 +152,6 @@ Initial public release of the toolkit. Five composable plugins, six specialist s
 - **`scripts/validate.sh`** — validates `marketplace.json` and every `plugin.json` (valid JSON, required fields, every command/agent/skill path exists, every command file has a YAML frontmatter `description`, every agent file has `name` + `description` + `tools`, every shell hook is `chmod +x`, shellcheck on every shell script when installed, every required project-level file is present). Used by CI and locally before pushing.
 - **`docs/PROPOSAL.md`** — original design proposal preserved for context.
 
-[Unreleased]: https://github.com/bymaxone/bymax.claude-code/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/bymaxone/bymax.claude-code/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/bymaxone/bymax.claude-code/releases/tag/v1.0.0
+[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/bymaxone/bymax-claude-code/releases/tag/v1.0.0

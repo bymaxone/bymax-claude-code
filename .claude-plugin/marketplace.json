@@ -13,49 +13,49 @@
       "description": "Spec → Roadmap → Phase-Tasks → Task — a phased planning + execution workflow with explicit user-approval gates and JIRA-style task dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, and the universal /bymax-workflow:standards reference.",
       "category": "workflow",
       "source": "./plugins/bymax-workflow",
-      "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-workflow"
+      "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-workflow"
     },
     {
       "name": "bymax-quality",
       "description": "Quality gates: /bymax-quality:code-review (CRITICAL → LOW severity, blocks suppression comments), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, seven specialist sub-agents (incl. a Rust reviewer), and two pre/post hooks (secret-scanner, console-log-scan).",
       "category": "quality",
       "source": "./plugins/bymax-quality",
-      "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-quality"
+      "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-quality"
     },
     {
       "name": "bymax-bootstrap",
       "description": "Scaffold new projects (Next.js, Expo/RN, Vite+React, Node) with strict TS, ESLint flat-config + security plugin, Prettier, .vscode (format-on-save), Husky + commitlint + lint-staged, and CLAUDE.md/AGENTS.md/README.md templates. Also upgrades existing projects non-destructively.",
       "category": "scaffolding",
       "source": "./plugins/bymax-bootstrap",
-      "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-bootstrap"
+      "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-bootstrap"
     },
     {
       "name": "bymax-mobile",
       "description": "Slash commands to boot the iOS Simulator (/bymax-mobile:sim-ios) and Android Emulator (/bymax-mobile:sim-android) for Expo / React Native projects. Auto-detects whether to reattach Metro (fast) or run a full rebuild + install (slow). Honors $BYMAX_SIM_IOS, $BYMAX_SIM_ANDROID, and $APP_VARIANT.",
       "category": "mobile",
       "source": "./plugins/bymax-mobile",
-      "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-mobile"
+      "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-mobile"
     },
     {
       "name": "bymax-web-verify",
       "description": "Real-browser verification powered by the agent-browser CLI (Vercel Labs). /bymax-web-verify:setup installs everything in one shot (CLI + Chrome) — ideal as a portable backup after a fresh macOS install. /bymax-web-verify:verify drives a live browser to confirm a web change works. A SessionStart hook offers to install the CLI when it's missing. Depends on agent-browser; never bundles it.",
       "category": "quality",
       "source": "./plugins/bymax-web-verify",
-      "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-web-verify"
+      "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-web-verify"
     },
     {
       "name": "bymax-pr",
       "description": "Autonomously shepherds an open PR to merge-readiness, powered by the gh CLI. /bymax-pr:babysit-pr resolves conflicts, polls CI every 270s, classifies failures as real vs flaky (re-running flaky checks), fixes real failures locally before pushing, triages bot review comments, and notifies you when the PR is green. Never merges, never pushes to the base branch. A built-in preflight verifies gh is installed and authenticated. Depends on gh + git; never bundles them.",
       "category": "workflow",
       "source": "./plugins/bymax-pr",
-      "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-pr"
+      "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-pr"
     },
     {
       "name": "bymax-all",
       "description": "Meta-plugin reference. Claude Code does not auto-install dependencies — install bymax-workflow, bymax-quality, bymax-bootstrap, bymax-mobile, bymax-web-verify, and bymax-pr individually for the full toolkit.",
       "category": "meta",
       "source": "./plugins/bymax-all",
-      "homepage": "https://github.com/bymaxone/bymax.claude-code"
+      "homepage": "https://github.com/bymaxone/bymax-claude-code"
     }
   ]
 }

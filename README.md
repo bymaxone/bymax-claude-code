@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bymaxone/bymax.claude-code/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bymaxone/bymax.claude-code?style=flat-square&colorA=000000&colorB=000000" alt="license" /></a>
-  <a href="https://github.com/bymaxone/bymax.claude-code/stargazers"><img src="https://img.shields.io/github/stars/bymaxone/bymax.claude-code?style=flat-square&colorA=000000&colorB=000000" alt="stars" /></a>
-  <a href="https://github.com/bymaxone/bymax.claude-code"><img src="https://img.shields.io/badge/Claude_Code-marketplace-A3FF3C?style=flat-square&colorA=000000" alt="claude code marketplace" /></a>
+  <a href="https://github.com/bymaxone/bymax-claude-code/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bymaxone/bymax-claude-code?style=flat-square&colorA=000000&colorB=000000" alt="license" /></a>
+  <a href="https://github.com/bymaxone/bymax-claude-code/stargazers"><img src="https://img.shields.io/github/stars/bymaxone/bymax-claude-code?style=flat-square&colorA=000000&colorB=000000" alt="stars" /></a>
+  <a href="https://github.com/bymaxone/bymax-claude-code"><img src="https://img.shields.io/badge/Claude_Code-marketplace-A3FF3C?style=flat-square&colorA=000000" alt="claude code marketplace" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-edition%202024-000000?style=flat-square&logo=rust&logoColor=white" alt="Rust" /></a>
   <a href="https://eslint.org/"><img src="https://img.shields.io/badge/ESLint-flat--config-4B32C3?style=flat-square&logo=eslint&logoColor=white" alt="ESLint" /></a>
@@ -49,7 +49,7 @@ Built and used daily across mobile (Expo / React Native) and web (Next.js / Nest
 Every Claude Code user reinvents the same scaffolding: standards docs, review skills, planning rituals, ESLint configs, hooks, agents. This repo packages a **battle-tested set** that works across stacks — install once, focus on your product.
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
@@ -67,7 +67,7 @@ That's it. Restart Claude Code and you have **6 installable plugins** with **16 
 ### 1. Install the marketplace
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 ```
 
 ### 2. Install plugins
@@ -243,7 +243,7 @@ Skip the heavy chain — use `/plan` (single PR), then `/tdd` (new code) or the 
 ## 🏛️ Architecture
 
 ```
-bymax.claude-code/
+bymax-claude-code/
 ├── .claude-plugin/
 │   └── marketplace.json                ← marketplace metadata
 │
@@ -283,7 +283,7 @@ bymax.claude-code/
 **A. Public marketplace** (recommended for everyone)
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
@@ -300,7 +300,7 @@ After installing Claude Code itself (`brew install claude` or upstream installer
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/bymaxone/bymax.claude-code ~/dotfiles-claude
+git clone https://github.com/bymaxone/bymax-claude-code ~/dotfiles-claude
 cd ~/dotfiles-claude
 
 # 2. Preview what install.sh will do (no writes)
@@ -316,7 +316,7 @@ cp personal/settings.template.json ~/.claude/settings.json
 $EDITOR ~/.claude/settings.json
 
 # 5. Install marketplace plugins
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
@@ -426,8 +426,8 @@ Contributions, bug reports, and ideas are very welcome! Please read [CONTRIBUTIN
 
 ```bash
 # Clone the repo
-git clone https://github.com/bymaxone/bymax.claude-code.git
-cd bymax.claude-code
+git clone https://github.com/bymaxone/bymax-claude-code.git
+cd bymax-claude-code
 
 # Validate marketplace + plugin manifests
 ./scripts/validate.sh

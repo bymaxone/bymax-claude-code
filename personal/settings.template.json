@@ -61,7 +61,7 @@
     "bymax-claude-code": {
       "source": {
         "source": "github",
-        "repo": "bymaxone/bymax.claude-code"
+        "repo": "bymaxone/bymax-claude-code"
       }
     },
     "claude-plugins-official": {
@@ -93,7 +93,7 @@
   "_comment_mcp_step_3": "3) MCPs that need API tokens (e.g. github) — install via: claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN={{YOUR_GITHUB_PAT}} -- npx -y @modelcontextprotocol/server-github",
 
   "_comment_post_install": "After settings.json + .mcp.json + settings.local.json are in place, install marketplace plugins:",
-  "_comment_post_install_cmd_1": "  claude plugin marketplace add bymaxone/bymax.claude-code",
+  "_comment_post_install_cmd_1": "  claude plugin marketplace add bymaxone/bymax-claude-code",
   "_comment_post_install_cmd_2": "  claude plugin install bymax-all@bymax-claude-code",
   "_comment_post_install_cmd_3": "  claude plugin install frontend-design@claude-plugins-official",
   "_comment_post_install_cmd_4": "  claude plugin install sentry-mcp@sentry-mcp"
