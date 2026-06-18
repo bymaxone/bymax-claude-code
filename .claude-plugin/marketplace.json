@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "bymax-claude-code",
-  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), quality gates (TDD + code-review + security-review), specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, autonomous PR babysitting, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
-  "version": "1.3.0",
+  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), quality gates (TDD + code-review + security-review) for TypeScript and Rust, specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, autonomous PR babysitting, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
+  "version": "1.4.0",
   "owner": {
     "name": "Maximiliano Salvatti",
     "url": "https://github.com/bymaxone"
@@ -17,7 +17,7 @@
     },
     {
       "name": "bymax-quality",
-      "description": "Quality gates: /bymax-quality:code-review (CRITICAL → LOW severity, blocks suppression comments), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, six specialist sub-agents, and two pre/post hooks (secret-scanner, console-log-scan).",
+      "description": "Quality gates: /bymax-quality:code-review (CRITICAL → LOW severity, blocks suppression comments), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, seven specialist sub-agents (incl. a Rust reviewer), and two pre/post hooks (secret-scanner, console-log-scan).",
       "category": "quality",
       "source": "./plugins/bymax-quality",
       "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-quality"

@@ -19,7 +19,7 @@ claude plugin install bymax-pr@bymax-claude-code
 The complete bymax toolkit (after installing the six siblings above):
 
 - 🧭 [`bymax-workflow`](../bymax-workflow/) — phased planning + execution (`/bymax-workflow:spec`, `/bymax-workflow:roadmap`, `/bymax-workflow:phase-tasks`, `/bymax-workflow:task`, `/bymax-workflow:brainstorm`, `/bymax-workflow:plan`, `/bymax-workflow:verify`, `/bymax-workflow:checkpoint`, `/bymax-workflow:standards` skill).
-- 🛡️ [`bymax-quality`](../bymax-quality/) — review, TDD, tester skill, six sub-agents, secret-scanner + console-log-scan hooks.
+- 🛡️ [`bymax-quality`](../bymax-quality/) — review, TDD, tester skill (TypeScript + Rust), seven sub-agents (incl. a Rust reviewer), secret-scanner + console-log-scan hooks.
 - 🏗️ [`bymax-bootstrap`](../bymax-bootstrap/) — `/bymax-bootstrap:bootstrap` and `/bymax-bootstrap:upgrade-standards` with 20 templates.
 - 📱 [`bymax-mobile`](../bymax-mobile/) — `/bymax-mobile:sim-ios` and `/bymax-mobile:sim-android` for Expo / React Native projects.
 - 🌐 [`bymax-web-verify`](../bymax-web-verify/) — `/bymax-web-verify:setup` and `/bymax-web-verify:verify` for real-browser verification (depends on the `agent-browser` CLI).

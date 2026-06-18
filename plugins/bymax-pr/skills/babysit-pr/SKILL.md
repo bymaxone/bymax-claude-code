@@ -386,29 +386,53 @@ articulate.
 5. Push.
 6. Reply on the thread with the marker:
    `<!-- babysit-reply --> Fixed in <commit-sha>: <one-sentence explanation>.`
-7. Resolve the review thread via GraphQL:
-   ```bash
-   THREAD_ID=$(gh api graphql -f query='
-     query($owner:String!,$repo:String!,$pr:Int!){
-       repository(owner:$owner,name:$repo){
-         pullRequest(number:$pr){
-           reviewThreads(first:100){ nodes { id isResolved comments(first:1){ nodes { id } } } }
-         }
-       }
-     }' -F owner='{owner}' -F repo='{repo}' -F pr="$PR_NUMBER" \
-     | jq -r --arg cid "$COMMENT_NODE_ID" \
-         '.data.repository.pullRequest.reviewThreads.nodes[]
-          | select(.comments.nodes[0].id == $cid) | .id')
-   gh api graphql -f query='
-     mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread { isResolved } } }' \
-     -F id="$THREAD_ID"
-   ```
+7. Resolve the review thread via GraphQL — **follow the MANDATORY procedure in
+   "Resolving review threads correctly" below. Never reuse a thread ID.**
 
 ### Dismissing an irrelevant comment
 1. Reply with the marker and a **specific** reason citing the SKIP criterion:
    `<!-- babysit-reply --> Not applied: <criterion>. <one-sentence why>.`
-2. Resolve the thread (same GraphQL mutation).
+2. Resolve the thread (see "Resolving review threads correctly" below).
 3. Add the comment ID to `processedCommentIds` in state.
+
+### Resolving review threads correctly (MANDATORY — read every time)
+
+Thread-resolve failures in this environment are **never** a permission/token-scope
+problem and **must not** stop the loop or trigger a "you need to re-auth" message.
+They are caused by **passing a stale or wrong thread ID** (one remembered from an
+earlier turn, another session, a different batch, or a GraphQL query that silently
+returned empty data). The token can resolve threads — prove it with `viewerCanResolve`.
+
+Do exactly this, **one `gh` call per message** (a batched failure cancels siblings):
+
+1. **Re-fetch the threads FRESH, right now**, with an inline-literal query (the
+   `-F owner=… -F repo=…` parameterized form sometimes mis-parses here — use literals).
+   Always include `viewerCanResolve` and the inline-comment `databaseId`:
+   ```bash
+   gh api graphql -f query='query{repository(owner:"<OWNER>",name:"<REPO>"){pullRequest(number:<N>){reviewThreads(first:100){nodes{id isResolved viewerCanResolve comments(first:1){nodes{databaseId}}}}}}}'
+   ```
+2. **Match each thread to its Copilot comment by `comments.nodes[0].databaseId`**
+   (the inline review-comment id from `pulls/<N>/comments`), NOT by a remembered
+   thread id. Thread IDs **change when the bot re-reviews a new commit** — the IDs
+   from before your fix push are dead (`NOT_FOUND`).
+3. If `viewerCanResolve` is `true` (it is, with push/triage/admin perms), resolve
+   with the **freshly-fetched** id, one per message:
+   ```bash
+   gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"<FRESH_PRRT_ID>"}){thread{isResolved}}}'
+   ```
+4. **Verify**: re-query and confirm every thread is `isResolved:true` before claiming
+   it. Never write "resolved" to the state comment or to the user without this check.
+5. **If `viewerCanResolve` is `false`** (only then): that is a genuine permission case —
+   note it in state and surface it once; do not loop on it.
+
+**Anti-hallucination rules for this whole phase:**
+- The **source of truth** is a fresh `gh api`/`gh api graphql` read **this turn** — never
+  memory, never a prior batch, never another PR/session. Re-fetch IDs/SHAs every time.
+- Cite the **real** commit SHA (`git rev-parse --short HEAD`) in replies — never invent one.
+- Never dismiss a finding you have not actually reproduced/checked this turn.
+- A failed `gh` call → diagnose it (re-fetch, inspect the error) and continue the loop;
+  do **not** stop, do **not** claim a permission wall, do **not** ask the user to re-auth
+  unless `viewerCanResolve:false` is actually observed.
 
 ### Cross-cutting bot rules
 - Never re-process a thread that already has a `<!-- babysit-reply -->`.
@@ -458,3 +482,13 @@ and end the wake-up.
 - Never auto-act on human comments — only notify.
 - Always end a non-terminating wake-up with a `ScheduleWakeup`.
 - Respect the project's `CLAUDE.md`/`AGENTS.md` if present.
+- **Resolve review threads, don't excuse them.** A `FORBIDDEN`/`NOT_FOUND` on
+  `resolveReviewThread` is a **stale-ID** symptom, not a permission wall — re-fetch the
+  thread IDs fresh this turn (see "Resolving review threads correctly"), match by
+  `databaseId`, resolve, and verify `isResolved:true`. Never stop the loop, never tell
+  the user to re-auth, unless `viewerCanResolve:false` is actually observed.
+- **Source of truth = a fresh read this turn.** Never act on IDs/SHAs/state remembered
+  from a previous batch, turn, session, or another PR. Re-fetch before every write.
+- **Never report success you didn't verify.** Confirm with a fresh read before writing
+  "resolved"/"green"/"merged" to the state comment, a reply, or the user.
+- **One `gh`/`git` mutation per message** — batched fallible calls cancel as a group.

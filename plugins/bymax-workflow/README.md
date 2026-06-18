@@ -26,7 +26,7 @@ claude plugin install bymax-workflow@bymax-claude-code
 
 ### Skill
 
-- **`standards`** — universal coding rules (TypeScript discipline, JSDoc policy, naming, layered architecture, English-only comments, suppression bans, conventional commits). Loaded on demand by `/bymax-workflow:plan`, `/bymax-quality:tdd`, `/bymax-quality:code-review`, `/bymax-bootstrap:bootstrap`, etc.
+- **`standards`** — universal coding rules with **TypeScript and Rust tracks** (type/lint discipline, JSDoc / rustdoc policy, naming, layered architecture, English-only comments, suppression bans, conventional commits). Loaded on demand by `/bymax-workflow:plan`, `/bymax-quality:tdd`, `/bymax-quality:code-review`, `/bymax-bootstrap:bootstrap`, etc.
 
 ## The flow
 

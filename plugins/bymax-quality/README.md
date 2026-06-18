@@ -1,6 +1,6 @@
 # 🛡️ Bymax Quality
 
-> Strict quality gates and specialist reviewers for Claude Code. Code-review with severity blocking, red-green-refactor TDD, multi-stack tester, six sub-agents, and a credential-blocking pre-write hook.
+> Strict quality gates and specialist reviewers for Claude Code (TypeScript and Rust). Code-review with severity blocking, red-green-refactor TDD, multi-stack tester, seven sub-agents (incl. a Rust reviewer), and a credential-blocking pre-write hook.
 
 ## Install
 
@@ -15,12 +15,12 @@ claude plugin install bymax-quality@bymax-claude-code
 
 | Command         | Purpose                                                                                                                                                  |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/bymax-quality:code-review`  | CRITICAL → HIGH → MEDIUM → LOW review. Blocks suppression comments (`@ts-ignore`, `eslint-disable`, `as any`). Reports JSDoc gaps, cross-feature imports, swallowed errors. |
-| `/bymax-quality:tdd`          | Strict red-green-refactor cycle. Forces failing test before implementation. 80%+ coverage minimum (100% on critical paths). Every `it()` carries a block comment. |
+| `/bymax-quality:code-review`  | CRITICAL → HIGH → MEDIUM → LOW review (TypeScript and Rust). Blocks suppression comments (`@ts-ignore`, `eslint-disable`, `as any`, Rust `#[allow]`/`unsafe`). Reports JSDoc/rustdoc gaps, cross-feature imports, swallowed errors. |
+| `/bymax-quality:tdd`          | Strict red-green-refactor cycle (Jest/Vitest or Rust `#[test]`/`cargo test`). Forces failing test before implementation. 80%+ coverage minimum (100% on critical paths). Every `it()` / `#[test]` carries a block comment. |
 
 ### Skill
 
-- **`tester`** — Multi-stack test writer. Detects Jest / Vitest / RN / pure logic / Node backend. Enforces 100% file coverage, every `it()` has a block comment, no fake classNames, no snapshots of arbitrary objects. Auto-runs and verifies coverage on completion.
+- **`tester`** — Multi-stack test writer. Detects Jest / Vitest / RN / pure logic / Node backend / Rust `cargo test`. Enforces 100% file coverage, every `it()` has a block comment, no fake classNames, no snapshots of arbitrary objects. Auto-runs and verifies coverage on completion.
 
 ### Specialist sub-agents
 
@@ -31,7 +31,8 @@ claude plugin install bymax-quality@bymax-claude-code
 | `database-reviewer`     | sonnet     | PostgreSQL: query optimization, schema design, security.               |
 | `planner`               | opus       | Complex feature and refactor planning.                                 |
 | `security-reviewer`     | sonnet     | OWASP Top 10, secrets, SSRF, injection, unsafe crypto.                 |
-| `typescript-reviewer`   | sonnet     | Type safety, async correctness, idiomatic patterns.                    |
+| `typescript-reviewer`   | sonnet     | Type safety, async correctness, idiomatic patterns. |
+| `rust-reviewer`         | sonnet     | Ownership/borrow correctness, typed errors, async/Tokio soundness, `unsafe` discipline, idiomatic crate design.                    |
 
 ### Hooks
 
@@ -66,6 +67,7 @@ If any of `/bymax-workflow:verify`, `/security-review`, `/bymax-quality:code-rev
 - `as any`, `as unknown as <T>` (used to launder errors)
 - `// prettier-ignore` (unless preserving a formatted table)
 - `# noqa`, `# type: ignore`, `# pylint: disable=`, `@SuppressWarnings`
+- Rust: `#[allow(...)]` / `#![allow(...)]` to dodge a gate, an `unsafe` block in a `#![forbid(unsafe_code)]` crate, `#[ignore]` to hide a failing test
 - CLI bypasses: `--no-verify`, `--force` on protected branch, `--skip-checks`
 
 ## License

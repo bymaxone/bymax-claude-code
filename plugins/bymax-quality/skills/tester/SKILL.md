@@ -1,13 +1,13 @@
 ---
 name: tester
-description: Write tests for a file or component. Detects the project's test stack (Jest/Vitest, React Native/React DOM/pure logic), enforces 100% file coverage, every it() carries a comment, no fake classNames, real branches. Auto-runs tests and verifies coverage on completion.
+description: Write tests for a file or component. Detects the project's test stack (Jest/Vitest, React Native/React DOM/pure logic, or Rust cargo test), enforces 100% file coverage, every it() carries a comment, no fake classNames, real branches. Auto-runs tests and verifies coverage on completion.
 user-invocable: true
 argument-hint: [file-path]
 ---
 
 # Tester Skill
 
-You are writing tests for a file in a TypeScript/JavaScript project. Follow every rule below without exception. Some rules are **universal** (apply to every stack); others are **stack-specific** and depend on what you detect at the start.
+You are writing tests for a file in a TypeScript/JavaScript **or Rust** project. Follow every rule below without exception. Some rules are **universal** (apply to every stack); others are **stack-specific** and depend on what you detect at the start.
 
 ---
 
@@ -15,6 +15,7 @@ You are writing tests for a file in a TypeScript/JavaScript project. Follow ever
 
 Before writing anything, determine the project's setup. Read these in order until you have an answer:
 
+0. `Cargo.toml` present → Rust project → use **Profile F** and skip the JS/TS signals below.
 1. `package.json` → `scripts.test`, `devDependencies` (look for `jest`, `vitest`, `@testing-library/react-native`, `@testing-library/react`, `react-native`, `expo`).
 2. `jest.config.*`, `vitest.config.*`, `jest-setup.*`, `tests/` folder.
 3. Any `CLAUDE.md`, `AGENTS.md`, or `docs/guidelines/testing-*.md` in the repo — project-specific rules win over this skill.
@@ -29,6 +30,7 @@ Then classify into one of these **profiles**:
 | **C — Web + Vitest** | `vitest`, `@testing-library/react` or `renderToStaticMarkup` | RTL render OR `renderToStaticMarkup` from `react-dom/server` | `vitest` |
 | **D — Pure logic** | No React imports in the file under test | None — call functions directly | `jest` or `vitest` (use whatever the project has) |
 | **E — Node backend** | `express`, `fastify`, `hono`, etc., no React | None — supertest / direct calls | `jest` or `vitest` |
+| **F — Rust** | `Cargo.toml` present | None — `#[cfg(test)] mod tests` + `#[test]`, call functions directly | `cargo test` (+ `cargo llvm-cov`) |
 
 If signals are mixed or unclear, **ask the user** which profile to use. Do not guess.
 
@@ -311,6 +313,38 @@ it('GET /health returns 200', async () => {
 
 For DB-backed code, follow the project's existing pattern (test container, in-memory DB, transactional rollback). Do not invent a new approach.
 
+### Profile F — Rust
+
+**No render. Unit tests live in a `#[cfg(test)] mod tests` block in the same file; integration tests go in `tests/`.**
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Confirms the scoring weights produce the documented baseline for a typical
+    // input — protecting the contract that a balanced market scores mid-range.
+    #[test]
+    fn returns_expected_score_for_balanced_input() {
+        assert_eq!(liquidity_score(&balanced_market()), 50);
+    }
+
+    // Wrong-input path: a malformed snapshot must surface a typed error, never panic.
+    #[test]
+    fn rejects_malformed_snapshot() {
+        assert!(matches!(parse_snapshot(""), Err(SnapshotError::Empty)));
+    }
+}
+```
+
+Rust specifics:
+- **Comment policy is identical** — a `//` block comment (English, scenario + rule) on the lines immediately above every `#[test]`. The file-level docblock maps to the module `//!` or a `//` header on the `mod tests`.
+- **Error assertions** use `assert!(matches!(result, Err(...)))` or `result.unwrap_err()` — never a `panic!`-catching wrapper. `#[should_panic]` only for code whose contract is to panic.
+- **Async tests** use the runtime macro (`#[tokio::test]`).
+- **`unwrap()` / `expect()` are allowed in test code** (they keep a failing assertion legible) — that exemption is test-only; library code still may not.
+- **Real values, not fakes** — assert against real domain types and real error variants, never invented strings (the Rust analogue of §1.5's "no fake classNames").
+- **Coverage:** `cargo llvm-cov` for the crate under test; `proptest` for parser/round-trip properties. Do not run workspace-wide coverage unless asked.
+
 ---
 
 ## 3. Execution workflow — universal
@@ -325,6 +359,7 @@ Use the project's standard command. Examples:
 |---|---|
 | Jest (any) | `pnpm jest <path>` or `npm test -- <path>` |
 | Vitest | `npx vitest run <path>` |
+| Rust (F) | `cargo test` (whole crate) or `cargo test <name>` (filter) |
 
 If tests fail → diagnose, fix the test or source, run again **once**.
 If they still fail after one fix attempt → stop, report the failure clearly, and wait for instructions.
@@ -335,6 +370,7 @@ If they still fail after one fix attempt → stop, report the failure clearly, a
 |---|---|
 | Jest | `pnpm jest --coverage --collectCoverageFrom='<path-to-source>' <path-to-test>` |
 | Vitest | `npx vitest run --coverage --coverage.include='<path-to-source>'` |
+| Rust (F) | `cargo llvm-cov -p <crate-under-test>` (crate-scoped; add `--workspace` only when explicitly asked) |
 
 The file under test must show **100%** on Stmts, Branch, Funcs, Lines.
 

@@ -34,6 +34,7 @@ Run the project's standard quality gates. Adapt to the stack — examples:
 - **Lint**: `pnpm lint` / `eslint .` / `ruff check`
 - **Format**: `pnpm format:check` / `prettier --check`
 - **Tests**: `pnpm test` / `npm test` / `pytest`
+- **Rust projects** (`Cargo.toml`): `cargo fmt --all --check` (format) · `cargo clippy --workspace --all-targets --all-features -- -D warnings` (lint) · `cargo build --workspace --all-features --locked` (compile) · `cargo test --workspace` (tests) · `cargo llvm-cov` (coverage) · `cargo deny check` + `cargo audit` (supply chain) · `cargo build -p <wasm-crate> --target wasm32-unknown-unknown` (if the project ships a wasm binding)
 
 All must be 0 errors. No exceptions.
 
@@ -44,13 +45,16 @@ All must be 0 errors. No exceptions.
 - `as any`, `as unknown as <T>` used to launder a real type error
 - `// prettier-ignore` (unless preserving a deliberately-formatted table)
 - `# noqa`, `# type: ignore`, `# pylint: disable=...`, `@SuppressWarnings`
+- Rust: `#[allow(...)]` / `#![allow(...)]` added to dodge a clippy/rustc gate without a user-accepted justification; an `unsafe` block in a crate that should `#![forbid(unsafe_code)]`; `#[ignore]` to hide a failing test; `unwrap()` / `expect()` / `panic!` newly introduced on a library path
 - CLI bypasses: `--no-verify`, `--force` on protected branches, `--skip-checks`, hook disabling
 
 Run a quick scan of the diff for these patterns:
 
 ```bash
-git diff HEAD | grep -nE '(eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|as any|as unknown as|prettier-ignore|noqa|type: ignore|SuppressWarnings|--no-verify)'
+git diff HEAD | grep -nE '(eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|as any|as unknown as|prettier-ignore|noqa|type: ignore|SuppressWarnings|--no-verify|#!?\[allow\(|#\[ignore\])'
 ```
+
+The grep covers the *mechanical* suppressions. The Rust `unsafe` / `unwrap()` / `expect()` / `panic!` items from the list above are intentionally **not** in it — they legitimately appear in test code and the wasm binding, so they're judged in context (review), not auto-flagged by this quick scan.
 
 If any new occurrence exists, **stop and fix the root cause**. Never silence the messenger. The only acceptable exception is a suppression that references a specific issue and has a time-bounded reason — and even then, the user must explicitly accept it.
 

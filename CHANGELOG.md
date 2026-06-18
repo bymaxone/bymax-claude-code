@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.4.0] — 2026-06-17
+
+### Added — Rust support across `bymax-workflow` + `bymax-quality`
+
+The workflow and quality plugins are now **language-detecting**: TypeScript/JS behavior is unchanged, and a parallel **Rust track** activates when a `Cargo.toml` is present. This makes the full `spec → … → task` quality cycle usable on Rust projects (first consumer: the `rust-auth` library).
+
+- **`/bymax-workflow:standards`** — new **§15 Rust track** (edition/MSRV pinning, `cargo clippy -- -D warnings` + `cargo fmt`, no `unwrap`/`expect`/`panic!` on lib paths, typed `thiserror` errors, `#![forbid(unsafe_code)]`, rustdoc `//!`/`///` + `#![deny(missing_docs)]`, `#[test]` discipline, `cargo deny`/`audit`/`vet` supply chain, RustCrypto/`subtle`/`secrecy` security baseline) + a "which track applies" detector and a TS→Rust tooling map.
+- **`/bymax-workflow:verify`** — Rust gate set (`fmt`/`clippy`/`build`/`test`/`llvm-cov`/`deny`/`audit` + wasm build) and Rust suppressions (`#[allow]`-to-dodge, `unsafe`, `#[ignore]`, `unwrap`-in-lib) added to the scan.
+- **`/bymax-workflow:task`** — stack detection in Step 0, `rust-reviewer` dispatch, and a stack-adaptive close-phase audit.
+- **`/bymax-quality:code-review`** — Rust CRITICAL/HIGH/MEDIUM checks; the Tailwind/TS-syntax checks are skipped on Rust.
+- **`/bymax-quality:tdd`** + the **`tester`** skill — a Rust variant of the red-green-refactor cycle and a new **Profile F (Rust)** (`#[cfg(test)] mod tests` + `cargo test` + `cargo llvm-cov`).
+- **New `rust-reviewer` sub-agent** (ownership/borrow, typed errors, async/Tokio soundness, `unsafe` discipline, idiomatic crate design); **`code-reviewer`** and **`security-reviewer`** made Rust-aware.
+- `bymax-workflow` and `bymax-quality` bumped to `1.2.0`; `marketplace.json` to `1.4.0`. TypeScript/JS behavior is fully preserved (additive only).
+
+### Changed — `bymax-pr` review-thread resolution
+
+- **`/bymax-pr:babysit-pr`** — hardened the GraphQL review-thread resolution: re-fetch thread IDs fresh each turn, match every thread to its comment by `databaseId`, check `viewerCanResolve`, and verify `isResolved` before reporting; added anti-stale-ID / anti-hallucination rules so a `FORBIDDEN` / `NOT_FOUND` is treated as a stale-ID symptom, not a permission wall. `bymax-pr` bumped to `1.0.1`.
+
 ## [1.3.0] — 2026-05-22
 
 ### Added — `bymax-pr` plugin (autonomous PR babysitting)
