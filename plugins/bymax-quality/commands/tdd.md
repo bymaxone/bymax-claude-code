@@ -128,10 +128,12 @@ mod tests {
 }
 ```
 
+> The `todo!()` above is **RED-phase scaffolding only** — it lets the signature compile while the test fails. GREEN replaces it with the real body; `todo!()` / `unimplemented!()` must never reach `/bymax-workflow:verify` or a commit (the Rust standards flag them on library paths as HIGH).
+
 - **RED:** `cargo test` → confirm it fails for the right reason. Do not skip this check.
 - **GREEN:** the smallest patch that turns the suite green.
 - **REFACTOR:** extract helpers/consts while green; re-run `cargo test`.
-- **Coverage:** `cargo llvm-cov --workspace` (or scoped to the crate) — 100% on critical paths; `proptest` for round-trips/parsers.
+- **Coverage:** `cargo llvm-cov -p <crate>` (crate-scoped; `--workspace` only when asked) — 100% on critical paths; `proptest` for round-trips/parsers.
 
 `unwrap()`/`expect()` are fine in test code (a failing assertion stays legible) but never in library code. Never `#[ignore]` to silence a failing test or `#[allow(...)]`/`unwrap`-in-lib to dodge a gate.
 

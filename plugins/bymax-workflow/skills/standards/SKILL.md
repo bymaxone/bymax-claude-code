@@ -14,7 +14,7 @@ When in doubt, this doc wins over personal preference. Project-specific docs win
 
 Detect the stack and follow the matching track:
 
-- **TypeScript / JavaScript** (`package.json` / `tsconfig.json` present) → **§1–§13** below.
+- **TypeScript / JavaScript** (`package.json` / `tsconfig.json` present) → **§1–§14** below.
 - **Rust** (`Cargo.toml` present) → **§15 Rust track**. The universal principles — document every public item, English + timeless comments, zero suppression, layered modules, typed errors, the security baseline — still hold; §15 expresses them in Rust idioms and replaces the TS-specific mechanics (tsconfig, JSDoc, ESLint, Tailwind).
 
 §9 (Conventional Commits), §10 (Performance — measure first), §11 (Accessibility, for any UI), and §14 (conflict resolution) are stack-neutral and apply everywhere.

@@ -370,7 +370,7 @@ If they still fail after one fix attempt → stop, report the failure clearly, a
 |---|---|
 | Jest | `pnpm jest --coverage --collectCoverageFrom='<path-to-source>' <path-to-test>` |
 | Vitest | `npx vitest run --coverage --coverage.include='<path-to-source>'` |
-| Rust (F) | `cargo llvm-cov --workspace` (or scope to the crate under test) |
+| Rust (F) | `cargo llvm-cov -p <crate-under-test>` (crate-scoped; add `--workspace` only when explicitly asked) |
 
 The file under test must show **100%** on Stmts, Branch, Funcs, Lines.
 

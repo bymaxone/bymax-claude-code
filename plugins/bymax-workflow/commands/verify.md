@@ -54,6 +54,8 @@ Run a quick scan of the diff for these patterns:
 git diff HEAD | grep -nE '(eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|as any|as unknown as|prettier-ignore|noqa|type: ignore|SuppressWarnings|--no-verify|#!?\[allow\(|#\[ignore\])'
 ```
 
+The grep covers the *mechanical* suppressions. The Rust `unsafe` / `unwrap()` / `expect()` / `panic!` items from the list above are intentionally **not** in it — they legitimately appear in test code and the wasm binding, so they're judged in context (review), not auto-flagged by this quick scan.
+
 If any new occurrence exists, **stop and fix the root cause**. Never silence the messenger. The only acceptable exception is a suppression that references a specific issue and has a time-bounded reason — and even then, the user must explicitly accept it.
 
 ### Gate 2 — Exercise the change
