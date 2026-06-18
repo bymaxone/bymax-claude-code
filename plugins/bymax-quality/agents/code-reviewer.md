@@ -156,6 +156,21 @@ const usersWithPosts = await db.query(`
 `);
 ```
 
+### Rust Patterns (HIGH — Rust projects)
+
+When reviewing Rust, also check (per `/bymax-workflow:standards` §15):
+
+- **`unwrap()` / `expect()` / `panic!` / `todo!()` on a library path** — return a typed `Result`, propagate with `?` (test/bench code exempt).
+- **`unsafe` without a `// SAFETY:` comment**, or any `unsafe` in a `#![forbid(unsafe_code)]` crate.
+- **Swallowed error** — `let _ = <fallible>;`, empty `Err(_) => {}`, or `.ok()` dropping an error callers need.
+- **Stringly-typed errors** / `anyhow` in a library's public API instead of a `thiserror` enum.
+- **Blocking the async runtime** — CPU-bound work, `std::fs`, or a `std::sync::Mutex` guard held across `.await` in an `async fn`; use `spawn_blocking` / `tokio::sync`.
+- **Public item missing rustdoc** (`#![deny(missing_docs)]`); fallible fn missing `# Errors`, `unsafe fn` missing `# Safety`.
+- **Non-constant-time secret compare** (`==` on tokens) — use `subtle`. **Banned crypto** (`ring`/`openssl`) where RustCrypto is the policy.
+- **Needless `.clone()`** in hot paths; **internal type leaked** through a `pub` API.
+
+For a deep Rust pass, dispatch the `rust-reviewer` agent.
+
 ### Performance (MEDIUM)
 
 - **Inefficient algorithms** — O(n^2) when O(n log n) or O(n) is possible

@@ -1,10 +1,12 @@
 ---
-description: 'Comprehensive security and quality review of uncommitted changes. Walks every changed file and flags issues across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments), and LOW (nits). Blocks the commit on any CRITICAL or HIGH. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
+description: 'Comprehensive security and quality review of uncommitted changes. Walks every changed file and flags issues across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments), and LOW (nits). Blocks the commit on any CRITICAL or HIGH. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
 ---
 
 # Code Review
 
 Comprehensive security and quality review of uncommitted changes.
+
+> **Stack-adaptive.** Detect the stack first. On a **Rust** project (`Cargo.toml`), apply the **Rust checks** flagged in each section below and **skip** the TypeScript/Tailwind-specific ones (`any`/`enum`/`interface vs type`/JSDoc/`../../../` aliases/the §12 Tailwind rules). On a **TypeScript** project (`package.json`), apply the TS checks as written. The CRITICAL security and suppression rules apply to both.
 
 ## Steps
 
@@ -36,6 +38,7 @@ Any of the following introduced or kept in the diff is a CRITICAL block:
 - `as any`, `as unknown as <T>` (when used to launder a real type error away)
 - `// prettier-ignore` (unless preserving a deliberately-formatted table)
 - `@SuppressWarnings`, `# noqa`, `# type: ignore`, `# pylint: disable=...` (for cross-language repos)
+- **Rust:** `#[allow(...)]` / `#![allow(...)]` added to silence a clippy/rustc gate without a user-accepted justification; an `unsafe` block in a crate that declares `#![forbid(unsafe_code)]` (or any `unsafe` without a `// SAFETY:` comment); `#[ignore]` used to hide a failing test
 - CLI bypasses in commit messages or scripts: `--no-verify`, `--no-gpg-sign`, `--force` on a checked branch, `--skip-checks`, `husky` disabled
 
 **The rule:** fix the underlying cause. A failing lint or type error means the code is wrong, the type is wrong, or the rule is wrong — choose one and fix it. Never silence the messenger.
@@ -78,6 +81,13 @@ If the user is genuinely fighting a wrong rule, the right fix is to change the r
 - **`any` introduced** — use `unknown` + guard, a generic, or the upstream type.
 - **Non-null assertion (`!`) without an explanatory comment** describing the invariant that proves it safe.
 
+### Rust discipline (mandatory per `/bymax-workflow:standards` §15 — Rust projects)
+- **`unwrap()` / `expect()` / `panic!` / `todo!()` / `unimplemented!()` on a library path** — return a typed `Result` and propagate with `?`. (Test/bench/build code is exempt.)
+- **Public item missing rustdoc** — every `pub fn`/`struct`/`enum`/`trait`/`mod` needs a `///` doc and every crate a `//!` (the `#![deny(missing_docs)]` contract); fallible items missing a `# Errors` section; `unsafe fn` missing `# Safety`.
+- **`unsafe` block without a `// SAFETY:` comment**, or any `unsafe` in a crate that should `#![forbid(unsafe_code)]`.
+- **Stringly-typed errors** instead of a typed `thiserror` enum; **`anyhow` in a library's public API**.
+- **Error swallowed** — empty `Err` match arm, or `let _ = <fallible>;` discarding a `Result`.
+
 ---
 
 ## MEDIUM — Should fix
@@ -107,6 +117,15 @@ If the user is genuinely fighting a wrong rule, the right fix is to change the r
   - See `/bymax-workflow:standards` § 12 "Renamed utilities (v3 → v4)" for the full table.
 - **Hardcoded hex value in JSX `className`** outside `tailwind.config.js`. Always use a token (`bg-primary`, `text-ink-base`).
 - **Dynamic Tailwind class string** the JIT can't see (e.g., `` `text-${size}` ``). Use full literals + `cn()` / `clsx()`.
+
+### Rust (MEDIUM — Rust projects; the Tailwind/TS-syntax checks above do not apply)
+- **Comment not in English**, or a **plan phase/task reference** in a committed comment (timeless-comments rule) — applies to `//` / `///` / `//!`.
+- **Magic number/string** without a named `const`.
+- **Avoidable `.clone()`** where a borrow would do, or `.to_string()` / `format!` in a hot path.
+- **Blocking work inside an `async fn`** (CPU-bound hashing, `std::fs`, blocking locks) without `spawn_blocking` — starves the runtime.
+- **Internal type leaked** through a crate's public API (`pub use` / `pub mod` exposing an implementation detail).
+- **Missing `#[must_use]`** on a pure function whose result must not be silently dropped.
+- **A new dependency** not justified or not cleared by `cargo deny` / the project's supply-chain policy.
 
 ---
 

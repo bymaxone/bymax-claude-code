@@ -1,6 +1,6 @@
 ---
 name: standards
-description: Universal coding standards reference — TypeScript discipline, naming conventions, JSDoc policy, layered architecture, error handling, English-only comments, conventional commits. Load this BEFORE writing any non-trivial code, reviewing a PR, or scaffolding a new project. Other skills (/bymax-workflow:plan, /bymax-quality:tdd, /bymax-quality:code-review, /bymax-bootstrap:bootstrap) reference this.
+description: Universal coding standards reference (TypeScript and Rust tracks) — type/lint discipline, naming conventions, doc policy (JSDoc / rustdoc), layered architecture, typed error handling, English-only comments, conventional commits. Load this BEFORE writing any non-trivial code, reviewing a PR, or scaffolding a new project. Other skills (/bymax-workflow:plan, /bymax-quality:tdd, /bymax-quality:code-review, /bymax-bootstrap:bootstrap) reference this.
 user-invocable: true
 ---
 
@@ -9,6 +9,15 @@ user-invocable: true
 The single source of truth for the rules that apply to **every** project, regardless of stack. Stack-specific rules (NativeWind, Drizzle, Next.js routing, etc.) live in the project's own `CLAUDE.md` / `AGENTS.md`. This document is the universal layer underneath.
 
 When in doubt, this doc wins over personal preference. Project-specific docs win over this doc.
+
+### Which track applies
+
+Detect the stack and follow the matching track:
+
+- **TypeScript / JavaScript** (`package.json` / `tsconfig.json` present) → **§1–§13** below.
+- **Rust** (`Cargo.toml` present) → **§15 Rust track**. The universal principles — document every public item, English + timeless comments, zero suppression, layered modules, typed errors, the security baseline — still hold; §15 expresses them in Rust idioms and replaces the TS-specific mechanics (tsconfig, JSDoc, ESLint, Tailwind).
+
+§9 (Conventional Commits), §10 (Performance — measure first), §11 (Accessibility, for any UI), and §14 (conflict resolution) are stack-neutral and apply everywhere.
 
 ---
 
@@ -669,3 +678,82 @@ If the project also ships `nativewind`, it's almost certainly on Tailwind 3 (Nat
 - **A tool's default config**: this guide wins (override the tool).
 - **Personal preference**: this guide wins.
 - **A rule that's actually wrong for the codebase**: open an ADR, raise it in the PR. Don't silently work around it.
+
+---
+
+## 15. Rust track (when the project is Rust)
+
+Applies when `Cargo.toml` is present. Replaces the TypeScript-specific mechanics of §1–§8 and §12–§13 with their Rust equivalents — the *principles* are identical.
+
+### 15.1 Rust discipline
+
+- **Edition + MSRV pinned.** `edition` and `rust-version` (MSRV) in `[workspace.package]`; a committed `rust-toolchain.toml` pins the toolchain (channel + components + targets). An MSRV bump is a deliberate, visible PR.
+- **`cargo clippy --workspace --all-targets --all-features -- -D warnings` is clean** (clippy-as-error ≈ `eslint -D`), and **`cargo fmt --all --check`** is clean (≈ Prettier) — both CI-gating.
+- **No `unwrap()` / `expect()` / `panic!` / `todo!()` / `unimplemented!()` on library paths** — the Rust analogue of an unhandled throw. Return a typed `Result<T, E>` and propagate with `?`. Test/bench/build code may use them; `src/` library code may not.
+- **Typed errors only.** One error enum per crate via `thiserror` (`AuthError` / `ConfigError` / `RepositoryError`); no stringly-typed errors. `anyhow` is fine in bins/tests, never in a library's public API (it erases the type).
+- **`#![forbid(unsafe_code)]` on every crate.** The sole sanctioned exception is an FFI / `wasm-bindgen` binding, which uses `#![deny(unsafe_op_in_unsafe_fn)]` and confines `unsafe` to the boundary with a `// SAFETY:` comment on every block.
+- **Strong types over primitives** — newtypes/enums over boolean traps and magic strings; builders for complex construction.
+
+### 15.2 Naming
+
+| Element | Convention | Example |
+|---|---|---|
+| Module / file | snake_case | `token_service.rs` |
+| Function / method / variable | snake_case | `verify_password` |
+| Type / trait / enum | PascalCase | `AuthEngine`, `SessionStore` |
+| Enum variant | PascalCase | `AuthError::InvalidCredentials` |
+| Constant / static | SCREAMING_SNAKE | `MAX_SESSIONS` |
+| Crate dir / path | kebab-case / snake_case | `bymax-auth-core` → `bymax_auth_core` |
+| Cargo feature | kebab-case | `oauth-reqwest` |
+
+Booleans read as predicates (`is_*`, `has_*`, `should_*`, `can_*`). Conversions follow the standard convention: `as_*` (cheap borrow), `to_*` (clone/expensive), `into_*` (consuming).
+
+### 15.3 Documentation — MANDATORY (the rustdoc equivalent of §3)
+
+- **`#![deny(missing_docs)]`** on every public crate; each crate opens with a `//!` crate-level doc.
+- Every **public item** (`pub fn` / `struct` / `enum` / `trait` / `mod`) carries a `///` doc: imperative one-line summary, then `# Errors` (when it returns `Err`), `# Panics` (if it can), `# Safety` (for `unsafe fn`), and a runnable `# Examples` block (compiled as a doctest) on important items.
+- **Inline `//` comments explain WHY** (invariants, security ordering, third-party quirks) — never restate the code.
+- **English + timeless.** No comment references a plan phase / task / sprint. `docs/` prose may be the project's language; code comments are English.
+
+### 15.4 Tests — MANDATORY (mirrors `tester` / `/bymax-quality:tdd`)
+
+- Unit tests in `#[cfg(test)] mod tests` in the same file; integration tests in `tests/`. Run `cargo test --workspace`.
+- **Every `#[test]` carries a block comment** (English) naming the scenario and the rule/invariant it protects — identical policy to the `tester` skill, expressed for `#[test]`.
+- **Coverage via `cargo-llvm-cov`** (100% on logic crates); `proptest` for parser/round-trip properties; `cargo-mutants` as a pre-release gate; doctests run in CI. Never `#[ignore]` a test to silence a failure.
+
+### 15.5 Modules, crates & imports (the §5 layering)
+
+- A framework-agnostic core depends on **no** adapter/infra crate; adapters (HTTP, store backends) depend on the core, never the reverse. No crate reaches across its single responsibility.
+- `pub use` re-exports define a crate's public API; internal modules stay private (`mod`, not `pub mod`). The facade re-export is the Rust analogue of a barrel file.
+- Imports grouped std → external → crate-internal.
+
+### 15.6 Error handling (the §7 principles in Rust)
+
+- Validate at boundaries (`serde` + a validator like `garde` in the adapter, never the core); trust the type system internally.
+- **Never swallow an error.** Propagate with `?`, map to a typed variant, or log via `tracing` and surface. An empty match arm or `let _ = result;` on a fallible call is the Rust "swallowed error".
+
+### 15.7 Suppression — ZERO tolerance (the Rust list for §8)
+
+Banned in committed code: `#[allow(...)]` / `#![allow(...)]` added to dodge a clippy/rustc gate without a user-accepted justification; an `unsafe` block in a `forbid(unsafe_code)` crate; `#[ignore]` to hide a failing test; CLI bypasses (`--no-verify`, dodging `cargo audit`/`deny`). Fix the root cause, or fix the lint config — don't scatter `allow`.
+
+### 15.8 Security baseline (the §13 baseline in Rust)
+
+- **RustCrypto only** on the crypto path — no `ring`, OpenSSL, or C bindings (keeps the wasm path clean, the supply-chain surface minimal). Constant-time secret comparison via `subtle`; never `==` on secret bytes.
+- Secrets in `secrecy::SecretString` (redacting `Debug`/`Display`, zeroize-on-drop); CSPRNG via `rand`/`getrandom` (`OsRng`).
+- **Supply chain gated:** `cargo-deny` (advisories + license allow-list + ban-list + crates.io-only sources), `cargo-audit` (RustSec), `cargo-vet`; `Cargo.lock` committed. Ban `openssl`/`openssl-sys`/`ring`; deny duplicate semver-major versions. Never log secrets/PII/tokens; never place a token in a URL.
+
+### 15.9 Tooling map (TS → Rust)
+
+| TS / JS | Rust |
+|---|---|
+| Prettier (`prettier --check`) | `cargo fmt --all --check` |
+| ESLint (`eslint -D`) | `cargo clippy --workspace --all-targets --all-features -- -D warnings` |
+| `tsc --noEmit` | `cargo build --workspace --all-features --locked` |
+| Jest / Vitest + coverage | `cargo test --workspace` + `cargo llvm-cov` |
+| Stryker (mutation) | `cargo-mutants` |
+| `pnpm audit` | `cargo audit` + `cargo deny check` + `cargo vet` |
+| `.nvmrc` / engines | `rust-toolchain.toml` + `rust-version` (MSRV) |
+| JSDoc + TypeDoc | rustdoc (`///` / `//!`) + docs.rs |
+| `.vscode` Prettier+ESLint | rust-analyzer (`formatOnSave` + `check.command: clippy`) |
+
+§9 Conventional Commits, §10 Performance (measure first — `criterion` benches, non-gating), and §11 carry over unchanged.

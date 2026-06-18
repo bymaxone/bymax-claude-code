@@ -20,9 +20,13 @@ End-to-end runner for tasks scaffolded by `/bymax-workflow:phase-tasks`. Treats 
 
 ## Step 0 — Load context (once per invocation)
 
-1. **Apply `/bymax-workflow:standards` rules from memory** — TS strict + zero `any`, JSDoc on file headers and exports, English-only comments, naming conventions, layered architecture, no cross-feature imports, no suppression comments, Conventional Commits. Do **not** load the full `/bymax-workflow:standards` skill body — these rules are already internalized. Only invoke `/bymax-workflow:standards` (read the skill) when:
+1. **Detect the stack, then apply `/bymax-workflow:standards` rules from memory.** Detect **Rust** (`Cargo.toml`) vs **TypeScript** (`package.json` / `tsconfig.json`) and apply the matching track for every gate, constraint, and reviewer in this run:
+   - **TypeScript** — strict + zero `any`, JSDoc on file headers and exports, English-only comments, naming conventions, layered architecture, no cross-feature imports, no suppression comments, Conventional Commits.
+   - **Rust** (`/bymax-workflow:standards` §15) — `cargo clippy -D warnings` + `cargo fmt --check`, no `unwrap`/`expect`/`panic!` on library paths, typed errors via `thiserror`, `#![forbid(unsafe_code)]`, rustdoc `//!`/`///` on every public item (`#![deny(missing_docs)]`), English + timeless comments, no cross-crate dependency inversion, Conventional Commits.
+
+   Do **not** load the full `/bymax-workflow:standards` skill body — these rules are already internalized. Only invoke `/bymax-workflow:standards` (read the skill) when:
    - You hit a rule conflict and need to confirm the source of truth.
-   - The task touches an area covered by a specific section (e.g., security baseline §12 for auth code).
+   - The task touches an area covered by a specific section (e.g., security baseline for auth code; §15 for Rust specifics).
 2. Read `CLAUDE.md` and `AGENTS.md` of the current project — these override `/bymax-workflow:standards` where they conflict.
 3. Read `docs/tasks/phase-<NN>-*.md` for the phase being worked on.
 4. For each task that will be executed, read the **REQUIRED READING** listed inside its embedded agent prompt — do not load more than that (preserves context budget).
@@ -50,7 +54,7 @@ Treat the embedded agent prompt as your spec. Execute it as the engineer describ
 - **For new code** — drive a `/bymax-quality:tdd` cycle (RED → GREEN → REFACTOR).
 - **For adding tests to existing code without changing behavior** — use the `tester` skill.
 - **For specialized concerns** — dispatch a sub-agent when there's a strong fit:
-  - `typescript-reviewer` for heavy TS changes
+  - `typescript-reviewer` for heavy TS changes; `rust-reviewer` for heavy Rust changes
   - `database-reviewer` for schema/migrations/SQL
   - `security-reviewer` for auth, sessions, crypto, secret handling
   - `Explore` for cross-codebase searches
@@ -64,6 +68,7 @@ Respect every constraint from the prompt **and** `/bymax-workflow:standards`:
 - Every new `it()` / `test()` carries a block comment (scenario + rule it protects)
 - English-only comments, naming conventions, no cross-feature imports
 - Conventional Commits format prepared but **do not commit**
+- **Rust track (`/bymax-workflow:standards` §15):** the JSDoc/`it()` rules above map to a crate `//!` doc + `///` on every public item (`#![deny(missing_docs)]`) and a block comment on every `#[test]`; plus `clippy -D warnings`, `cargo fmt --check`, `#![forbid(unsafe_code)]`, typed errors, and no `unwrap`/`expect`/`panic!` on library paths
 
 ### 1.3 — Gate 1: `/bymax-workflow:verify`
 
@@ -71,7 +76,7 @@ Run the 5 verification gates: static checks → exercise → root-cause → regr
 
 - `type-check`, `lint`, `format`, `tests` must be 0 errors / 0 new warnings on touched files.
 - Coverage minimum: 100% on critical paths, 80%+ otherwise (match project threshold).
-- If any gate fails: **fix the root cause**. Never `--no-verify`, never `// @ts-ignore`, never `// eslint-disable`. Then re-run `/bymax-workflow:verify`.
+- If any gate fails: **fix the root cause**. Never `--no-verify`, never `// @ts-ignore` / `// eslint-disable` (TS), never `#[allow(...)]` to dodge a lint or `#[ignore]` to hide a failing test (Rust). Then re-run `/bymax-workflow:verify`.
 
 ### 1.4 — Gate 2: `/security-review`
 
@@ -129,6 +134,8 @@ If code changed during 2.2 or 2.3 → return to **2.1**.
 ## Step 3 — Phase-completion audit
 
 Walk every checkbox below. If any fails, fix it and return to **Step 2**.
+
+> **Stack-adaptive.** On a Rust project, read every `pnpm …` / JSDoc / `it()` gate below as its `/bymax-workflow:standards` §15 equivalent: `cargo fmt --all --check` (format) · `cargo clippy --workspace --all-targets --all-features -- -D warnings` (lint) · `cargo build --workspace --all-features --locked` (compile) · `cargo test --workspace` + `cargo llvm-cov` (tests + coverage) · `cargo deny check` + `cargo audit` (supply chain) · suppression = `#[allow(...)]`-to-dodge / `#[ignore]` / `unwrap`/`expect`/`panic!` on lib paths · docs = crate `//!` + `///` on every public item (`#![deny(missing_docs)]`) · test comment = block comment on every `#[test]`.
 
 - [ ] Every task in the phase shows ✅ Done
 - [ ] Every acceptance criterion is checked

@@ -101,9 +101,45 @@ npm test -- --coverage lib/liquidity.test.ts
 
 If coverage is below target, add the missing test → loop back to Step 2 (RED first).
 
+---
+
+### Rust variant (same cycle, `#[test]` + `cargo test`)
+
+On a Rust project (`Cargo.toml`) the cycle is identical; the mechanics map like this:
+
+```rust
+// src/liquidity.rs — Step 1 SCAFFOLD (signature, no logic)
+/// Computes a 0–100 liquidity score for a market snapshot.
+pub fn liquidity_score(market: &MarketData) -> u8 {
+    todo!("not implemented")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Step 2 RED — confirms the zero-volume short-circuit: no trading must
+    // produce exactly 0, protecting the rule "no trades = no liquidity" and the
+    // divide-by-zero regression from #214.
+    #[test]
+    fn returns_zero_for_zero_volume_market() {
+        assert_eq!(liquidity_score(&MarketData { total_volume: 0, /* … */ }), 0);
+    }
+}
+```
+
+- **RED:** `cargo test` → confirm it fails for the right reason. Do not skip this check.
+- **GREEN:** the smallest patch that turns the suite green.
+- **REFACTOR:** extract helpers/consts while green; re-run `cargo test`.
+- **Coverage:** `cargo llvm-cov --workspace` (or scoped to the crate) — 100% on critical paths; `proptest` for round-trips/parsers.
+
+`unwrap()`/`expect()` are fine in test code (a failing assertion stays legible) but never in library code. Never `#[ignore]` to silence a failing test or `#[allow(...)]`/`unwrap`-in-lib to dodge a gate.
+
 ## Comment Policy — MANDATORY
 
 Every test you write under `/bymax-quality:tdd` must follow the same rich-comment policy as the `tester` skill. There are no exceptions, even during the RED phase.
+
+On a **Rust** project the identical policy applies to every `#[test]`: a `//` block comment on the lines immediately above the `#[test]` attribute, in English, naming the scenario and the rule it protects.
 
 ### Required structure
 
