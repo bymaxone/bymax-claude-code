@@ -45,8 +45,8 @@ Default when the human didn't specify: install the **core pair** plus whatever t
 | `bymax-quality` | always (core — ships the hooks + sub-agents) | `claude plugin install bymax-quality@bymax-claude-code` |
 | `bymax-bootstrap` | the human will scaffold new projects | `claude plugin install bymax-bootstrap@bymax-claude-code` |
 | `bymax-mobile` | Expo / React Native projects only | `claude plugin install bymax-mobile@bymax-claude-code` |
-| `bymax-web-verify` | web projects only (needs Step 5's `agent-browser`) | `claude plugin install bymax-web-verify@bymax-claude-code` |
-| `bymax-pr` | only if `gh` will be authenticated (Step 5) | `claude plugin install bymax-pr@bymax-claude-code` |
+| `bymax-web-verify` | web projects only (needs Step 4's `agent-browser`) | `claude plugin install bymax-web-verify@bymax-claude-code` |
+| `bymax-pr` | only if `gh` will be authenticated (Step 4) | `claude plugin install bymax-pr@bymax-claude-code` |
 
 ⚠️ **Do NOT install `bymax-all`** — it is a documentation index; it installs no commands.
 
