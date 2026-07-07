@@ -13,7 +13,7 @@ Open an issue with:
 - **Expected vs actual** — one sentence each.
 - **Logs** — relevant snippet (redact any token/credential).
 
-For **security vulnerabilities** (e.g., a regex bypass in `secret-scanner.sh`), do **not** open a public issue. Email `security@bymax.one`.
+For **security vulnerabilities** (e.g., a regex bypass in `secret-scanner.sh`), do **not** open a public issue. Email `support@bymax.one`.
 
 ---
 
@@ -34,8 +34,8 @@ We'll discuss before any code is written. This avoids duplicate work and keeps t
 
 ```bash
 # Clone
-git clone https://github.com/bymaxone/bymax.claude-code.git
-cd bymax.claude-code
+git clone https://github.com/bymaxone/bymax-claude-code.git
+cd bymax-claude-code
 
 # Validate the marketplace + every plugin
 ./scripts/validate.sh
@@ -47,6 +47,8 @@ claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
+claude plugin install bymax-web-verify@bymax-claude-code
+claude plugin install bymax-pr@bymax-claude-code
 
 # Restart Claude Code, then verify your changes
 ```
@@ -70,7 +72,7 @@ Before opening a PR, verify:
 
 ---
 
-## 🏷️ Versioning
+## 🔖 Versioning
 
 We follow [Semantic Versioning](https://semver.org/):
 
@@ -109,4 +111,4 @@ Be kind, be precise, assume good intent. See [CODE_OF_CONDUCT.md](./CODE_OF_COND
 
 ---
 
-Questions? Open a [Discussion](https://github.com/bymaxone/bymax.claude-code/discussions).
+Questions? Open an [Issue](https://github.com/bymaxone/bymax-claude-code/issues).

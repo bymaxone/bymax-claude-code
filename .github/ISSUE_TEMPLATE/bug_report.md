@@ -43,4 +43,4 @@ assignees: ''
 
 ---
 
-> ⚠️ **Security vulnerability?** Don't open a public issue. Email `security@bymax.one`. See [SECURITY.md](../../SECURITY.md).
+> ⚠️ **Security vulnerability?** Don't open a public issue. Email `support@bymax.one`. See [SECURITY.md](../../SECURITY.md).

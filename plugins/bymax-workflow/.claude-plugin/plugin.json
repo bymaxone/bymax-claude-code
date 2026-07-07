@@ -1,13 +1,14 @@
 {
   "name": "bymax-workflow",
-  "description": "Phased planning + execution workflow for Claude Code. Spec → Roadmap → Phase-Tasks → Task, each step with explicit user-approval gates and JIRA-style dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, and the universal /bymax-workflow:standards reference.",
-  "version": "1.2.0",
+  "description": "Phased planning + execution workflow for Claude Code. Spec → Roadmap → Phase-Tasks → Task, each step with explicit user-approval gates and JIRA-style dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, and the universal /bymax-workflow:standards reference (with the §0 reuse-first simplicity ladder).",
+  "version": "1.3.0",
   "author": {
-    "name": "Maximiliano Salvatti",
+    "name": "Bymax One",
+    "email": "support@bymax.one",
     "url": "https://github.com/bymaxone"
   },
   "license": "MIT",
-  "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-workflow",
+  "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-workflow",
   "keywords": [
     "workflow",
     "planning",

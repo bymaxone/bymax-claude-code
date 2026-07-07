@@ -1,5 +1,5 @@
 ---
-description: 'Comprehensive security and quality review of uncommitted changes. Walks every changed file and flags issues across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments), and LOW (nits). Blocks the commit on any CRITICAL or HIGH. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
+description: 'Comprehensive security and quality review of uncommitted changes. Walks every changed file and flags issues across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic that should be shared, speculative generality), and LOW (nits). Blocks the commit on any CRITICAL or HIGH. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
 ---
 
 # Code Review
@@ -72,6 +72,8 @@ If the user is genuinely fighting a wrong rule, the right fix is to change the r
 - **Cross-feature import** — `features/X/` importing from `features/Y/`. Must orchestrate one level up via `app/` or `shared/`.
 - **Domain import inside `shared/ui/`** — UI primitives must be portable; zero domain imports.
 - **Internal export leaked through a feature barrel** — `index.ts` should expose only the public API.
+- **Reinvented wheel (simplicity-ladder violation, standards §0)** — new code reimplements something that already exists in this repo (component/hook/util/service), in a `@bymax-one/*` lib, in the stdlib/platform (`Intl`, `crypto.randomUUID()`, `URL`, `structuredClone`, native `<input>` types, `std`/`core` in Rust), or in an already-installed dependency. Point to the existing symbol and suggest reusing/extending it instead.
+- **New dependency added for something the stdlib or an installed dependency already covers** — a new dep must be justified (maintenance, license, security posture); never added to avoid writing a few lines.
 
 ### Error handling (mandatory per `/bymax-workflow:standards`)
 - **Error swallowed silently** — empty `catch`, `catch` that only logs without re-throwing or surfacing, or rejected promises ignored.
@@ -95,6 +97,8 @@ If the user is genuinely fighting a wrong rule, the right fix is to change the r
 - Mutation patterns where immutable would do.
 - Emoji in code or comments.
 - Missing tests for new code.
+- **Copy-pasted logic across features/files that should be one shared unit** — same logic in ≥ 2 places belongs in `shared/utils` / `shared/ui` (or a `@bymax-one/*` lib when a second project needs it). See `/bymax-workflow:standards` §0 rung 6.
+- **Speculative generality (YAGNI)** — config options, params, abstractions, or "future-proofing" branches with no current caller. Build for today's requirement; see `/bymax-workflow:standards` §0 rung 1.
 - Accessibility issues (a11y) — missing labels, keyboard traps, color contrast.
 - Magic numbers without a named constant.
 - **`enum` declared instead of a string-literal union type** (per `/bymax-workflow:standards` §1).

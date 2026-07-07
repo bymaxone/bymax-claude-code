@@ -1,4 +1,4 @@
-# 🗂️ Original design proposal — bymax.claude-code
+# 🗂️ Original design proposal — bymax-claude-code
 
 > Saved on 2026-04-25 from the conversation that led to this repo. Kept here as a record of the design decisions and the rationale for the layout you see today.
 
@@ -14,7 +14,7 @@
 ## Why this layout
 
 ```
-bymax.claude-code/
+bymax-claude-code/
 ├── .claude-plugin/marketplace.json   ← the marketplace contract
 ├── plugins/                          ← what /plugin install can fetch
 │   ├── bymax-workflow/

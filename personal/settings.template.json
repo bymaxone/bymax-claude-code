@@ -61,7 +61,7 @@
     "bymax-claude-code": {
       "source": {
         "source": "github",
-        "repo": "bymaxone/bymax.claude-code"
+        "repo": "bymaxone/bymax-claude-code"
       }
     },
     "claude-plugins-official": {
@@ -90,10 +90,11 @@
   "_comment_mcp_overview": "MCP servers come from THREE places — restore each one separately:",
   "_comment_mcp_step_1": "1) ~/.mcp.json (user-scope MCPs running locally via npx). Restore with: cp personal/mcp.template.json ~/.mcp.json",
   "_comment_mcp_step_2": "2) ~/.claude/settings.local.json (per-machine list of which MCPs are enabled). Restore with: echo '{\"enabledMcpjsonServers\":[\"context7\",\"sequential-thinking\"]}' > ~/.claude/settings.local.json",
-  "_comment_mcp_step_3": "3) MCPs that need API tokens (e.g. github) — install via: claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN={{YOUR_GITHUB_PAT}} -- npx -y @modelcontextprotocol/server-github",
+  "_comment_mcp_step_3": "3) MCPs registered per-machine via the claude CLI (paths/keys stay out of this template) — e.g. the obsidian knowledge vault: claude mcp add obsidian -- npx -y @bitbonsai/mcpvault@latest /path/to/vault",
+  "_comment_github": "GitHub access is via the gh CLI, NOT an MCP server (orgs reject long-lived PATs; gh uses short-lived OAuth). Restore with: brew install gh && gh auth login",
 
   "_comment_post_install": "After settings.json + .mcp.json + settings.local.json are in place, install marketplace plugins:",
-  "_comment_post_install_cmd_1": "  claude plugin marketplace add bymaxone/bymax.claude-code",
+  "_comment_post_install_cmd_1": "  claude plugin marketplace add bymaxone/bymax-claude-code",
   "_comment_post_install_cmd_2": "  claude plugin install bymax-all@bymax-claude-code",
   "_comment_post_install_cmd_3": "  claude plugin install frontend-design@claude-plugins-official",
   "_comment_post_install_cmd_4": "  claude plugin install sentry-mcp@sentry-mcp"

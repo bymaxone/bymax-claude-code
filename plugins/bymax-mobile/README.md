@@ -5,7 +5,7 @@
 ## Install
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
 ```
 

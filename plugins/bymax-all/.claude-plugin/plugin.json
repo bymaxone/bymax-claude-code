@@ -1,12 +1,17 @@
 {
   "name": "bymax-all",
-  "description": "Meta-plugin reference for the complete bymax toolkit (workflow + quality + bootstrap + mobile + web-verify + babysit-pr). Note: Claude Code's plugin manifest does not auto-install dependencies — install bymax-workflow, bymax-quality, bymax-bootstrap, bymax-mobile, bymax-web-verify, and bymax-pr individually.",
+  "description": "Meta-plugin reference for the complete bymax toolkit (workflow + quality + bootstrap + mobile + web-verify + pr). Note: Claude Code's plugin manifest does not auto-install dependencies — install bymax-workflow, bymax-quality, bymax-bootstrap, bymax-mobile, bymax-web-verify, and bymax-pr individually.",
   "version": "1.3.0",
   "author": {
-    "name": "Maximiliano Salvatti",
+    "name": "Bymax One",
+    "email": "support@bymax.one",
     "url": "https://github.com/bymaxone"
   },
   "license": "MIT",
-  "homepage": "https://github.com/bymaxone/bymax.claude-code",
-  "keywords": ["meta", "all-in-one", "complete"]
+  "homepage": "https://github.com/bymaxone/bymax-claude-code",
+  "keywords": [
+    "meta",
+    "all-in-one",
+    "complete"
+  ]
 }

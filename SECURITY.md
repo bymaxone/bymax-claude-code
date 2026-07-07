@@ -4,7 +4,7 @@
 
 If you discover a security vulnerability in this project — for example, a regex bypass in `secret-scanner.sh`, a command-injection vector in any hook script, or any way to exfiltrate user secrets — please **do not** open a public issue.
 
-Email **security@bymax.one** with:
+Email **support@bymax.one** with:
 
 - A clear description of the vulnerability.
 - Steps to reproduce.
@@ -36,14 +36,14 @@ When using this toolkit:
 1. **Never paste credentials in chat** — the `secret-scanner.sh` hook only catches Write/Edit/MultiEdit, not Bash. Use `~/.zshrc` + macOS Keychain for tokens (see `personal/README.md`).
 2. **Review the diff** before approving any commit. Claude is asked to never auto-commit, but always verify.
 3. **Audit `vendor/` content** before installing on a security-sensitive project — third-party scripts are MIT-licensed but you should still understand what they do.
-4. **Keep `secret-scanner.sh` enabled** in `.claude/settings.json` PreToolUse hooks. Disabling it removes the credential gate.
+4. **Keep the `bymax-quality` plugin enabled** — it ships `secret-scanner.sh` as a `PreToolUse` hook via the plugin's own `hooks/hooks.json` (no manual wiring needed). Uninstalling or disabling the plugin removes the credential gate.
 
 ---
 
 ## 🔍 What this toolkit does NOT do
 
 - Does **not** send any data to bymax.one or any third-party server.
-- Does **not** modify your global git config, credentials helper, or shell profile (except via opt-in `personal/install.sh` lines that are clearly labeled).
+- Does **not** modify your global git config, credentials helper, or shell profile (except via opt-in `scripts/install.sh` steps that are clearly labeled).
 - Does **not** install npm packages globally without explicit user consent (the `/bootstrap` command **proposes** dev-deps but you confirm before install).
 - Does **not** include any analytics, telemetry, or auto-update mechanism.
 

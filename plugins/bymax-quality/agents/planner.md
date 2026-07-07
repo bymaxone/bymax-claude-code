@@ -29,6 +29,19 @@ You are an expert planning specialist focused on creating comprehensive, actiona
 - Review similar implementations
 - Consider reusable patterns
 
+### 2b. Reuse Scan — MANDATORY (simplicity ladder, `/bymax-workflow:standards` §0)
+
+Before proposing ANY new file, component, or dependency, walk the ladder and record where each piece of the plan lands:
+
+1. Not needed at all? → cut it from the plan (YAGNI).
+2. Exists in this codebase? → search for components, hooks, utils, services covering the need — plan to **reuse or extend**, with the exact existing symbol named. When `graphify-out/` exists, start with `graphify query "<need>"` / `graphify path A B` (cheaper than grepping, cross-file-aware); fall back to `Grep`/`Glob` otherwise, and always `Grep`-verify code edited since the last graph build.
+3. Exists in a `@bymax-one/*` lib or sibling Bymax project? → plan to reuse the lib; if unpublished sibling code, plan the **promotion to a shared lib** instead of duplication.
+4. Stdlib / native platform covers it? → plan the native call, not a wrapper.
+5. An installed dependency covers it? → use it; a NEW dependency needs an explicit justification line in the plan.
+6. Needed by more than one feature/project? → plan it as a reusable unit (`shared/`, or `@bymax-one/*`) with a minimal public API.
+
+The plan's "Architecture Changes" section must show the outcome: every new file justified by "no existing code covers this because …".
+
 ### 3. Step Breakdown
 Create detailed steps with:
 - Clear, specific actions

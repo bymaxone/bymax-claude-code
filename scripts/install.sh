@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# bymax.claude-code — restore script.
+# bymax-claude-code — restore script.
 #
 # Restores the author's vendor / personal / MCP setup into ~/.claude/
 # (and ~/.mcp.json for user-scope MCP servers).
@@ -35,8 +35,8 @@
 #   - Does NOT touch ~/.claude/settings.json. Copy personal/settings.template.json
 #     manually (it has comments explaining each field).
 #   - Does NOT install npm packages or the claude binary. Install Claude Code first.
-#   - Does NOT add the github MCP (which needs a PAT). The settings.template.json
-#     comments document the exact `claude mcp add` command.
+#   - Does NOT configure GitHub access. GitHub goes through the gh CLI (no MCP,
+#     no PAT — short-lived OAuth): brew install gh && gh auth login.
 
 set -euo pipefail
 
@@ -251,8 +251,8 @@ if [[ "${INCLUDE_MCP}" == true ]]; then
     printf "       echo '{\"enabledMcpjsonServers\":[\"context7\",\"sequential-thinking\"]}' > %s/settings.local.json\n" "${TARGET}"
   fi
 
-  warn "Add the github MCP (needs your PAT — never committed):"
-  printf "       claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=<YOUR_PAT> -- npx -y @modelcontextprotocol/server-github\n"
+  warn "GitHub access — authenticate the gh CLI (no MCP, no PAT):"
+  printf "       brew install gh && gh auth login\n"
   echo
 else
   warn "Skipping MCP config (--no-mcp)"
@@ -268,7 +268,7 @@ echo "  1. Configure ~/.claude/settings.json from personal/settings.template.jso
 echo "  2. (optional) Activate MCPs: write ~/.claude/settings.local.json (see warning above)."
 echo "  3. Restart Claude Code."
 echo "  4. Install bymax + companion plugins via the marketplace:"
-echo "       claude plugin marketplace add bymaxone/bymax.claude-code"
+echo "       claude plugin marketplace add bymaxone/bymax-claude-code"
 echo "       claude plugin install bymax-workflow@bymax-claude-code"
 echo "       claude plugin install bymax-quality@bymax-claude-code"
 echo "       claude plugin install bymax-bootstrap@bymax-claude-code"
@@ -279,5 +279,5 @@ echo "       claude plugin marketplace add anthropics/claude-plugins-official"
 echo "       claude plugin install frontend-design@claude-plugins-official"
 echo "       claude plugin marketplace add getsentry/sentry-mcp"
 echo "       claude plugin install sentry-mcp@sentry-mcp"
-echo "  5. (optional, github MCP) claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=<PAT> -- npx -y @modelcontextprotocol/server-github"
+echo "  5. (GitHub access) brew install gh && gh auth login   # gh CLI, no MCP/PAT"
 echo "  6. Verify: launch claude, type '/' — you should see all bymax-* commands."
