@@ -62,6 +62,9 @@ android/build/
 android/app/build/
 android/local.properties
 
+# AI tooling (local, regenerable — knowledge-graph output consumed by the reuse ladder)
+graphify-out/
+
 # Misc
 .history/
 .notes/

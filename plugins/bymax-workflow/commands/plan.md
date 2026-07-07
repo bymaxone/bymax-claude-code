@@ -8,11 +8,12 @@ This command invokes the **planner** agent to create a comprehensive implementat
 
 ## What This Command Does
 
-1. **Load `/bymax-workflow:standards`** - Quick refresh of universal rules (TS strict, naming, JSDoc policy, layered architecture, error handling, English-only). Project's `CLAUDE.md` overrides where it conflicts.
+1. **Load `/bymax-workflow:standards`** - Quick refresh of universal rules (simplicity ladder, TS strict, naming, JSDoc policy, layered architecture, error handling, English-only). Project's `CLAUDE.md` overrides where it conflicts.
 2. **Restate Requirements** - Clarify what needs to be built
-3. **Identify Risks** - Surface potential issues and blockers
-4. **Create Step Plan** - Break down implementation into phases, naming files using the project's conventions and respecting layer/feature boundaries
-5. **Wait for Confirmation** - MUST receive user approval before proceeding
+3. **Reuse Scan (simplicity ladder, standards §0)** - Before any new file is proposed: search this codebase (graph-first via `graphify query` when the project has a `graphify-out/` knowledge graph — see the toolkit README), `@bymax-one/*` libs, and sibling Bymax projects for existing code that covers the need; check stdlib/platform and installed dependencies next. Every new file in the plan must carry a one-line justification of why nothing existing was reusable; logic needed by more than one feature is planned as a reusable unit in `shared/` (or promoted to `@bymax-one/*`).
+4. **Identify Risks** - Surface potential issues and blockers
+5. **Create Step Plan** - Break down implementation into phases, naming files using the project's conventions and respecting layer/feature boundaries
+6. **Wait for Confirmation** - MUST receive user approval before proceeding
 
 ## When to Use
 
@@ -121,13 +122,9 @@ If the request is vague, ambiguous, or has more than one reasonable approach, ru
 
 After planning:
 - Use `/bymax-quality:tdd` to implement with test-driven development
-- Use `/build-fix` if build errors occur
 - Use `/bymax-workflow:verify` to prove the change works (not just type-checks)
 - Use `/bymax-quality:code-review` to review completed implementation
 
 ## Related Agents
 
-This command invokes the `planner` agent provided by ECC.
-
-For manual installs, the source file lives at:
-`agents/planner.md`
+This command invokes the `planner` sub-agent shipped by the **bymax-quality** plugin (source: `plugins/bymax-quality/agents/planner.md`). Install `bymax-quality` alongside `bymax-workflow` to get it.

@@ -3,11 +3,12 @@
   "description": "Autonomously shepherds an open PR to merge-readiness on ANY project, powered by the `gh` CLI. /bymax-pr:babysit-pr resolves merge conflicts, polls CI every 270s, classifies failures as real vs flaky (re-running flaky checks), fixes real failures locally before pushing, triages bot review comments (4-tier), and notifies you when the PR is green. Never merges, never pushes to the base branch. A built-in preflight verifies the gh CLI is installed and authenticated. Depends on `gh` + `git` but never bundles them.",
   "version": "1.0.1",
   "author": {
-    "name": "Maximiliano Salvatti",
+    "name": "Bymax One",
+    "email": "support@bymax.one",
     "url": "https://github.com/bymaxone"
   },
   "license": "MIT",
-  "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-pr",
+  "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-pr",
   "keywords": [
     "pull-request",
     "pr",

@@ -383,7 +383,7 @@ When both steps pass, report:
 
 - ✅ `X/X tests passing`
 - ✅ `100% coverage on <filename>`
-- Profile used (A/B/C/D/E)
+- Profile used (A/B/C/D/E/F)
 - One line per `describe` block summarizing what was tested
 
 ---

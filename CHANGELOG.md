@@ -11,6 +11,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.5.0] — 2026-07-06
+
+### Added — Simplicity ladder (§0) across `bymax-workflow` + `bymax-quality`
+
+A reuse-first decision ladder — inspired by the ladder in [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) (MIT), adapted to the Bymax reality (`@bymax-one/*` libs, sibling projects, the `shared/` layer, and the vault's stack patterns) — now runs **before code is written** and is **enforced after**, at every stage of the pipeline:
+
+- **`/bymax-workflow:standards`** — new stack-neutral **§0 Simplicity ladder**: before writing code, stop at the first rung that holds — (1) YAGNI, (2) reuse from this codebase, (3) reuse a `@bymax-one/*` lib / promote sibling-project code instead of copy-pasting, (4) stdlib/native platform (`Intl`, `crypto.randomUUID()`, `URL`, `structuredClone`, native `<input>` types; `std`/`core` on Rust), (5) installed dependency (a NEW dep needs justification), (6) build once as a reusable unit in `shared/` or `@bymax-one/*` when a second feature/project needs it, (7) only then the minimum that works. Carve-outs are explicit: trust-boundary validation, error handling, the security baseline, accessibility, and mandatory docs/tests are never on the chopping block. Output economy (fewer generated tokens) is documented as a side effect, not the goal.
+- **`planner` sub-agent** — new mandatory **Reuse Scan (2b)** planning step: every proposed new file/component/dependency is walked down the ladder, and the plan's Architecture Changes section must justify each new file with "no existing code covers this because …".
+- **`/bymax-workflow:plan`** — the reuse scan added as step 3 of the command flow (search codebase → `@bymax-one/*` → sibling projects → stdlib → installed deps before proposing new files).
+- **`/bymax-quality:code-review`** — new **HIGH** checks: *reinvented wheel* (new code reimplementing an existing repo symbol, `@bymax-one/*` lib, stdlib/platform API, or installed dependency) and *new dependency for something already covered*. New **MEDIUM** checks: copy-pasted logic that should be one shared unit, and speculative generality (YAGNI).
+- **`/bymax-quality:tdd`** — GREEN phase now runs the ladder before writing the body: an existing util, lib, or stdlib call may already BE the green; never add a dependency just to pass a test.
+- `bymax-workflow` and `bymax-quality` bumped to `1.3.0`; `marketplace.json` to `1.5.0`. Additive only — no existing rule was weakened. The ponytail plugin itself was evaluated and **not** vendored: its always-on hooks and prompt overhead are redundant with the existing gates; only the ladder concept was adopted, Bymax-adapted.
+
+### Added — "External tools & MCP servers" README guide
+
+- New README section documenting every external tool the plugins consult at runtime ("require, don't embed"): the CLI toolchain per plugin (Node.js, `gh`, `agent-browser`, pnpm, Xcode/simctl, Android SDK, Rust + cargo extras) and the three optional MCP servers with install commands — **context7** (`@upstash/context7-mcp`, current official docs for the §0 docs-first rule), **obsidian vault** (`@bitbonsai/mcpvault`, per-stack `Patterns.md`/`Gotchas.md` consulted by the §0 reuse ladder), and **sequential-thinking**.
+- `/bymax-workflow:standards` §0 hardened for portability: the knowledge-vault and Context7 references now degrade gracefully when the MCP is absent, and a new **"official docs beat trained memory"** rule verifies library/platform APIs against current docs before writing the call.
+- `personal/README.md` documents the obsidian MCP restore command (registered via `claude mcp add` — machine-specific vault path, so it stays out of `mcp.template.json`).
+
+### Added — graphify integration (graph-first reuse scan, opt-in)
+
+Evaluated [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) (MIT) and adopted it the same way as ponytail: the capability, not the always-on mode.
+
+- **`/bymax-workflow:standards` §0 rung 2** — when a project has a `graphify-out/` knowledge graph, the reuse scan goes **graph-first** (`graphify query` / `explain` / `path`) instead of grepping: scoped subgraph answers at a fraction of the tokens, with cross-file/cross-package edges resolved by tree-sitter AST. Grep remains the fallback when no graph exists and the authority for code changed since the last graph build.
+- **`planner` sub-agent (Reuse Scan 2b)** and **`/bymax-workflow:plan` step 3** — same graph-first rule while planning.
+- **`bymax-bootstrap`** — `gitignore.universal` now excludes `graphify-out/` (local, regenerable output); bumped to `1.1.2`.
+- **README** — new "Code knowledge graph" section: how graphify works (local AST build, zero LLM tokens for code, SHA256-incremental, post-commit hook), how the toolkit consumes it (presence-gated, zero cost when absent), setup commands, and the explicit recommendation **against** `graphify claude install` (its always-on `PreToolUse` hooks add per-prompt overhead and conflict with the `bymax-quality` hooks).
+
+### Changed — branding + contact unification
+
+- Author/owner across `LICENSE`, README, all seven `plugin.json` files, and `marketplace.json` is now **Bymax One** (`support@bymax.one`), matching the `@bymax-one/*` library repos. All contact emails (`security@`, `conduct@`) consolidated to **support@bymax.one**.
+
+### Added — `llms-install.md` (AI-agent installation runbook)
+
+- New machine-oriented runbook at the repo root (the location AI agents like Cline probe for): idempotent steps with a verification command after each, decision points with defaults (core pair vs project-type plugins), explicit **HUMAN HANDOFF** markers for interactive steps (session restart, `gh auth login` OAuth, App Store/GUI installers), a DO-NOT list (never `scripts/install.sh`, never `bymax-all`-as-plugins, never `graphify claude install`, never a GitHub MCP), and per-symptom failure guidance. Linked from the README Quick Start.
+
+### Fixed — full-repo audit (three independent review passes)
+
+- **`/bymax-web-verify:verify` now actually exists** — the command file was `web-verify.md` (registering as `:web-verify`) while every documented invocation across 12 files said `:verify`; renamed the file to `verify.md`. `bymax-web-verify` bumped to `1.0.1`.
+- **Canonical repo slug** — replaced the legacy dotted slug `bymaxone/bymax.claude-code` (alive only via GitHub's rename redirect) with `bymaxone/bymax-claude-code` across 24 files (badges, plugin.json homepages, marketplace.json, CHANGELOG links, CONTRIBUTING, install.sh, templates, vendor attribution).
+- **Stale ECC-era references scrubbed** — `tdd.md` no longer claims a nonexistent `tdd-guide` agent or points to `/build-fix`, `/test-coverage`, `/e2e`; `plan.md` now correctly credits the `planner` sub-agent to the `bymax-quality` plugin; dead "Related Agents" ECC sections removed.
+- **Portability** — `standards` §0 no longer hard-codes the author's machine layout (`~/Documents/MyApps/...`) or dangling "see the README" pointers inside the installable skill; org lib scope and sibling-repo locations are now declared per-project in `CLAUDE.md`.
+- **Docs accuracy** — CHANGELOG compare links completed (1.1.1→1.5.0, Unreleased repointed); broken VS16-emoji anchors fixed (`## 🧱 Architecture`, `## 🔖 Versioning`); `brew install claude` corrected to the real Claude Code install command; the unsupported `--scope` flag claim replaced with the `enabledPlugins` mechanism; `/security-review` labeled as the Claude Code built-in; CONTRIBUTING's dead Discussions link → Issues and its local-dev install list completed (6/6 plugins); SECURITY.md hook-wiring and `scripts/install.sh` path corrected; vendor README gained the missing `marketplace add` line and a current ECC star count; tester skill report now includes Profile F; `bymax-all` description names the `bymax-pr` plugin correctly.
+
+### Removed — github MCP from the restore flow
+
+- The restore path (README step 6, `scripts/install.sh` hints, `personal/settings.template.json`, `personal/README.md`) no longer recommends the `@modelcontextprotocol/server-github` MCP. GitHub access is **`gh` CLI only** (`brew install gh && gh auth login`) — the same tool `bymax-pr:babysit-pr` requires. Rationale: `gh` uses a short-lived OAuth token that works across orgs whose token policies reject long-lived fine-grained PATs, which is what broke the MCP setup.
+
 ## [1.4.0] — 2026-06-17
 
 ### Added — Rust support across `bymax-workflow` + `bymax-quality`
@@ -152,6 +200,11 @@ Initial public release of the toolkit. Five composable plugins, six specialist s
 - **`scripts/validate.sh`** — validates `marketplace.json` and every `plugin.json` (valid JSON, required fields, every command/agent/skill path exists, every command file has a YAML frontmatter `description`, every agent file has `name` + `description` + `tools`, every shell hook is `chmod +x`, shellcheck on every shell script when installed, every required project-level file is present). Used by CI and locally before pushing.
 - **`docs/PROPOSAL.md`** — original design proposal preserved for context.
 
-[Unreleased]: https://github.com/bymaxone/bymax.claude-code/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/bymaxone/bymax.claude-code/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/bymaxone/bymax.claude-code/releases/tag/v1.0.0
+[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/bymaxone/bymax-claude-code/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/bymaxone/bymax-claude-code/releases/tag/v1.0.0

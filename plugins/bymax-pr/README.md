@@ -7,7 +7,7 @@ This plugin **depends on** the `gh` CLI but never bundles it — the same "requi
 ## Install
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
 ```
 

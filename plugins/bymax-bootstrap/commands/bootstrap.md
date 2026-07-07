@@ -10,7 +10,7 @@ One-shot setup for new projects. Wires everything from the universal `/bymax-wor
 
 - Starting a brand-new project — empty folder, fresh `pnpm init` repo, or empty git clone.
 - Just ran `npx create-next-app`, `pnpm create vite`, `npx create-expo-app`, etc., and want to **upgrade the defaults** to your standards.
-- Want a "Maximiliano-flavored" project (lime palette, Instrument Serif + DM Sans, etc.) — see the design-system skills after bootstrap.
+- Want a "Bymax-flavored" project (lime palette, Instrument Serif + DM Sans, etc.) — see the design-system skills after bootstrap.
 
 ## When NOT to use
 

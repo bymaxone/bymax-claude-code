@@ -1,13 +1,14 @@
 {
   "name": "bymax-web-verify",
   "description": "Real-browser verification for web apps, powered by the `agent-browser` CLI (Vercel Labs). /bymax-web-verify:setup installs everything in one shot (CLI + Chrome for Testing) — ideal as a portable backup after a fresh macOS install. /bymax-web-verify:verify drives a real browser to confirm a change works (navigate, interact, screenshot, read console/errors). A SessionStart hook detects a missing CLI and offers to install it. Depends on `agent-browser` but never bundles it.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
-    "name": "Maximiliano Salvatti",
+    "name": "Bymax One",
+    "email": "support@bymax.one",
     "url": "https://github.com/bymaxone"
   },
   "license": "MIT",
-  "homepage": "https://github.com/bymaxone/bymax.claude-code/tree/main/plugins/bymax-web-verify",
+  "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-web-verify",
   "keywords": [
     "browser",
     "automation",

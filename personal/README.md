@@ -10,7 +10,7 @@ These files are **NOT** redistributed via `/plugin install`. They're here so a f
 
 ### `settings.template.json`
 
-A sanitized version of `~/.claude/settings.json`. Tokens, OAuth credentials, and machine-specific paths are replaced with `{{PLACEHOLDERS}}`. Inline `_comment_*` keys document the full restore steps (settings, MCP config, marketplace plugins, github MCP). Copy to `~/.claude/settings.json` and edit by hand.
+A sanitized version of `~/.claude/settings.json`. Tokens, OAuth credentials, and machine-specific paths are replaced with `{{PLACEHOLDERS}}`. Inline `_comment_*` keys document the full restore steps (settings, MCP config, marketplace plugins, `gh` CLI auth). Copy to `~/.claude/settings.json` and edit by hand.
 
 ### `mcp.template.json`
 
@@ -25,8 +25,11 @@ The install script copies this to `~/.mcp.json` (only if it doesn't already exis
 echo '{"enabledMcpjsonServers":["context7","sequential-thinking"]}' > ~/.claude/settings.local.json
 ```
 
-> The `github` MCP needs a Personal Access Token, so it is registered via the `claude` CLI (which writes it into `~/.claude.json` — the **user-scope** Claude config that holds OAuth tokens, MCP entries with secrets, etc., not to be confused with `~/.claude/settings.json`). The PAT never enters this repo. Add it via:
-> `claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=<PAT> -- npx -y @modelcontextprotocol/server-github`
+> **GitHub access is via the `gh` CLI, not an MCP server.** Every GitHub operation in the toolkit (PRs, issues, CI logs, releases, `bymax-pr:babysit-pr`) runs through `gh`, which uses a short-lived OAuth token managed by `gh auth login` — it works across orgs whose token policies reject long-lived fine-grained PATs (which is exactly why the github MCP was dropped). Restore with:
+> `brew install gh && gh auth login`
+
+> The `obsidian` knowledge-vault MCP is also registered via the `claude` CLI (machine-specific vault path, so it stays out of the template). It powers the `/bymax-workflow:standards` §0 reuse ladder — per-stack `Patterns.md` / `Gotchas.md` lookups. Restore with:
+> `claude mcp add obsidian -- npx -y @bitbonsai/mcpvault@latest /path/to/your/vault`
 
 ### `prettier-format.sh`
 

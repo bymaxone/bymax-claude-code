@@ -1,6 +1,6 @@
 ---
 name: standards
-description: Universal coding standards reference (TypeScript and Rust tracks) — type/lint discipline, naming conventions, doc policy (JSDoc / rustdoc), layered architecture, typed error handling, English-only comments, conventional commits. Load this BEFORE writing any non-trivial code, reviewing a PR, or scaffolding a new project. Other skills (/bymax-workflow:plan, /bymax-quality:tdd, /bymax-quality:code-review, /bymax-bootstrap:bootstrap) reference this.
+description: Universal coding standards reference (TypeScript and Rust tracks) — simplicity ladder (reuse-first / YAGNI, run before writing code), type/lint discipline, naming conventions, doc policy (JSDoc / rustdoc), layered architecture, typed error handling, English-only comments, conventional commits. Load this BEFORE writing any non-trivial code, reviewing a PR, or scaffolding a new project. Other skills (/bymax-workflow:plan, /bymax-quality:tdd, /bymax-quality:code-review, /bymax-bootstrap:bootstrap) reference this.
 user-invocable: true
 ---
 
@@ -17,7 +17,29 @@ Detect the stack and follow the matching track:
 - **TypeScript / JavaScript** (`package.json` / `tsconfig.json` present) → **§1–§14** below.
 - **Rust** (`Cargo.toml` present) → **§15 Rust track**. The universal principles — document every public item, English + timeless comments, zero suppression, layered modules, typed errors, the security baseline — still hold; §15 expresses them in Rust idioms and replaces the TS-specific mechanics (tsconfig, JSDoc, ESLint, Tailwind).
 
-§9 (Conventional Commits), §10 (Performance — measure first), §11 (Accessibility, for any UI), and §14 (conflict resolution) are stack-neutral and apply everywhere.
+§0 (Simplicity ladder), §9 (Conventional Commits), §10 (Performance — measure first), §11 (Accessibility, for any UI), and §14 (conflict resolution) are stack-neutral and apply everywhere.
+
+---
+
+## 0. Simplicity ladder — run BEFORE writing code
+
+Understanding comes first: read the code the change touches and trace the real flow. Then, before writing anything, stop at the **first rung that holds**:
+
+1. **Does this need to exist?** No → skip it (YAGNI). Don't build for hypothetical futures.
+2. **Already in THIS codebase?** → reuse it. Search before writing: if the project has a knowledge graph (`graphify-out/` present), prefer scoped graph queries — `graphify query "<need>"`, `graphify explain "<symbol>"`, `graphify path A B` — over grepping: they answer "does something already do this?" at a fraction of the tokens and resolve cross-file/cross-package links. `grep`/Glob is the fallback when no graph exists, **and remains the authority for code changed since the last graph build** (the graph refreshes on commit, not on every edit). Either way: find the existing component, hook, util, service, or query that already does it (or nearly does — extend it instead).
+3. **Already in one of your org's shared libs (e.g. `@bymax-one/*`) or a sibling project checkout?** → reuse the lib. If the code lives in a sibling repo and isn't published, **promote it to a shared lib** (or mirror the proven pattern) — never copy-paste-drift. If a knowledge-vault MCP is connected (e.g. Obsidian), check the stack's Patterns note for the established convention before inventing a new one. Declare your org's lib scope and sibling-repo locations in the project's `CLAUDE.md` so this rung is checkable.
+4. **Stdlib / native platform does it?** → use it. `Intl` over date/number-formatting libs, `crypto.randomUUID()` over `uuid`, `URL`/`URLSearchParams` over manual parsing, `structuredClone` over a deep-clone dep, `<input type="date">` over a picker component, `fetch` + `AbortController` over an HTTP lib. (Rust: `std`/`core` before a new crate.)
+5. **An installed dependency does it?** → use it. **Never add a new dependency to avoid writing ten lines** — a new dep needs justification (maintenance, popularity, license, security posture) and must pass the project's supply-chain policy.
+6. **Will a second feature (or project) need this?** → build it **once, as a reusable unit**: `shared/ui` / `shared/utils` for cross-feature, promote to `@bymax-one/*` when a second project needs it. Minimal public API, zero domain imports, documented per §3.
+7. **Only then:** write the minimum that works. If it fits in one clear line, one line is correct.
+
+**Lazy, not negligent — never on the chopping block:** trust-boundary validation (§7), error handling (§7), the security baseline (§13), accessibility (§11), and the mandatory docs/tests (§3–§4). Code is small because it's *necessary*, not because it's golfed.
+
+**Output economy is a side effect:** less generated code = fewer tokens, less to review, less to maintain. But minimal ≠ cryptic — naming (§2) and documentation (§3) always apply.
+
+**Official docs beat trained memory:** when a rung lands on a library or platform API (rungs 3–5), verify the current official documentation before writing the call — via the Context7 MCP when connected, web search otherwise. Stacks evolve faster than any model's training data.
+
+At review time, a rung violation is flagged by `/bymax-quality:code-review` (reimplementing something that already exists = HIGH).
 
 ---
 

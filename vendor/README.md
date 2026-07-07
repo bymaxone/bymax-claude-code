@@ -13,7 +13,7 @@ These skills are **NOT** redistributed via the marketplace (they're not listed i
 
 ### [`ecc-skills/`](./ecc-skills/) — Everything Claude Code
 
-A subset of skills from [Everything Claude Code (ECC)](https://github.com/affaan-m/everything-claude-code) by **Affaan Mustafa**. ECC is an open-source agent harness with **100K+ stars** and 119 skills.
+A subset of skills from [Everything Claude Code (ECC)](https://github.com/affaan-m/everything-claude-code) by **Affaan Mustafa**. ECC is an open-source agent harness with **200K+ stars** and 119 skills.
 
 The seven skills bundled here are domain-knowledge skills for backend, frontend, API design, database migrations, postgres patterns, security review, and coding standards.
 
@@ -59,7 +59,7 @@ Both vendored skills are MIT-licensed. Per MIT terms, redistribution is permitte
 - ✅ The original copyright notice is preserved (see `LICENSE` file in each subfolder).
 - ✅ Attribution to the original author is given (see `ATTRIBUTION.md` in each subfolder).
 
-If you are the author of either project and prefer not to be vendored here, please [open an issue](https://github.com/bymaxone/bymax.claude-code/issues) and we'll remove your content.
+If you are the author of either project and prefer not to be vendored here, please [open an issue](https://github.com/bymaxone/bymax-claude-code/issues) and we'll remove your content.
 
 ---
 
@@ -73,6 +73,7 @@ git clone https://github.com/affaan-m/everything-claude-code ~/dotfiles-ecc
 # follow ECC's install instructions
 
 # ui-ux-pro-max
+claude plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
 claude plugin install ui-ux-pro-max@ui-ux-pro-max
 # (or follow the upstream README)
 ```

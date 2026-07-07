@@ -4,7 +4,7 @@ description: 'Drive a strict red-green-refactor TDD cycle for NEW code — scaff
 
 # TDD Command
 
-This command invokes the **tdd-guide** agent to enforce test-driven development methodology.
+This command enforces test-driven development methodology — scaffold, RED, GREEN, REFACTOR, coverage — with the same rich-comment policy as the `tester` skill.
 
 ## What This Command Does
 
@@ -25,7 +25,7 @@ Use `/bymax-quality:tdd` when:
 
 ## How It Works
 
-The tdd-guide agent will:
+The command drives this cycle:
 
 1. **Define interfaces** for inputs/outputs
 2. **Write tests that will FAIL** (because code doesn't exist yet)
@@ -87,6 +87,8 @@ Run tests → confirm they fail for the right reason. **Do not skip this check.*
 ### Step 3 — GREEN (minimal code to pass)
 
 Write just enough. No premature constants, no extracted helpers. The smallest patch that turns the suite green.
+
+Before writing the body, run the simplicity ladder (`/bymax-workflow:standards` §0): an existing util/component, a `@bymax-one/*` lib, the stdlib/platform, or an installed dependency may already BE the green — reuse beats reimplementing, and never add a new dependency just to pass a test.
 
 ### Step 4 — REFACTOR (improve while green)
 
@@ -264,7 +266,7 @@ This rule is **identical** to the one enforced by the `tester` skill. Tests writ
 - External service calls
 - React components with hooks
 
-**E2E Tests** (use `/e2e` command):
+**E2E Tests** (for web flows, use `/bymax-web-verify:verify`):
 - Critical user flows
 - Multi-step processes
 - Full stack integration
@@ -292,16 +294,5 @@ Never skip the RED phase. Never write code before tests.
 
 - Use `/bymax-workflow:plan` first to understand what to build
 - Use `/bymax-quality:tdd` to implement with tests
-- Use `/build-fix` if build errors occur
 - Use `/bymax-quality:code-review` to review implementation
-- Use `/test-coverage` to verify coverage
-
-## Related Agents
-
-This command invokes the `tdd-guide` agent provided by ECC.
-
-The related `tdd-workflow` skill is also bundled with ECC.
-
-For manual installs, the source files live at:
-- `agents/tdd-guide.md`
-- `skills/tdd-workflow/SKILL.md`
+- Use `/bymax-workflow:verify` to run the full gate (types, lint, tests, coverage)

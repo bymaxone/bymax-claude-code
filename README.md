@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bymaxone/bymax.claude-code/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bymaxone/bymax.claude-code?style=flat-square&colorA=000000&colorB=000000" alt="license" /></a>
-  <a href="https://github.com/bymaxone/bymax.claude-code/stargazers"><img src="https://img.shields.io/github/stars/bymaxone/bymax.claude-code?style=flat-square&colorA=000000&colorB=000000" alt="stars" /></a>
-  <a href="https://github.com/bymaxone/bymax.claude-code"><img src="https://img.shields.io/badge/Claude_Code-marketplace-A3FF3C?style=flat-square&colorA=000000" alt="claude code marketplace" /></a>
+  <a href="https://github.com/bymaxone/bymax-claude-code/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bymaxone/bymax-claude-code?style=flat-square&colorA=000000&colorB=000000" alt="license" /></a>
+  <a href="https://github.com/bymaxone/bymax-claude-code/stargazers"><img src="https://img.shields.io/github/stars/bymaxone/bymax-claude-code?style=flat-square&colorA=000000&colorB=000000" alt="stars" /></a>
+  <a href="https://github.com/bymaxone/bymax-claude-code"><img src="https://img.shields.io/badge/Claude_Code-marketplace-A3FF3C?style=flat-square&colorA=000000" alt="claude code marketplace" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-edition%202024-000000?style=flat-square&logo=rust&logoColor=white" alt="Rust" /></a>
   <a href="https://eslint.org/"><img src="https://img.shields.io/badge/ESLint-flat--config-4B32C3?style=flat-square&logo=eslint&logoColor=white" alt="ESLint" /></a>
@@ -49,7 +49,7 @@ Built and used daily across mobile (Expo / React Native) and web (Next.js / Nest
 Every Claude Code user reinvents the same scaffolding: standards docs, review skills, planning rituals, ESLint configs, hooks, agents. This repo packages a **battle-tested set** that works across stacks — install once, focus on your product.
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
@@ -67,7 +67,7 @@ That's it. Restart Claude Code and you have **6 installable plugins** with **16 
 ### 1. Install the marketplace
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 ```
 
 ### 2. Install plugins
@@ -83,7 +83,7 @@ claude plugin install bymax-web-verify@bymax-claude-code    # real-browser verif
 claude plugin install bymax-pr@bymax-claude-code            # autonomous PR babysitting (needs gh CLI)
 ```
 
-> Each `claude plugin install` accepts `--scope user` (default — global, every project) or `--scope project` (only this project, declared in `<project>/.claude/settings.json`).
+> Plugins install user-wide by default (available in every project). To pin a plugin to a single project instead, add it to `enabledPlugins` in that project's `.claude/settings.json`.
 
 ### 3. Restart Claude Code
 
@@ -94,10 +94,89 @@ Reopen your terminal session so the new commands and hooks are picked up.
 In Claude Code, type `/` — you should see all the `bymax-*` commands. Try:
 
 ```
-/standards          # show the universal coding rules
-/spec               # start a new feature spec
-/bootstrap          # scaffold a new project
+/bymax-workflow:standards     # show the universal coding rules
+/bymax-workflow:spec          # start a new feature spec
+/bymax-bootstrap:bootstrap    # scaffold a new project
 ```
+
+Non-interactive check: `claude plugin list` should show every plugin you installed.
+
+> 🤖 **AI agents**: installing this toolkit for a user? Follow the step-by-step runbook in [`llms-install.md`](./llms-install.md) — idempotent commands, verification after each step, and the DO-NOT list.
+
+---
+
+## 🔌 External tools & MCP servers
+
+The plugins follow a **"require, don't embed"** philosophy: external CLIs and MCP servers are consulted at runtime, never bundled. Nothing below is needed to *install* the plugins — but each row unlocks a plugin or makes the skills measurably better. Install what matches your usage.
+
+> Rows below reference **"§0"** — the [simplicity ladder](./plugins/bymax-workflow/skills/standards/SKILL.md) that opens the `/bymax-workflow:standards` skill: a reuse-first decision ladder (YAGNI → reuse → stdlib → installed dep → minimum that works) the agent runs before writing any code. "§15" is the same skill's Rust track.
+
+### CLI toolchain
+
+| Tool | Needed by | How to install |
+|---|---|---|
+| **Node.js ≥ 18** | plugin hooks (`secret-scanner`, `console-log-scan`, `check-agent-browser`), all `npx`-based tooling | `brew install node` (or `nvm`) — must be on the non-interactive shell's PATH |
+| **`git` + `gh` CLI** (authenticated) | `bymax-pr` — every GitHub operation in `/bymax-pr:babysit-pr` (PR checks, CI logs, thread resolution) | `brew install gh && gh auth login` |
+| **`agent-browser`** | `bymax-web-verify` — drives the real browser | run `/bymax-web-verify:setup` once (installs the CLI + Chrome for Testing, ends with a smoke test) |
+| **pnpm** | `/bymax-workflow:verify`, `/bymax-workflow:task`, `/bymax-quality:tdd` and the `tester` skill on pnpm repos | `corepack enable pnpm` |
+| **Xcode + Command Line Tools** | `bymax-mobile` `/sim-ios` (`xcrun simctl`) | App Store (Xcode) + `xcode-select --install` — macOS only |
+| **Android Studio SDK** (`adb` + `emulator` on PATH) | `bymax-mobile` `/sim-android` | [developer.android.com/studio](https://developer.android.com/studio), then add `platform-tools` and `emulator` to PATH |
+| **Rust toolchain + cargo extras** | the Rust track of `/bymax-workflow:verify` and `/bymax-workflow:standards` §15 | [`rustup`](https://rustup.rs), then `cargo install cargo-llvm-cov cargo-mutants cargo-deny cargo-audit cargo-vet` |
+| **graphify** (PyPI package `graphifyy`) | graph-first reuse scan in `/bymax-workflow:standards` §0 and the planner (opt-in per project) | see [Code knowledge graph](#code-knowledge-graph--graphify-recommended-opt-in) below |
+
+### MCP servers (optional — sharper results, never required)
+
+The skills degrade gracefully when a server is absent; when present, they use it. All three are registered per-user (no project changes needed); restart Claude Code to activate.
+
+| Server | What it improves | How to install |
+|---|---|---|
+| **context7** ([`@upstash/context7-mcp`](https://github.com/upstash/context7)) | `/bymax-workflow:standards` §0 mandates **official docs over trained memory** for library/platform APIs — context7 fetches current, version-accurate docs so generated calls match the installed version | `claude mcp add context7 -- npx -y @upstash/context7-mcp` — or copy [`personal/mcp.template.json`](./personal/mcp.template.json) to `~/.mcp.json` and enable via `~/.claude/settings.local.json` (see [`personal/README.md`](./personal/README.md)) |
+| **obsidian vault** ([`@bitbonsai/mcpvault`](https://www.npmjs.com/package/@bitbonsai/mcpvault)) | the §0 simplicity ladder consults a knowledge vault (per-stack `Patterns.md` / `Gotchas.md` notes) before inventing a new pattern — a growing, cross-project memory of the conventions your team already settled | `claude mcp add obsidian -- npx -y @bitbonsai/mcpvault@latest /path/to/your/vault` — any Obsidian vault directory works; start with a `Patterns.md` per stack |
+| **sequential-thinking** ([`@modelcontextprotocol/server-sequential-thinking`](https://github.com/modelcontextprotocol/servers)) | structured multi-step reasoning during `/bymax-workflow:plan` and `/bymax-workflow:spec` on gnarly problems | `claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking` — also pre-wired in `personal/mcp.template.json` |
+
+> **Verify what's active:** run `claude mcp list` in a terminal. A server listed but not enabled needs its name in `enabledMcpjsonServers` inside `~/.claude/settings.local.json`.
+
+### Code knowledge graph — [graphify](https://github.com/Graphify-Labs/graphify) (recommended, opt-in)
+
+The skills' **reuse ladder** (`/bymax-workflow:standards` §0 and the planner's Reuse Scan) constantly asks one question: *"does something already do this?"*. On a monorepo, answering it with grep means many searches and many file reads — the most token-expensive phase of any session. [graphify](https://github.com/Graphify-Labs/graphify) (MIT, ~79k ⭐) answers it from a pre-built graph instead.
+
+**How it works:**
+
+1. `/graphify .` parses the project with **tree-sitter AST — fully local, deterministic, zero LLM tokens** for code; nothing leaves your machine. Output lands in `graphify-out/` (`graph.json` + `GRAPH_REPORT.md` + a clickable `graph.html`).
+2. Cross-file `calls` / `imports` / `inherits` edges are resolved across ~40 languages (TypeScript and Rust included), each tagged `EXTRACTED` (explicit in source) or `INFERRED`.
+3. Rebuilds are incremental (SHA256 cache — only changed files reprocess), and a post-commit hook keeps the graph fresh automatically.
+4. From then on the agent queries instead of grepping: `graphify query "<question>"` (scoped subgraph), `graphify explain "<symbol>"` (one concept + all its connections), `graphify path A B` (how two things connect).
+
+**How this toolkit uses it — presence-gated, zero always-on cost:**
+
+- When `graphify-out/` exists in a project, the §0 simplicity ladder (rung 2) and the planner's Reuse Scan go **graph-first**: `graphify query` before `grep`.
+- When it doesn't exist, everything behaves exactly as before — grep/Glob. No hooks, no per-prompt overhead, nothing to configure.
+- **grep stays authoritative for fresh edits**: the graph refreshes on commit, not on every keystroke, so code written mid-session is always re-verified with grep.
+
+**Setup (per machine, then per project):**
+
+```bash
+# 1. Install the CLI — note the package is `graphifyy` (double-y);
+#    other graphify* names on PyPI are NOT affiliated.
+uv tool install graphifyy        # or: pipx install graphifyy  (needs Python ≥ 3.10)
+
+# 2. Register the skill with Claude Code (adds the /graphify command)
+graphify install
+
+# 3. In each project you want mapped — build the graph:
+#    (inside Claude Code)  /graphify .
+
+# 4. Keep it fresh automatically (post-commit rebuild):
+graphify hook install
+```
+
+**Our recommendation:**
+
+- ✅ **Do** install the CLI + skill and build graphs for your active repos — the reuse-scan savings compound with repo size, and the build itself costs zero LLM tokens.
+- ✅ **Do** run `graphify hook install` so the graph tracks your commits.
+- ✅ **Do** keep `graphify-out/` out of git — it's local, regenerable output (the `bymax-bootstrap` `.gitignore` template already excludes it).
+- ❌ **Don't** run `graphify claude install` (the "always use the graph" mode). It installs `PreToolUse` hooks that fire before **every** search/read tool call — per-prompt overhead, and it conflicts with the `bymax-quality` hooks. This toolkit's presence-gated integration achieves the same benefit without the noise.
+- ⚠️ Treat third-party "70x fewer tokens" claims as marketing; the honest way to measure is your own cache-hit ratio (`npx ccusage session --json` — [ccusage](https://github.com/ryoppippi/ccusage) is a community CLI that reads Claude Code's local usage data; consistently above ~60% on graph-enabled repos means it's working).
 
 ---
 
@@ -114,7 +193,7 @@ End-to-end feature pipeline with explicit approval gates between every layer.
 | `/spec`        | Layer 1: write a complete technical spec (goal, scope, stories, criteria, risks). Asks if vague.      |
 | `/roadmap`     | Layer 2: take an approved spec → phased master plan with status dashboard, dependency DAG, DoD.       |
 | `/phase-tasks` | Layer 3: take an approved roadmap → JIRA-style task files with self-contained agent prompts per task. |
-| `/task`        | Execute a phase or single task end-to-end with `/verify` → `/security-review` → `/code-review` chain. |
+| `/task`        | Execute a phase or single task end-to-end with `/verify` → `/security-review` (Claude Code built-in) → `/code-review` chain. |
 | `/brainstorm`  | Pre-spec: refine vague ideas, explore alternatives, surface tradeoffs.                                |
 | `/plan`        | Lightweight plan for single-task work that doesn't need the full spec → roadmap → tasks chain.        |
 | `/verify`      | 5-gate verification (static checks, exercise, root-cause, regression scan, acceptance criteria).      |
@@ -240,10 +319,10 @@ Skip the heavy chain — use `/plan` (single PR), then `/tdd` (new code) or the 
 
 ---
 
-## 🏛️ Architecture
+## 🧱 Architecture
 
 ```
-bymax.claude-code/
+bymax-claude-code/
 ├── .claude-plugin/
 │   └── marketplace.json                ← marketplace metadata
 │
@@ -283,7 +362,7 @@ bymax.claude-code/
 **A. Public marketplace** (recommended for everyone)
 
 ```bash
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
@@ -296,11 +375,11 @@ Only the `plugins/` content is exposed via `/plugin install`. The vendor/ and pe
 
 **B. Personal restore** (full Mac wipe — author workflow)
 
-After installing Claude Code itself (`brew install claude` or upstream installer):
+After installing Claude Code itself (`npm install -g @anthropic-ai/claude-code` or the [native installer](https://docs.claude.com/en/docs/claude-code/setup)):
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/bymaxone/bymax.claude-code ~/dotfiles-claude
+git clone https://github.com/bymaxone/bymax-claude-code ~/dotfiles-claude
 cd ~/dotfiles-claude
 
 # 2. Preview what install.sh will do (no writes)
@@ -316,7 +395,7 @@ cp personal/settings.template.json ~/.claude/settings.json
 $EDITOR ~/.claude/settings.json
 
 # 5. Install marketplace plugins
-claude plugin marketplace add bymaxone/bymax.claude-code
+claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-workflow@bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 claude plugin install bymax-bootstrap@bymax-claude-code
@@ -328,8 +407,10 @@ claude plugin install frontend-design@claude-plugins-official
 claude plugin marketplace add getsentry/sentry-mcp
 claude plugin install sentry-mcp@sentry-mcp
 
-# 6. (Optional) Add the github MCP — needs a PAT
-claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=<your_pat> -- npx -y @modelcontextprotocol/server-github
+# 6. GitHub access — authenticate the gh CLI (short-lived OAuth, no PAT).
+#    This is what bymax-pr and every GitHub operation in the toolkit use;
+#    no github MCP server is needed.
+brew install gh && gh auth login
 
 # 7. Restart Claude Code; type "/" — you should see all bymax-* commands.
 ```
@@ -347,7 +428,7 @@ Skip the design-skill fetch with `./scripts/install.sh --no-design-skills`.
 
 The bymax plugins themselves are installed via `claude plugin install` (Step 5 above), not via `install.sh` — Claude Code's plugin marketplace handles them natively. Settings (`~/.claude/settings.json`) and the marketplace plugin install commands are **manual** — the script prints them at the end so you can copy/paste.
 
-Flags: `--dry-run`, `--no-vendor`, `--no-personal`, `--no-mcp`, `--write-mcp-enabled`.
+Flags: `--dry-run`, `--no-vendor`, `--no-design-skills`, `--no-personal`, `--no-mcp`, `--write-mcp-enabled`.
 
 ---
 
@@ -426,8 +507,8 @@ Contributions, bug reports, and ideas are very welcome! Please read [CONTRIBUTIN
 
 ```bash
 # Clone the repo
-git clone https://github.com/bymaxone/bymax.claude-code.git
-cd bymax.claude-code
+git clone https://github.com/bymaxone/bymax-claude-code.git
+cd bymax-claude-code
 
 # Validate marketplace + plugin manifests
 ./scripts/validate.sh
@@ -446,7 +527,7 @@ claude plugin install bymax-pr@bymax-claude-code
 
 ## 🔒 Security
 
-If you discover a security vulnerability (e.g., a regex bypass in `secret-scanner.sh`), please **do not** open a public issue. Email **security@bymax.one** instead. See [SECURITY.md](./SECURITY.md).
+If you discover a security vulnerability (e.g., a regex bypass in `secret-scanner.sh`), please **do not** open a public issue. Email **support@bymax.one** instead. See [SECURITY.md](./SECURITY.md).
 
 ---
 
@@ -473,7 +554,7 @@ Inspired by:
 
 ## 📄 License
 
-[MIT](./LICENSE) © [Maximiliano Salvatti](https://github.com/bymaxone)
+[MIT](./LICENSE) © [Bymax One](https://github.com/bymaxone)
 
 ---
 
