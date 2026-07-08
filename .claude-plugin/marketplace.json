@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "bymax-claude-code",
-  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), quality gates (TDD + code-review + security-review) for TypeScript and Rust, specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, autonomous PR babysitting, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
-  "version": "1.5.0",
+  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), loop-engineering autopilot (autonomous roadmap execution, one merge-gated PR per phase), quality gates (TDD + code-review + security-review) for TypeScript and Rust, specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, autonomous PR babysitting, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
+  "version": "1.6.0",
   "owner": {
     "name": "Bymax One",
     "email": "support@bymax.one",
@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "bymax-workflow",
-      "description": "Spec → Roadmap → Phase-Tasks → Task — a phased planning + execution workflow with explicit user-approval gates and JIRA-style task dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, and the universal /bymax-workflow:standards reference (with the §0 reuse-first simplicity ladder).",
+      "description": "Spec → Roadmap → Phase-Tasks → Task — a phased planning + execution workflow with explicit user-approval gates and JIRA-style task dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, the universal /bymax-workflow:standards reference (with the §0 reuse-first simplicity ladder), and /bymax-workflow:autopilot — the loop-engineering executor that autonomously drives an approved roadmap to done, one merge-gated PR per phase.",
       "category": "workflow",
       "source": "./plugins/bymax-workflow",
       "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-workflow"
