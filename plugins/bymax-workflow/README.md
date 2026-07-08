@@ -24,9 +24,10 @@ claude plugin install bymax-workflow@bymax-claude-code
 | `/bymax-workflow:verify`       | post  | 5-gate verification: static checks, exercise, root-cause, regression scan, acceptance criteria. |
 | `/bymax-workflow:checkpoint`   | util  | Snapshot SHA + tests + coverage for later comparison.                                            |
 
-### Skill
+### Skills
 
 - **`standards`** — universal coding rules with **TypeScript and Rust tracks** (type/lint discipline, JSDoc / rustdoc policy, naming, layered architecture, English-only comments, suppression bans, conventional commits). Loaded on demand by `/bymax-workflow:plan`, `/bymax-quality:tdd`, `/bymax-quality:code-review`, `/bymax-bootstrap:bootstrap`, etc.
+- **`autopilot`** — the **loop-engineering executor**: autonomously drives an approved roadmap from first phase to done, **one phase per PR**, with zero human interaction after launch. An orchestrator session spawns one isolated implementer sub-agent per phase (git worktree, model picked per a per-phase policy), waits for CI + the review bot via background signals, fixes every finding, merges only after a full merge-gate conjunction + grace window, updates the dashboards, and chains the next phase. Per-project parameters live in `docs/AUTOPILOT.md` (`/bymax-workflow:autopilot init` generates it from the roadmap and stops for your review). Requires an authenticated `gh` CLI.
 
 ## The flow
 
@@ -44,6 +45,23 @@ commit (Conventional Commits — never auto-committed)
 
 Each layer **stops and waits** — you review, modify, or approve. Nothing auto-chains.
 
+## The autonomous flow (loop engineering)
+
+Once the planning docs are approved, `autopilot` inverts the contract: **approval is given once, at launch**, and the loop owns everything after it.
+
+```
+/bymax-workflow:autopilot init   →  docs/AUTOPILOT.md   (per-project config — REVIEWED BY YOU)
+   ⏸ user approval (the last one)
+/bymax-workflow:autopilot        →  for each phase, sequentially:
+      spawn implementer (isolated worktree, model per policy)
+        → implementer: tasks + gates + /bymax-quality:code-review + /security-review to zero → PR
+      orchestrator: background CI/review watch → fix findings → merge gate + grace window
+        → squash-merge + branch deletion (with proof) → dashboards → next phase
+   🔁 until every phase is ✅ (or a precondition blocks — then it stops cleanly and tells you)
+```
+
+The architecture (orchestrator vs implementer split, one-implementer-at-a-time memory safety, anti-hallucination verification) is documented in the skill's [operational playbook](./skills/autopilot/references/operational-playbook.md) — every rule names the real failure it prevents.
+
 ## Status legend (used in every roadmap and task file)
 
 | Emoji | Meaning      |
@@ -58,6 +76,7 @@ Each layer **stops and waits** — you review, modify, or approve. Nothing auto-
 ## When to use this vs `/bymax-workflow:plan` alone
 
 - **Big feature, multi-phase, multiple PRs** → use the chain (`/bymax-workflow:spec` → `/bymax-workflow:roadmap` → `/bymax-workflow:phase-tasks` → `/bymax-workflow:task`).
+- **Whole roadmap, hands-off** → the chain above for planning, then `/bymax-workflow:autopilot` to execute every phase autonomously (one PR per phase, merge-gated).
 - **Small task, single PR, clear scope** → just use `/bymax-workflow:plan` → `/bymax-quality:tdd` → `/bymax-workflow:verify` → `/bymax-quality:code-review`.
 
 ## License

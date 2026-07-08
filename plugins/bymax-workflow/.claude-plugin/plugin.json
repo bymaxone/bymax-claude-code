@@ -1,7 +1,7 @@
 {
   "name": "bymax-workflow",
-  "description": "Phased planning + execution workflow for Claude Code. Spec → Roadmap → Phase-Tasks → Task, each step with explicit user-approval gates and JIRA-style dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, and the universal /bymax-workflow:standards reference (with the §0 reuse-first simplicity ladder).",
-  "version": "1.3.0",
+  "description": "Phased planning + execution workflow for Claude Code. Spec → Roadmap → Phase-Tasks → Task, each step with explicit user-approval gates and JIRA-style dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, the universal /bymax-workflow:standards reference (with the §0 reuse-first simplicity ladder), and /bymax-workflow:autopilot — the loop-engineering executor that drives an approved roadmap to done autonomously, one merge-gated PR per phase.",
+  "version": "1.4.0",
   "author": {
     "name": "Bymax One",
     "email": "support@bymax.one",
@@ -17,6 +17,10 @@
     "tasks",
     "tdd",
     "verify",
-    "rust"
+    "rust",
+    "autopilot",
+    "loop-engineering",
+    "autonomous-agents",
+    "orchestration"
   ]
 }

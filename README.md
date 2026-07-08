@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>A complete, opinionated toolkit for Claude Code</strong><br />
-  <sub>Phased Planning · Strict Quality Gates · Project Bootstrap · Mobile Sims · Battle-tested Templates</sub>
+  <sub>Phased Planning · Loop-Engineering Autopilot · Strict Quality Gates · Project Bootstrap · Mobile Sims · Battle-tested Templates</sub>
 </p>
 
 <p align="center">
@@ -24,6 +24,7 @@
   <a href="#-quick-start">Quick Start</a> ·
   <a href="#-plugins">Plugins</a> ·
   <a href="#-the-workflow">The Workflow</a> ·
+  <a href="#-loop-engineering-the-autopilot">Loop Engineering</a> ·
   <a href="#-architecture">Architecture</a> ·
   <a href="#-contributing">Contributing</a>
 </p>
@@ -35,6 +36,7 @@
 **Bymax Claude Code** is a production-ready toolkit that turns Claude Code into a **disciplined senior engineer**. Instead of ad-hoc prompts, you get:
 
 - A **phased planning workflow** (spec → roadmap → phase-tasks → task) with explicit user-approval gates and JIRA-style dashboards.
+- A **loop-engineering autopilot** (`/bymax-workflow:autopilot`) that executes an approved roadmap **autonomously, end to end** — one merge-gated PR per phase, isolated worktree sub-agents, background CI/review watching, and dashboards kept in sync — turning the planning docs into a self-driving build. See [Loop Engineering](#-loop-engineering-the-autopilot).
 - **Strict quality gates** — `/code-review` (CRITICAL → LOW), `/tdd` (red-green-refactor), `/verify` (5 checks), and a `secret-scanner` hook that **blocks** writes containing credentials.
 - **Seven specialist sub-agents** (architect, code-reviewer, security-reviewer, typescript-reviewer, rust-reviewer, database-reviewer, planner) ready to delegate to.
 - **TypeScript _and_ Rust** — the quality + workflow skills are language-detecting: TypeScript rules for `package.json` projects, and a parallel **Rust track** (clippy/rustfmt with `-D warnings`, typed `thiserror` errors, `#![forbid(unsafe_code)]`, rustdoc, `cargo test` + `cargo llvm-cov`, `cargo deny`/`audit`/`vet`) for `Cargo.toml` projects.
@@ -58,7 +60,7 @@ claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
 ```
 
-That's it. Restart Claude Code and you have **6 installable plugins** with **16 slash commands**, **3 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
+That's it. Restart Claude Code and you have **6 installable plugins** with **16 slash commands**, **4 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
 
 ---
 
@@ -199,7 +201,10 @@ End-to-end feature pipeline with explicit approval gates between every layer.
 | `/verify`      | 5-gate verification (static checks, exercise, root-cause, regression scan, acceptance criteria).      |
 | `/checkpoint`  | Snapshot SHA + tests + coverage to compare against later (e.g., "did this refactor regress tests?").  |
 
-Plus the `/standards` skill — **universal coding rules** (TypeScript and Rust tracks) referenced by every other command.
+Plus two skills:
+
+- **`/standards`** — **universal coding rules** (TypeScript and Rust tracks) referenced by every other command.
+- **`/autopilot`** — the **loop-engineering executor**: drives an approved roadmap to done autonomously, one merge-gated PR per phase. `init` generates the per-project `docs/AUTOPILOT.md` config (and stops for your review); `run` owns the whole chain — spawn implementer → watch CI + review bot → fix findings → merge after the gate + grace window → update dashboards → next phase. Full story in [Loop Engineering](#-loop-engineering-the-autopilot).
 
 ### 🛡️ [`bymax-quality`](./plugins/bymax-quality/) — Review + Testing + Agents
 
@@ -300,7 +305,7 @@ This is the heart of the toolkit. **Big features** flow through three planning l
 commit (Conventional Commits — never auto-committed)
 ```
 
-Each layer **stops and waits** for explicit user approval. You review, modify, or approve. Nothing auto-chains.
+Each layer **stops and waits** for explicit user approval. You review, modify, or approve. Nothing auto-chains — until you explicitly opt into the [autopilot](#-loop-engineering-the-autopilot), which flips the contract for the *execution* half only: planning always stays human-approved.
 
 ### Status legend (used in every roadmap and task file)
 
@@ -316,6 +321,68 @@ Each layer **stops and waits** for explicit user approval. You review, modify, o
 ### Small tasks / bug fixes
 
 Skip the heavy chain — use `/plan` (single PR), then `/tdd` (new code) or the `tester` skill (existing code), then `/verify` and `/code-review`.
+
+---
+
+## 🔁 Loop Engineering: the Autopilot
+
+> *"You shouldn't be prompting coding agents anymore. You should be designing loops that prompt your agents."* — Peter Steinberger
+>
+> *"I don't prompt Claude anymore. I have loops running that prompt Claude and figuring out what to do."* — Boris Cherny (Anthropic, creator of Claude Code)
+
+**Loop engineering** — the term Addy Osmani coined in his June 2026 essay ([addyosmani.com](https://addyosmani.com/blog/loop-engineering/), also on [O'Reilly Radar](https://www.oreilly.com/radar/loop-engineering/)) — is the discipline that emerged when the bottleneck of AI-assisted development shifted from *model capability* to *orchestration design*: instead of prompting an agent turn by turn, you design the **system** that prompts, verifies, retries, and stops it. `/bymax-workflow:autopilot` is this toolkit's loop-engineering layer, and it exists because the rest of the toolkit makes it possible: the loop is only as trustworthy as the harness it runs in.
+
+### From approved plan to merged main, hands-off
+
+```
+/bymax-workflow:autopilot init   →  docs/AUTOPILOT.md      (per-project config — the LAST thing you review)
+   ⏸ your approval (the only one)
+/bymax-workflow:autopilot        →  for each phase of the roadmap, sequentially:
+      ORCHESTRATOR (main session, long-lived, small context)
+        ├─ spawns ONE implementer sub-agent in an isolated git worktree
+        │    └─ IMPLEMENTER: executes the phase's task files → runs every gate
+        │       → /bymax-quality:code-review + /security-review iterated to ZERO findings
+        │       → opens the PR, requests the review bot, returns the PR number, STOPS
+        ├─ watches CI + review bot via background signals (never a dead gap)
+        ├─ fixes every finding (escalating the model when a phase stalls)
+        ├─ merges ONLY on the full gate conjunction + grace window
+        ├─ deletes the merged branch (remote + local, with proof)
+        └─ updates the dashboards → chains the next phase
+   🔁 until every phase is ✅ — or a precondition blocks, and it stops cleanly and tells you
+```
+
+### Why it has authority: every rule names the failure it prevents
+
+The autopilot's [operational playbook](./plugins/bymax-workflow/skills/autopilot/references/operational-playbook.md) is not aspirational — it is the distillation of real multi-phase autonomous builds (10-phase / 50+-task library and application roadmaps), and each rule records the incident behind it:
+
+| Rule | The failure it prevents |
+|---|---|
+| Orchestrator/implementer **role split** — implementers never wait, never merge | The naive "one agent does everything" design **deadlocked** waiting for the review bot: a background sub-agent dies the moment it enters a long wait |
+| **One implementer, one test suite at a time**, bounded workers | Fanned-out test agents multiplied memory by `workers × runners × agents` and crashed a 36 GB machine past 70 GB into swap |
+| Merge only after a **conjunction + grace window** — never the instant CI is green | A second bot review can land ~90 s after a push; early merges turn it into a stray follow-up PR |
+| **Re-fetch review-thread IDs fresh** every time | Thread IDs change when the bot re-reviews; stale IDs return `NOT_FOUND` and masquerade as permission errors |
+| **Verify via `git`/`gh`, never narration** | Agents confabulate SHAs, fixes, and "I merged it" |
+| **Never end a turn with a dead gap** (background job or wakeup, always) | One turn with neither and the "autonomous" chain silently stalls, waiting for a human |
+
+### The whole toolkit, composed
+
+Autopilot is where the other plugins compound — Osmani's five loop components map one-to-one onto what's already installed:
+
+| Loop component (Osmani) | In this toolkit |
+|---|---|
+| **State & memory** | The roadmap's Progress Dashboard + task files (from `/spec` → `/roadmap` → `/phase-tasks`) are the loop's externalized state — the same docs you approved are what the loop reads and updates |
+| **Sub-agents** | One implementer per phase + the `bymax-quality` reviewers; an implementer never grades its own work — `/code-review` and `/security-review` iterate to zero before any PR opens |
+| **Worktrees** | Every implementer runs in an isolated `git worktree` — no file collisions, clean rollback |
+| **Skills** | `/standards` (the §0 simplicity ladder), `/tdd`, `tester` — the project knowledge implementers load instead of re-deriving conventions |
+| **Automations** | Background CI/review watchers + scheduled wake-up fallbacks — the mechanics proven in `/bymax-pr:babysit-pr`, promoted from one PR to the whole roadmap |
+
+And Osmani's warning — *"unattended loops make unattended mistakes; verification remains your responsibility"* — is exactly why autopilot **only** runs on planning docs you approved, keeps a reviewable trail (one PR per phase, dashboards, completion logs), and refuses shortcuts (no suppression comments, no force-green, no weakened thresholds — the same bans `/code-review` enforces on humans).
+
+### Honest constraints
+
+- **It merges.** Unlike `/bymax-pr:babysit-pr` (which never merges), autopilot's whole point is unattended merging — gated by the conjunction above. Launch it only on repos where a phase-per-PR squash-merge by the loop is what you want.
+- **It is token-intensive by design.** An implementer per phase, reviews iterated to zero, fix cycles. The per-phase **model policy** in `docs/AUTOPILOT.md` exists to spend the strong tier only where first-pass judgment matters (first-contact APIs, security-sensitive phases, final hardening) and a cheaper tier where the merge gate catches everything anyway.
+- **It needs the planning chain.** No roadmap + task files, no autopilot — it executes plans, it never invents them.
 
 ---
 

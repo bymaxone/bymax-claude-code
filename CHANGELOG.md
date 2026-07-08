@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.6.0] — 2026-07-08
+
+### Added — `/bymax-workflow:autopilot` (loop-engineering executor)
+
+A new skill in `bymax-workflow` that autonomously drives an **approved roadmap from first phase to done, one merge-gated PR per phase, with zero human interaction after launch** — the toolkit's [loop-engineering](https://addyosmani.com/blog/loop-engineering/) layer. It generalizes a per-project orchestration runbook proven on real multi-phase autonomous builds (10-phase / 50+-task library and application roadmaps) into a reusable skill: the invariant operational knowledge lives in the skill, and everything project-specific collapses into one reviewable config file.
+
+- **`skills/autopilot/SKILL.md`** — the orchestrator. Three modes: `init` (generate `docs/AUTOPILOT.md` from the existing roadmap + task files, propose a per-phase model policy, **stop for user review** — init never chains into run), `run` (drive the chain: pick next phase → spawn implementer → background CI/review watch → fix findings → merge gate + grace window → squash-merge + branch deletion with proof → dashboard updates → next phase), and `status` (read-only chain report).
+- **`references/operational-playbook.md`** — the architecture and battle-tested procedures, each rule annotated with the real failure it prevents: the orchestrator/implementer role split (the naive single-agent design **deadlocked** waiting for the review bot — background sub-agents die on long waits), one-implementer/one-suite memory safety (fanned-out test agents crashed a 36 GB machine past 70 GB), the merge-gate conjunction + grace window (a second bot review lands ~90 s after a push), fresh-thread-ID resolution (stale GraphQL IDs masquerade as permission errors), anti-hallucination verification (agents confabulate SHAs and merges — verify via `git`/`gh`, never narration), and the autonomy backbone (never end a turn without a pending background job or an armed wake-up).
+- **`references/implementer-prompt.md`** — the rendered-per-phase prompt template. Implementers run in isolated git worktrees, execute the phase's task files with `/bymax-workflow:standards` + `/bymax-quality:tdd`, iterate `/bymax-quality:code-review` and `/security-review` **to zero findings**, open the PR, request the review bot, return the PR number, and STOP — they never wait, never merge, never spawn.
+- **`references/config-template.md`** — the `docs/AUTOPILOT.md` per-project config: identity, external preconditions (e.g. Docker up, a dependency resolvable on a registry), a per-phase **model policy** with rationale (strong tier for first-contact/security-sensitive/final-hardening phases, cheaper tier where the merge gate catches everything), gates that grow by phase, invariant greps, security invariants and review focus, review bot, and merge policy (squash, grace window, stall limit).
+- **README** — new "Loop Engineering: the Autopilot" section: the term's origin (Addy Osmani's June 2026 essay, synthesizing Peter Steinberger and Boris Cherny), the full loop diagram, the failure-per-rule authority table, the mapping of Osmani's five loop components (state & memory, sub-agents, worktrees, skills, automations) onto the toolkit's plugins, and the honest constraints (it merges; it is token-intensive by design; it requires the planning chain).
+- `bymax-workflow` bumped to `1.4.0`; `marketplace.json` to `1.6.0`. Toolkit totals: 16 slash commands, **4 skills**, 7 sub-agents, 3 hooks, 20 templates.
+
 ## [1.5.0] — 2026-07-06
 
 ### Added — Simplicity ladder (§0) across `bymax-workflow` + `bymax-quality`
@@ -200,7 +213,8 @@ Initial public release of the toolkit. Five composable plugins, six specialist s
 - **`scripts/validate.sh`** — validates `marketplace.json` and every `plugin.json` (valid JSON, required fields, every command/agent/skill path exists, every command file has a YAML frontmatter `description`, every agent file has `name` + `description` + `tools`, every shell hook is `chmod +x`, shellcheck on every shell script when installed, every required project-level file is present). Used by CI and locally before pushing.
 - **`docs/PROPOSAL.md`** — original design proposal preserved for context.
 
-[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.2.0...v1.3.0

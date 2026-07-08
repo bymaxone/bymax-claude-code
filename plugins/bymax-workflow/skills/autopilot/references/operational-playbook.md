@@ -1,0 +1,231 @@
+# Autopilot Operational Playbook
+
+The architecture and the operational procedures behind
+`/bymax-workflow:autopilot`. Every rule here was learned on real autonomous
+runs (multi-phase library and application builds); the failure each rule
+prevents is named so the rule survives being questioned.
+
+---
+
+## 1. Architecture: who does what (the most important lesson)
+
+The work is split across **two roles**. Mixing them is what deadlocked the
+naive design.
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│ ORCHESTRATOR  (the main session: long-lived, small context)               │
+│                                                                           │
+│  • Owns the chain. Decides which phase is next.                           │
+│  • Verifies external preconditions before each phase.                     │
+│  • Spawns ONE implementer sub-agent per phase (isolated git worktree).    │
+│  • Picks the implementer's model per the config's model policy.           │
+│  • Receives the PR number the implementer returns.                        │
+│  • Owns every long wait: CI, review bot, grace window — via background    │
+│    watchers that exit on a SIGNAL, plus a ScheduleWakeup fallback.        │
+│  • Merges after the full gate conjunction, updates dashboards, chains     │
+│    the next phase.                                                        │
+└───────────────────────────────────────────────────────────────────────────┘
+                                    │ spawns (Agent tool, isolation: "worktree")
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ IMPLEMENTER  (a sub-agent: one per phase, in its own worktree)            │
+│                                                                           │
+│  • Implements every task, runs the gates, iterates the reviews to zero,   │
+│    opens the PR, requests the review bot, returns the PR number, STOPS.   │
+│  • NEVER waits for the review bot. NEVER merges. NEVER spawns anything.   │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why the split.** A background sub-agent that tries to "wait for the review
+bot / wait for CI" simply **ends its execution** the moment it enters a long
+wait — only the main session is re-invoked by task notifications when a
+background job finishes. The original single-agent design ("one agent does
+everything including merge and spawns the next") **deadlocked** waiting for
+the code-review bot. So the long waits MUST live in the orchestrator, fed by
+background polls that exit on a signal, not on a fixed sleep. That background
+completion is what re-invokes the main loop and keeps the chain alive
+between phases.
+
+**Why ONE implementer at a time is non-negotiable.** Test workers reload the
+project's dependency graph into their own memory (every Jest/ts-jest worker,
+every Vitest fork — worst with local `file:`/`workspace:` library links,
+which get duplicated per worker). Peak memory ≈
+`workers × concurrent runners × concurrent agents`. A real prior run crashed
+a 36 GB machine past 70 GB into swap by fanning test suites across parallel
+sub-agents. Concurrent e2e stacks (docker compose, Testcontainers) also
+collide on ports. Therefore: one implementer, one suite at a time, one
+container stack at a time, bounded worker pools (`maxWorkers: '50%'` baked
+into the test configs, `NODE_OPTIONS=--max-old-space-size=4096` as a guard).
+
+---
+
+## 2. Merge gate: a conjunction, after a bounded grace window
+
+Never merge the instant CI goes green. A second bot review can land ~90 s
+after a push; merging too early turns it into a stray follow-up PR. Merge
+only when **ALL** hold:
+
+- **CI green**: `gh pr checks <N> --json bucket` shows **0 fail and
+  0 pending**. Checks that are `skipping` for declared reasons (e.g.
+  visibility-gated workflows on a private repo) count as pass — the config's
+  CI section says which.
+- **No pending review request**: `gh pr view <N> --json reviewRequests`
+  is an empty array.
+- **No open bot threads**: every `reviewThreads` node `isResolved: true`.
+- **No bot review newer than the pending HEAD**: compare each
+  `reviews[].submittedAt` against `commits[-1].committedDate`.
+- **Grace elapsed**: the config's grace window (default **≥ 4–5 min**) since
+  the last push, measured concretely — record the push timestamp, compute
+  the elapsed time; never eyeball it.
+
+After a fix-push, the watcher has **two valid exit criteria**:
+
+- `BOT_REREVIEWED` — a review with `submittedAt` > HEAD `committedDate`
+  arrived, **or**
+- `GRACE_NO_REVIEW` — `reviewRequests` empty **and** the grace window
+  elapsed with no new review (covers PRs where the bot does not re-review).
+
+Do not idle during the window: sync the default branch, read the next
+phase's task file, pre-draft thread replies, so the merge is immediate when
+the gate opens.
+
+---
+
+## 3. Fix procedure (CI failed or bot commented)
+
+1. **Release the phase branch first.** A branch is pinned to the worktree
+   that created it; git refuses to check the same branch out in two
+   worktrees. If the implementer's worktree still holds it:
+   `git worktree remove <path> --force`.
+2. **Fix everything, not a sample.** Address **every** failing check and
+   **every** bot comment — all severities, down to nit. Partial fixes
+   restart the whole review cycle and cost more than they save. Fix inline
+   in a fresh worktree on the phase branch, or spawn a fix sub-agent
+   (worktree isolation, model escalated per the config — especially for
+   security-review findings).
+3. **Local gates before pushing.** The same gates the implementer ran; a fix
+   that breaks other tests is worse than the original failure.
+4. Push, then resolve threads (next section), then start a **new** watcher.
+
+---
+
+## 4. Resolving bot threads (anti-stale)
+
+- **Re-fetch thread IDs FRESH each time**, and check `viewerCanResolve`.
+  Thread IDs change when the bot re-reviews a new commit; reusing a
+  remembered ID returns `NOT_FOUND` and looks — falsely — like a permission
+  error. A `FORBIDDEN`/`NOT_FOUND` here is a **stale-ID symptom**, not a
+  permission wall; never stop the chain or ask the operator to re-auth
+  unless `viewerCanResolve: false` is actually observed.
+- **Reply + resolve one call at a time** — batched GraphQL mutations cancel
+  as a group when one fails. Cite the **real fix SHA**
+  (`git rev-parse --short HEAD`) in each reply; never invent one.
+- **Verify `isResolved: true`** with a fresh read before declaring a thread
+  done.
+
+```bash
+# fresh fetch (inline literals — parameterized -F form can mis-parse):
+gh api graphql -f query='query{repository(owner:"<OWNER>",name:"<REPO>"){pullRequest(number:<N>){reviewThreads(first:100){nodes{id isResolved viewerCanResolve comments(first:1){nodes{databaseId}}}}}}}'
+# resolve, one per message:
+gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"<FRESH_ID>"}){thread{isResolved}}}'
+```
+
+---
+
+## 5. Autonomy backbone: never end a turn with a dead gap
+
+- The chain stays alive only while there is **always** either a tracked
+  background job pending **or** a `ScheduleWakeup` armed. End a turn with
+  neither and nothing re-invokes the loop — the chain stalls waiting for a
+  human, which defeats the entire point.
+- `ScheduleWakeup` is a **long fallback (≥ 1200 s)**, not a poll. Tracked
+  background work auto-notifies on completion; the wakeup only rescues the
+  chain if a watcher dies silently. Re-arm it each relevant turn with a
+  prompt describing the **current** state, never a stale one.
+- **Silent-death detection**: an implementer worktree still at base
+  (0 commits) after ~60 min with no completion notification suggests death.
+  Investigate file mtimes (recent = alive; stale = dead), then re-spawn.
+  Widen the window to ~120 min for phases the config marks *heavy*
+  (container image pulls, browser installs, mutation-testing runs) and for
+  any first run on a cold cache.
+
+---
+
+## 6. Worktree discipline
+
+- **Every file-writing sub-agent runs in its own worktree**
+  (`isolation: "worktree"`), one agent per directory. Two agents in the same
+  tree collide: uncommitted edits mix and the pre-commit hook breaks on the
+  blended tree (recovery: kill both, `git reset --hard` + `git clean -fd`,
+  re-run isolated).
+- **Release a branch before a fix touches it** (§3 rule 1).
+- **Clean up on merge — always delete the merged PR's own branch**, remote
+  and local, in this order, with proof:
+
+  ```bash
+  BR=$(gh pr view <N> --json headRefName -q .headRefName)   # capture FIRST
+  gh pr merge <N> --squash --delete-branch
+  git switch <default-branch> && git pull
+  git worktree remove <path> --force        # if still present
+  git branch -D "$BR" 2>/dev/null || true
+  git push origin --delete "$BR" 2>/dev/null || true
+  git ls-remote --heads origin "$BR"        # MUST print nothing
+  git branch --list "$BR"                   # MUST print nothing
+  git worktree prune
+  ```
+
+  If either verification still shows the branch, the merge is **not**
+  finished.
+
+---
+
+## 7. Anti-hallucination: verify, never trust narration
+
+- An agent's final message **can confabulate state** — fixes it did not
+  make, invented SHAs, "I merged it". Always confirm real state via
+  `git`/`gh`, never via prose.
+- Agent-liveness signals: the real "still running" indicator is the
+  **absence of a completion notification**, plus fresh file mtimes in the
+  worktree — not any task-list UI, which can lag or return empty with jobs
+  still active.
+- **Never `Read` an agent's raw output/transcript file** — it is a JSONL
+  transcript that will blow your context. Read only the small verdict files
+  your own background watchers write.
+- Before writing "resolved" / "green" / "merged" anywhere (dashboards, PR
+  comments, the user), confirm with a fresh read **this turn**.
+
+---
+
+## 8. Concrete `gh` signal vocabulary
+
+| Signal | Command |
+|---|---|
+| CI status | `gh pr checks <N> --json bucket` → count `pass` / `fail` / `pending` (config says which `skipping` are expected) |
+| Pending review request | `gh pr view <N> --json reviewRequests` (empty = nothing queued) |
+| Re-review detection | `reviews[].submittedAt` vs `commits[-1].committedDate` |
+| Open threads | GraphQL `reviewThreads.nodes[]` → `isResolved`, `viewerCanResolve`, `comments[0].databaseId` |
+| PR identity | `gh pr view <N> --json number,headRefName,state,mergeStateStatus` |
+| Failing job log | `gh run view <run-id> --log-failed` |
+| Registry precondition | e.g. `npm view <package> version` (exit 0 = published) — per config |
+
+A background watcher composes these into a poll that **exits with exactly
+one verdict** (`CI_FAILED` / `BOT_COMMENTED` / `READY_TO_MERGE` /
+`BOT_REREVIEWED` / `GRACE_NO_REVIEW`), sleeping between iterations, writing
+the verdict to a scratchpad file the orchestrator reads on re-invocation.
+
+---
+
+## 9. Review-bot request
+
+If the config names a review bot (e.g. GitHub Copilot code review), the
+implementer requests it right after `gh pr create`:
+
+```bash
+gh pr edit <PR#> --add-reviewer copilot-pull-request-reviewer[bot]
+```
+
+If the reviewer slug is rejected, the implementer notes it in its final
+message and the orchestrator requests the review via the UI-equivalent API
+or proceeds with CI-only gating — the merge-gate conjunction adapts (no
+pending-review / no-threads terms still apply to whatever reviews exist).
