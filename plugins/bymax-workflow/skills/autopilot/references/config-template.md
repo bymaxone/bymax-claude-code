@@ -97,11 +97,16 @@ grep -rn "process.env" src/ --include='*.ts' | grep -v env.schema.ts
 - **Reviewer**: `copilot-pull-request-reviewer[bot]` (request with
   `gh pr edit <PR#> --add-reviewer copilot-pull-request-reviewer[bot]`)
   — or `none` (merge gate falls back to CI + whatever reviews exist).
+- **Review-bot timeout**: 15 minutes — a request pending this long with no
+  review submitted is treated as bot-unresponsive: the request is removed,
+  a factual PR comment records it, and the gate proceeds CI-only (the
+  implementer's zero-findings review floor already ran before the PR).
 
 ## Merge policy
 
 - **Method**: squash (delete branch on merge — always)
 - **Grace window**: 5 minutes since last push
+- **Review-bot timeout**: 15 minutes (see Review bot above)
 - **Stall limit**: 3 full fix cycles on the same phase → 🟡/⛔ + notify + STOP
 
 ## Custom conventions *(optional)*
