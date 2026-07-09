@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.6.1] — 2026-07-08
+
+### Fixed — autopilot: unresponsive review bot could hold the merge gate forever
+
+The merge gate's "no pending review request" term had no time bound: if the config named a review bot and the `--add-reviewer` request was **accepted** but the bot never submitted a review (bot not enabled on the org, quota, outage), `reviewRequests` never emptied and the chain waited indefinitely — alive (the wake-up fallback kept re-invoking the orchestrator) but never merging. Repos with `Review bot: none` and rejected-slug requests were already handled; this closes the third path.
+
+- **New `BOT_TIMEOUT` watcher verdict** (SKILL.md STEP 2/3 + playbook): a review request pending longer than the config's **review-bot timeout** (default 15 min, measured from the request or the latest push, whichever is later) triggers the unresponsive-bot procedure — confirm with a fresh read that no review arrived, remove the stale request (`gh pr edit --remove-reviewer`), leave one factual PR comment as the audit trail (a declared reviewer is never dropped silently), then re-evaluate the gate CI-only.
+- **Safety rationale documented**: the review floor already ran before the PR opened (the implementer iterates `/bymax-quality:code-review` + `/security-review` to zero findings); the bot is a second opinion, and a dead second opinion must not become an infinite wait. If the bot reviews after the timeout cleared it, the normal rules resume — its threads must still be resolved before the merge executes.
+- **`references/config-template.md`** — new "Review-bot timeout" field in the Review bot and Merge policy sections.
+- `bymax-workflow` bumped to `1.4.1`; `marketplace.json` to `1.6.1`.
+
 ## [1.6.0] — 2026-07-08
 
 ### Added — `/bymax-workflow:autopilot` (loop-engineering executor)
@@ -213,7 +224,8 @@ Initial public release of the toolkit. Five composable plugins, six specialist s
 - **`scripts/validate.sh`** — validates `marketplace.json` and every `plugin.json` (valid JSON, required fields, every command/agent/skill path exists, every command file has a YAML frontmatter `description`, every agent file has `name` + `description` + `tools`, every shell hook is `chmod +x`, shellcheck on every shell script when installed, every required project-level file is present). Used by CI and locally before pushing.
 - **`docs/PROPOSAL.md`** — original design proposal preserved for context.
 
-[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/bymaxone/bymax-claude-code/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.3.0...v1.4.0

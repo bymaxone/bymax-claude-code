@@ -195,6 +195,9 @@ writing its verdict to a file in the scratchpad that you then read:
 - `CI_FAILED` — at least one required check failing (checks skipped for
   visibility/config reasons are not failures).
 - `BOT_COMMENTED` — unresolved review threads to address.
+- `BOT_TIMEOUT` — a requested review has been pending longer than the
+  config's review-bot timeout with no review submitted (the bot is
+  unresponsive; a pending request must never hold the gate forever).
 - `READY_TO_MERGE` — the full merge-gate conjunction holds (playbook §
   "Merge gate").
 
@@ -215,6 +218,12 @@ addressed.
   failing check and **every** bot comment, down to nit severity. Push,
   resolve each thread one at a time citing the real fix SHA, then return to
   STEP 2 with a new watcher.
+- **`BOT_TIMEOUT`** → the unresponsive-bot procedure (playbook § "Review-bot
+  request"): confirm with a fresh read that no review arrived, remove the
+  stale request (`gh pr edit <N> --remove-reviewer <bot-slug>`), leave one
+  factual PR comment as the audit trail, then re-evaluate the gate CI-only
+  (safe: the implementer already iterated the reviews to zero before the PR
+  opened). Gate holds → STEP 4.
 - **`READY_TO_MERGE`** → STEP 4.
 
 ### STEP 4: Merge — only after the grace window, then delete the branch

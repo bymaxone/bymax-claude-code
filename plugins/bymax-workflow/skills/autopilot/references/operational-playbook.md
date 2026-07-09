@@ -71,7 +71,9 @@ only when **ALL** hold:
   visibility-gated workflows on a private repo) count as pass — the config's
   CI section says which.
 - **No pending review request**: `gh pr view <N> --json reviewRequests`
-  is an empty array.
+  is an empty array. This term is **time-bounded**: a request pending past
+  the config's review-bot timeout with no review submitted is treated as
+  bot-unresponsive and cleared (§9) — it must never hold the gate forever.
 - **No open bot threads**: every `reviewThreads` node `isResolved: true`.
 - **No bot review newer than the pending HEAD**: compare each
   `reviews[].submittedAt` against `commits[-1].committedDate`.
@@ -79,12 +81,16 @@ only when **ALL** hold:
   the last push, measured concretely — record the push timestamp, compute
   the elapsed time; never eyeball it.
 
-After a fix-push, the watcher has **two valid exit criteria**:
+After a fix-push, the watcher has **three valid exit criteria**:
 
 - `BOT_REREVIEWED` — a review with `submittedAt` > HEAD `committedDate`
   arrived, **or**
 - `GRACE_NO_REVIEW` — `reviewRequests` empty **and** the grace window
-  elapsed with no new review (covers PRs where the bot does not re-review).
+  elapsed with no new review (covers PRs where the bot does not re-review),
+  **or**
+- `BOT_TIMEOUT` — a review request has been pending longer than the config's
+  review-bot timeout with no review submitted (covers a requested bot that
+  never responds — see §9 for the recovery procedure).
 
 Do not idle during the window: sync the default branch, read the next
 phase's task file, pre-draft thread replies, so the merge is immediate when
@@ -229,3 +235,30 @@ If the reviewer slug is rejected, the implementer notes it in its final
 message and the orchestrator requests the review via the UI-equivalent API
 or proceeds with CI-only gating — the merge-gate conjunction adapts (no
 pending-review / no-threads terms still apply to whatever reviews exist).
+
+**Unresponsive bot (the request was accepted but no review ever arrives).**
+Without a bound, a forever-pending `reviewRequests` entry would hold the
+merge gate open eternally — the same class of deadlock the orchestrator/
+implementer split exists to prevent. The bound is the config's
+**review-bot timeout** (default ~15 min), measured from the review request
+(or from the latest push, whichever is later). When the watcher signals
+`BOT_TIMEOUT`, the orchestrator:
+
+1. Confirms with a fresh read that no review was submitted
+   (`reviews[]` vs the request time) — never on the watcher's word alone.
+2. Removes the stale request:
+   `gh pr edit <N> --remove-reviewer <bot-slug>`.
+3. Comments once on the PR (plain, factual): the configured review bot did
+   not respond within the timeout, so the gate proceeded CI-only. The
+   comment is the audit trail — never silently drop a declared reviewer.
+4. Re-evaluates the merge-gate conjunction (now CI + grace + any reviews
+   that do exist) and proceeds normally.
+
+This is safe because the review floor was already enforced **before the PR
+opened**: the implementer iterated /bymax-quality:code-review and
+/security-review to zero findings. The bot is a second opinion, not the
+only gate — a dead second opinion must not become an infinite wait. If the
+bot reviews *after* the timeout cleared it, the normal rules resume: its
+threads must be resolved before merge (the no-open-threads and
+no-newer-review terms still apply to whatever arrives before the merge
+actually executes).
