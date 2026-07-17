@@ -88,7 +88,12 @@ For each numbered step of the script, in order — announce the step, act, verif
 
 **BROWSER mode:** same loop with `agent-browser snapshot -i` → `click @ref` /
 `fill @ref` → `errors` + `console` → `screenshot`; re-snapshot after every
-navigation (refs change).
+navigation (refs change). `agent-browser` does not expose per-request network
+data, so the **2xx gate moves to the backend side**: when this command started
+the backend, tail its logs (`preview_logs` equivalent — the background task's
+output) for the request the step triggered and fail the step on a 4xx/5xx there;
+when the backend was already running and its logs aren't reachable, scope the
+2xx gate out and say so in the report (UI state + console remain the evidence).
 
 ### When a step fails
 

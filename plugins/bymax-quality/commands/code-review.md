@@ -56,10 +56,10 @@ Record the resolved diff range once and reuse it in every command below as `$RAN
 
 ## Step 2 — Mechanical gate (deterministic)
 
-Run these greps over the diff so findings are exact facts, not model impressions. The `^\+`
-anchor keeps **added content lines only**: `^\+[^+]` matches a `+` followed by a
-non-`+` char, so removed lines and the `+++ b/path` diff header (which would otherwise
-false-positive when a filename contains a flagged token) never match. Map each match
+Run these greps over the diff so findings are exact facts, not model impressions. The
+`^\+[^+]` anchor keeps **added content lines only** — it matches a `+` followed by a
+non-`+` char, so removed lines and the `+++ b/path` diff header (which a bare `^\+` would
+false-positive on when a filename contains a flagged token) never match. Map each match
 back to its `file:line` via the `@@` hunk headers (or re-grep the file). Anything
 matched here is a finding — no judgment call, no verification needed.
 
