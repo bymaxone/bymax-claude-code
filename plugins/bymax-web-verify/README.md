@@ -1,6 +1,6 @@
 # 🌐 Bymax Web Verify
 
-> Real-browser verification for web apps, powered by the [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (Vercel Labs). One-command setup, a `SessionStart` reminder when the CLI is missing, and a verify command that drives a live browser — navigate, interact, screenshot, read console/errors.
+> Real-browser verification **and assisted UI testing** for web apps. `/bymax-web-verify:test` brings the full stack up and walks a UI flow while you watch — in the Claude Desktop Browser pane (preview) when available, or the [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (Vercel Labs) in a terminal. `/bymax-web-verify:verify` confirms a single change in a live browser. One-command setup, plus a `SessionStart` reminder when the CLI is missing.
 
 This plugin **depends on** `agent-browser` but never bundles it — the same "require, don't embed" approach as [`bymax-mobile`](../bymax-mobile) (which depends on Xcode / the Android SDK). `agent-browser` is `~93%` lighter on context than the Playwright MCP because it returns compact snapshot **refs** (`@e1`, `@e2`) instead of a full accessibility tree.
 

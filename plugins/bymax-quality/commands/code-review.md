@@ -45,7 +45,7 @@ git ls-files --others --exclude-standard          # untracked files, add to the 
 git diff --name-only @{upstream}...HEAD   # fallback: main...HEAD
 ```
 
-For the mechanical gate, include untracked files by intent-to-adding them first
+For the mechanical gate, include untracked files by intent-to-add them first
 (`git add -N .`) so `git diff` surfaces their added lines, or grep them directly.
 
 - Branch target → `git diff main...<branch>` (fetch from origin if the branch is only remote).
