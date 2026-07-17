@@ -45,7 +45,10 @@ git diff --name-only @{upstream}...HEAD   # fallback: main...HEAD
 
 - Branch target → `git diff main...<branch>` (fetch from origin if the branch is only remote).
 - Ref range target → use it verbatim.
-- PR target → `gh pr diff <N> --patch`.
+- PR target → check it out locally so the range works with `git diff`:
+  `gh pr checkout <N>`, then `$RANGE` = `<base-branch>...HEAD`. When checkout
+  isn't possible, `git fetch origin pull/<N>/head` and use
+  `<base-branch>...FETCH_HEAD`.
 - File target → limit every step below to that file.
 
 Record the resolved diff range once and reuse it in every command below as `$RANGE`
@@ -71,8 +74,8 @@ git diff -U0 $RANGE -- '*.ts' '*.tsx' ':!*test*' ':!*spec*' | grep -E '^\+.*cons
 # HIGH — TODO/FIXME without an issue link
 git diff -U0 $RANGE | grep -E '^\+.*(TODO|FIXME|XXX|HACK)' | grep -vE '#[0-9]+|issues/'
 
-# HIGH — file over 800 lines (list changed files, then measure them)
-git diff --name-only $RANGE | xargs -I{} sh -c 'test -f "{}" && wc -l "{}"' | awk '$1 > 800'
+# HIGH — file over 800 lines (NUL-delimited so paths with spaces survive)
+git diff --name-only -z $RANGE | while IFS= read -r -d '' f; do [ -f "$f" ] && wc -l "$f"; done | awk '$1 > 800'
 
 # MEDIUM — Tailwind v4 non-canonical forms (skip on Tailwind v3 / NativeWind projects)
 git diff -U0 $RANGE -- '*.tsx' '*.jsx' | grep -E '^\+.*(\[var\(--|aria-\[(invalid|disabled|pressed|expanded|hidden|selected|checked|busy|modal|required|readonly)=(true|false)\]|z-\[[0-9]+\]|-(bottom|top|left|right|m)-0([^.0-9]|$))'

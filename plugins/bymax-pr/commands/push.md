@@ -3,7 +3,7 @@ description: 'One-shot "ship my work" command: create or reuse a feature branch 
 argument-hint: "[branch-name] [pr]"
 ---
 
-# /push — branch → stage → commit → push [→ PR]
+# /bymax-pr:push — branch → stage → commit → push [→ PR]
 
 Ship the current work end-to-end. The invariant is **a commit must NEVER land on
 the default branch** — always isolate it on a branch first, then push.
