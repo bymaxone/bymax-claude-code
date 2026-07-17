@@ -60,7 +60,7 @@ claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
 ```
 
-That's it. Restart Claude Code and you have **6 installable plugins** with **16 slash commands**, **4 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
+That's it. Restart Claude Code and you have **6 installable plugins** with **19 slash commands**, **4 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
 
 ---
 
@@ -212,7 +212,8 @@ Strict quality gates and specialist reviewers.
 
 | Item                    | Purpose                                                                                                                                    |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/code-review`          | CRITICAL → HIGH → MEDIUM → LOW review (TypeScript **and Rust**). Blocks suppression comments (`@ts-ignore`, `eslint-disable`, Rust `#[allow]`/`unsafe`, etc.).                                 |
+| `/code-review`          | CRITICAL → HIGH → MEDIUM → LOW review (TypeScript **and Rust**) at selectable depth (`quick` \| `full` \| `deep`) and optional target (branch, ref range, PR#, file). Deterministic mechanical gate + verified bug hunt. Blocks suppression comments (`@ts-ignore`, `eslint-disable`, Rust `#[allow]`/`unsafe`, etc.). |
+| `/review-md`            | Generates a repo-root `REVIEW.md` so Anthropic's cloud Code Review (`@claude review`, `/code-review ultra`) enforces the same Bymax rules the local gate blocks on. |
 | `/tdd`                  | Strict red-green-refactor cycle (Jest/Vitest or Rust `#[test]`/`cargo test`). Forces failing test before implementation. 80%+ coverage minimum. |
 | `tester` skill          | Multi-stack test writer — auto-detects Jest / Vitest / RN / pure logic / Rust `cargo test`. 100% file coverage. Rich `it()` / `#[test]` comments. |
 | `architect` agent       | System design, scalability, technical decisions.                                                                                           |
@@ -262,22 +263,24 @@ Two slash commands that take an Expo / React Native project from cold to running
 
 Both commands auto-detect the package manager (`pnpm` / `yarn` / `npm`), use a build-artifact heuristic to choose between Metro reattach and full rebuild, and pre-flight tooling so they bail early with a clear, actionable error if Xcode CLI tools or the Android SDK are missing.
 
-### 🌐 [`bymax-web-verify`](./plugins/bymax-web-verify/) — Real-browser verification
+### 🌐 [`bymax-web-verify`](./plugins/bymax-web-verify/) — Real-browser verification & assisted UI testing
 
-Confirms a web change actually works in a live browser, powered by the [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (Vercel Labs). Depends on the CLI but never bundles it — the same "require, don't embed" approach as `bymax-mobile`.
+Confirms a web change works in a live browser, and drives the full stack for assisted UI testing. Preview-first in the Claude Desktop Browser pane, with an [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (Vercel Labs) fallback in terminals. Depends on the CLI but never bundles it — the same "require, don't embed" approach as `bymax-mobile`.
 
 | Item                       | Purpose                                                                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `/bymax-web-verify:setup`  | One-shot, idempotent install of the `agent-browser` CLI **and** Chrome for Testing, finished by a live smoke test.              |
 | `/bymax-web-verify:verify` | Drives a real browser to confirm a change works (navigate, interact, screenshot, read console/page errors). Auto-probes local dev ports. |
+| `/bymax-web-verify:test`   | Assisted UI testing with the stack up: reuses or starts the backend, opens the frontend in the Claude Desktop preview, and walks a flow step by step (page state + console + network 2xx + server logs). `agent-browser` fallback in a terminal. |
 | `check-agent-browser` hook | **SessionStart** — silent when the CLI is present; nudges Claude to offer `/bymax-web-verify:setup` only when it's missing.      |
 
-### 🤖 [`bymax-pr`](./plugins/bymax-pr/) — Autonomous PR babysitting
+### 🤖 [`bymax-pr`](./plugins/bymax-pr/) — The PR lifecycle
 
-Drives an open PR to merge-readiness on **any** project, powered by the [`gh`](https://cli.github.com/) CLI. Wakes up every 270s, resolves conflicts, watches CI, fixes real failures (re-running flaky ones), triages bot review comments, and pings you when it's green. **Never merges**, never pushes to the base branch.
+Ships your work and drives the PR to merge-readiness on **any** project, powered by the [`gh`](https://cli.github.com/) CLI. `/bymax-pr:push` originates the PR; `/bymax-pr:babysit-pr` shepherds it — resolving conflicts, watching CI at a cadence matched to the CI's real duration, fixing real failures (re-running flaky ones), triaging bot review comments, and pinging you when it's green. **Never merges**, never pushes to the base branch, never force-pushes.
 
 | Item                              | Purpose                                                                                                                            |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `/bymax-pr:push`          | Branch (never the default) → stage → complete Conventional-Commits message → push. Pass `pr` to also open a fully-described PR (Summary / Changes / How to verify). |
 | `/bymax-pr:babysit-pr`    | Babysits the PR on the current branch (or a number / URL): conflict rebase → CI fix (real vs flaky) → bot-comment triage → notify. |
 | Phase −1 preflight                | Verifies the `gh` CLI is installed **and** authenticated; stops with exact install / `gh auth login` instructions if not.          |
 
