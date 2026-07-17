@@ -97,9 +97,11 @@ Invariant greps (each must find nothing):
 ────────────────────────────────────────────────────────────────────────────
 STEP 3: Reviews — iterate to ZERO findings
 ────────────────────────────────────────────────────────────────────────────
-Invoke /bymax-quality:code-review: fix ALL findings (every severity, down to
-nit), re-run until it reports zero.
-Invoke /security-review: fix ALL findings including Low, re-run until zero.
+Invoke `/bymax-quality:code-review full` — fix ALL findings (every severity,
+down to nit), re-run until it reports zero. Always `full`, never `deep` —
+`deep` spawns finder sub-agents, and you are a sub-agent yourself: you never
+spawn (the orchestrator's merge gate provides the deeper second opinion).
+Invoke `/security-review` — fix ALL findings including Low, re-run until zero.
 Special attention for this project:
 {{SECURITY_FOCUS}}
 Re-run the STEP 2 gates after the review fixes.

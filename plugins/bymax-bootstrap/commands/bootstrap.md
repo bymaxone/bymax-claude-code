@@ -90,6 +90,12 @@ Templates and their targets:
 | `husky-commit-msg` | `.husky/commit-msg` (then `chmod +x`) |
 | `claude-md.template.md` | `CLAUDE.md` (fill in `{{PROJECT_NAME}}`, `{{RUNTIME}}`, `{{FRAMEWORK}}`, etc.) |
 
+After `CLAUDE.md` is written, seed the review calibration: run
+`/bymax-quality:review-md` so the repo starts with a root `REVIEW.md` — the file
+Anthropic's built-in Code Review (cloud `@claude review` on PRs, `/code-review
+ultra`) injects into every review agent. Skip only if the plugin is not
+installed; note it in the report so the user can run it later.
+
 For the universal ESLint base, copy `eslint.config.universal.cjs` into the project so the stack config can `require('./eslint.config.universal.cjs')` without depending on `~/.claude/`.
 
 ### Step 4 — Update package.json
@@ -175,6 +181,7 @@ Next steps:
   - git add . && git commit -m "chore: bootstrap project with universal standards"
   - Open in VS Code — accept the recommended extensions
   - When you start a feature: /bymax-workflow:brainstorm or /bymax-workflow:plan
+  - Review REVIEW.md (cloud code-review calibration) — refresh anytime with /bymax-quality:review-md
 ```
 
 ## Rules

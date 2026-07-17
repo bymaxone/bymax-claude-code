@@ -1,6 +1,6 @@
-# 🤖 Bymax Babysit-PR
+# 🤖 Bymax PR
 
-> Autonomously shepherds an open pull request to merge-readiness on **any** project, powered by the [`gh`](https://cli.github.com/) CLI. It wakes up at fixed intervals, resolves conflicts, watches CI, fixes real failures (re-running flaky ones), triages bot review comments, and pings you when the PR is green. It **never merges** and **never pushes to the base branch**.
+> The PR lifecycle, end to end: `/bymax-pr:push` ships your work (branch → stage → commit → push, optionally opening a fully-described PR), and `/bymax-pr:babysit-pr` autonomously shepherds the open PR to merge-readiness — resolving conflicts, watching CI, fixing real failures (re-running flaky ones), triaging bot review comments, and pinging you when it's green. It **never merges** and **never pushes to the base branch**.
 
 This plugin **depends on** the `gh` CLI but never bundles it — the same "require, don't embed" approach as [`bymax-mobile`](../bymax-mobile) (Xcode / Android SDK) and [`bymax-web-verify`](../bymax-web-verify) (`agent-browser`). Unlike those, the dependency here is checked by a **preflight inside the skill** (not a session hook): `gh` is an execution prerequisite, not a session-wide one, so it's verified only when you actually run the command.
 
@@ -22,14 +22,26 @@ claude plugin install bymax-pr@bymax-claude-code
 ## Usage
 
 ```
+/bymax-pr:push                   # branch + stage + commit + push (no PR)
+/bymax-pr:push pr                # same, then open a fully-described PR
+/bymax-pr:push my-branch [pr]    # explicit branch name
+
 /bymax-pr:babysit-pr             # babysit the PR on the current branch
 /bymax-pr:babysit-pr 123         # babysit PR #123
 /bymax-pr:babysit-pr <pr-url>    # babysit a PR by URL
 ```
 
+`/bymax-pr:push` guarantees a commit never lands on the default branch (it creates
+or reuses a feature branch), respects a pre-staged index, authors a complete
+Conventional-Commits message (title ≤ 72 chars + body bullets), and never
+force-pushes or bypasses hooks. The `pr` token is explicit opt-in: without it no PR
+is created; with it, the PR gets a full Summary / Changes / How to verify body
+generated from the entire branch diff. The natural chain is
+`/bymax-pr:push pr` → `/bymax-pr:babysit-pr <PR#>`.
+
 ## How it works
 
-On **every** wake-up (`ScheduleWakeup`, 270s — inside the prompt-cache TTL), it runs four phases in order:
+On **every** wake-up (`ScheduleWakeup`, paced to the CI's real duration with a 270 s floor), it runs four phases in order:
 
 | Phase | What it does |
 | ----- | ------------ |

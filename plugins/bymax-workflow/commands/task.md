@@ -121,9 +121,12 @@ Run on the full scope of the phase (every file the phase touched).
 
 Run against the full phase diff. Apply every finding.
 
-### 2.3 Final `/bymax-quality:code-review`
+### 2.3 Final `/bymax-quality:code-review deep`
 
-Run against the full phase diff. Apply every CRITICAL/HIGH/MEDIUM finding.
+Run in `deep` mode against the full phase diff — this is the pre-PR pass, so
+the bug hunt fans out to the stack + security finder agents with adversarial
+verification. Apply every CRITICAL/HIGH/MEDIUM finding. (The per-task Gate 3
+runs the cheaper default `full`; `deep` is reserved for this closing pass.)
 
 ### 2.4 Re-verify
 

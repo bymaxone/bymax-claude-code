@@ -119,6 +119,7 @@ Never open every guideline up-front — load on demand. Keep the conversation le
 - Implementation → `/bymax-quality:tdd` for new code, `tester` for adding tests to existing code.
 - Before declaring done → `/bymax-workflow:verify`.
 - Before commit / PR → `/bymax-quality:code-review` and `/security-review`.
+- Cloud review calibration → root `REVIEW.md` (generate or refresh with `/bymax-quality:review-md`).
 - Reference for any universal rule → `/bymax-workflow:standards`.
 
 ---

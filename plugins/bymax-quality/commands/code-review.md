@@ -1,150 +1,237 @@
 ---
-description: 'Comprehensive security and quality review of uncommitted changes. Walks every changed file and flags issues across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic that should be shared, speculative generality), and LOW (nits). Blocks the commit on any CRITICAL or HIGH. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
+description: 'Comprehensive security and quality review with selectable depth: mechanical gate (deterministic greps for secrets/suppressions/Tailwind/console), bug hunt (single-pass or parallel finder agents with adversarial verification), and the Bymax convention checklist across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic, speculative generality), and LOW (nits). Every candidate finding is re-verified against the file before it is reported. Blocks the commit on any CRITICAL or HIGH. Modes: quick | full (default) | deep. Optional target (branch, ref range, PR#, file) and --fix. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
 ---
 
 # Code Review
 
-Comprehensive security and quality review of uncommitted changes.
+Comprehensive security and quality review, structured as a pipeline: a deterministic
+mechanical gate, a bug hunt at the requested depth, the Bymax convention checklist,
+and a verification pass that filters false positives before anything is reported.
 
-> **Stack-adaptive.** Detect the stack first. On a **Rust** project (`Cargo.toml`), apply the **Rust checks** flagged in each section below and **skip** the TypeScript/Tailwind-specific ones (`any`/`enum`/`interface vs type`/JSDoc/`../../../` aliases/the §12 Tailwind rules). On a **TypeScript** project (`package.json`), apply the TS checks as written. The CRITICAL security and suppression rules apply to both.
-
-## Steps
-
-1. Get changed files: `git diff --name-only HEAD`
-2. For each changed file, check every category below.
-3. Generate a report with severity, file:line, description, and suggested fix.
-4. **Block commit if any CRITICAL or HIGH issue is found.**
-
----
-
-## CRITICAL — Block on sight
-
-### Security
-
-- Hardcoded credentials, API keys, tokens, secrets in source or fixtures.
-- SQL injection vulnerabilities.
-- XSS vulnerabilities (unsafe `dangerouslySetInnerHTML`, unescaped user input in templates, raw HTML rendering).
-- Missing input validation on a public boundary (HTTP handler, IPC, file parser).
-- Insecure dependencies (known CVEs, abandoned packages).
-- Path traversal risks (user-controlled input feeding `fs` or `path.join`).
-- Logging or analytics that include PII, credentials, medical data, or other sensitive fields.
-
-### Suppression comments — ZERO tolerance
-
-Any of the following introduced or kept in the diff is a CRITICAL block:
-
-- `// eslint-disable`, `// eslint-disable-line`, `// eslint-disable-next-line`, `/* eslint-disable */` blocks
-- `// @ts-ignore`, `// @ts-expect-error`, `// @ts-nocheck`
-- `as any`, `as unknown as <T>` (when used to launder a real type error away)
-- `// prettier-ignore` (unless preserving a deliberately-formatted table)
-- `@SuppressWarnings`, `# noqa`, `# type: ignore`, `# pylint: disable=...` (for cross-language repos)
-- **Rust:** `#[allow(...)]` / `#![allow(...)]` added to silence a clippy/rustc gate without a user-accepted justification; an `unsafe` block in a crate that declares `#![forbid(unsafe_code)]` (or any `unsafe` without a `// SAFETY:` comment); `#[ignore]` used to hide a failing test
-- CLI bypasses in commit messages or scripts: `--no-verify`, `--no-gpg-sign`, `--force` on a checked branch, `--skip-checks`, `husky` disabled
-
-**The rule:** fix the underlying cause. A failing lint or type error means the code is wrong, the type is wrong, or the rule is wrong — choose one and fix it. Never silence the messenger.
-
-**The only acceptable exception:** a suppression that:
-1. References a specific issue or PR (`// eslint-disable-next-line no-unused-vars -- see #1234, follow-up tracked`),
-2. AND has a clear, time-bounded reason in the comment.
-
-Even then, flag it as HIGH (not silently allowed) so the reviewer chooses to accept it explicitly.
-
-If the user is genuinely fighting a wrong rule, the right fix is to change the rule config (with justification) — not to scatter `disable` comments through the code.
-
----
-
-## HIGH — Must fix before merge
-
-### Code quality
-- Functions > 50 lines.
-- Files > 800 lines.
-- Nesting depth > 4 levels.
-- `console.log`, `console.warn`, `console.error` in production code (use the project's logger).
-- TODO / FIXME / XXX / HACK without an issue link.
-- An existing `eslint-disable` / `@ts-ignore` / `as any` retained without an issue-link justification (see Suppression Comments above).
-
-### Documentation (mandatory per `/bymax-workflow:standards`)
-- **Non-trivial source file missing the file-header JSDoc** (Purpose + Layer + optional Constraints). Trivial barrel `index.ts` files are exempt — a one-line `// Public API of …` comment is enough.
-- **Exported function / hook / component / service / store missing JSDoc** with imperative summary, `@param`, `@returns`, and `@throws` where applicable.
-- **Test `it` / `test` block without a comment** explaining the scenario and the rule it protects.
-
-### Architecture (mandatory per `/bymax-workflow:standards`)
-- **Cross-feature import** — `features/X/` importing from `features/Y/`. Must orchestrate one level up via `app/` or `shared/`.
-- **Domain import inside `shared/ui/`** — UI primitives must be portable; zero domain imports.
-- **Internal export leaked through a feature barrel** — `index.ts` should expose only the public API.
-- **Reinvented wheel (simplicity-ladder violation, standards §0)** — new code reimplements something that already exists in this repo (component/hook/util/service), in a `@bymax-one/*` lib, in the stdlib/platform (`Intl`, `crypto.randomUUID()`, `URL`, `structuredClone`, native `<input>` types, `std`/`core` in Rust), or in an already-installed dependency. Point to the existing symbol and suggest reusing/extending it instead.
-- **New dependency added for something the stdlib or an installed dependency already covers** — a new dep must be justified (maintenance, license, security posture); never added to avoid writing a few lines.
-
-### Error handling (mandatory per `/bymax-workflow:standards`)
-- **Error swallowed silently** — empty `catch`, `catch` that only logs without re-throwing or surfacing, or rejected promises ignored.
-- **Missing input validation at a system boundary** (network response, file parse, IPC, user input). Must run through Zod or equivalent.
-
-### TypeScript discipline (mandatory per `/bymax-workflow:standards`)
-- **`any` introduced** — use `unknown` + guard, a generic, or the upstream type.
-- **Non-null assertion (`!`) without an explanatory comment** describing the invariant that proves it safe.
-
-### Rust discipline (mandatory per `/bymax-workflow:standards` §15 — Rust projects)
-- **`unwrap()` / `expect()` / `panic!` / `todo!()` / `unimplemented!()` on a library path** — return a typed `Result` and propagate with `?`. (Test/bench/build code is exempt.)
-- **Public item missing rustdoc** — every `pub fn`/`struct`/`enum`/`trait`/`mod` needs a `///` doc and every crate a `//!` (the `#![deny(missing_docs)]` contract); fallible items missing a `# Errors` section; `unsafe fn` missing `# Safety`.
-- **`unsafe` block without a `// SAFETY:` comment**, or any `unsafe` in a crate that should `#![forbid(unsafe_code)]`.
-- **Stringly-typed errors** instead of a typed `thiserror` enum; **`anyhow` in a library's public API**.
-- **Error swallowed** — empty `Err` match arm, or `let _ = <fallible>;` discarding a `Result`.
-
----
-
-## MEDIUM — Should fix
-
-- Mutation patterns where immutable would do.
-- Emoji in code or comments.
-- Missing tests for new code.
-- **Copy-pasted logic across features/files that should be one shared unit** — same logic in ≥ 2 places belongs in `shared/utils` / `shared/ui` (or a `@bymax-one/*` lib when a second project needs it). See `/bymax-workflow:standards` §0 rung 6.
-- **Speculative generality (YAGNI)** — config options, params, abstractions, or "future-proofing" branches with no current caller. Build for today's requirement; see `/bymax-workflow:standards` §0 rung 1.
-- Accessibility issues (a11y) — missing labels, keyboard traps, color contrast.
-- Magic numbers without a named constant.
-- **`enum` declared instead of a string-literal union type** (per `/bymax-workflow:standards` §1).
-- **Comment not in English** — code, JSDoc, and inline notes must all be English. User-facing strings live in i18n bundles.
-- **`interface` used for a union/utility type, or `type` used for an entity-like shape** — see `/bymax-workflow:standards` §1 for the convention.
-- **Boolean variable not prefixed with `is` / `has` / `should` / `can`** (per `/bymax-workflow:standards` §2).
-- **Relative `../../../` import where a path alias exists** (`@/`, `@app/`, `@tests/`).
-- **Tailwind v4 — CSS variable in long form** `[var(--x)]`. Suggest the canonical shorthand `(--x)` (e.g., `border-[var(--glass-border)]` → `border-(--glass-border)`). See `/bymax-workflow:standards` § 12. **Skip this check on Tailwind v3 / NativeWind 4 projects** (the long form is the only valid form there).
-- **Tailwind v4 — ARIA boolean variant in long form** `aria-[<name>=true]:` where `<name>` is one of `invalid / disabled / pressed / expanded / hidden / selected / checked / busy / modal / required / readonly`. Suggest the canonical short variant (e.g., `aria-[invalid=true]:border-destructive` → `aria-invalid:border-destructive`). See `/bymax-workflow:standards` § 12.
-- **Tailwind v4 — arbitrary `rem` value that matches the default spacing/type scale** (e.g., `min-w-[8rem]`, `p-[1rem]`, `gap-[2rem]`, `text-[1rem]`, `h-[12rem]`). Suggest the canonical token (`min-w-32`, `p-4`, `gap-8`, `text-base`, `h-48`). Quick math: `token = rem × 4` for spacing/sizing. See `/bymax-workflow:standards` § 12 "Canonical numeric tokens". Only flag when the value cleanly maps to the default scale; **off-scale values stay arbitrary** (e.g., `w-[7.3rem]` is valid).
-- **Tailwind v4 — arbitrary `px` on the filter scale** (`backdrop-blur-[Npx]` or `blur-[Npx]`). Suggest the named token: `[4px]` = `xs`, `[8px]` = `sm`, `[12px]` = `md`, `[16px]` = `lg`, `[24px]` = `xl`, `[40px]` = `2xl`, `[64px]` = `3xl`. E.g., `backdrop-blur-[12px]` → `backdrop-blur-md`, `backdrop-blur-[16px]` → `backdrop-blur-lg`. See `/bymax-workflow:standards` § 12.
-- **Tailwind v4 — arbitrary z-index integer** `z-[N]`. v4 supports bare integers for z-index without brackets: `z-[200]` → `z-200`, `z-[9999]` → `z-9999`. See `/bymax-workflow:standards` § 12.
-- **Negative zero** — `-{utility}-0` equals `{utility}-0`. Flag and replace with the positive form: `-bottom-0` → `bottom-0`, `-top-0` → `top-0`, `-left-0` → `left-0`, `-right-0` → `right-0`, `-m-0` → `m-0`.
-- **Tailwind v4 — renamed utility from v3** still in use:
-  - **Scale shifts**: `shadow` → `shadow-sm`, `shadow-sm` → `shadow-xs`; `drop-shadow` → `drop-shadow-sm`, `drop-shadow-sm` → `drop-shadow-xs`; `blur` → `blur-sm`, `blur-sm` → `blur-xs`; `backdrop-blur` → `backdrop-blur-sm`, `backdrop-blur-sm` → `backdrop-blur-xs`; `rounded` → `rounded-sm`, `rounded-sm` → `rounded-xs`.
-  - **Gradients**: `bg-gradient-to-{r,l,t,b,tr,tl,br,bl}` → `bg-linear-to-{...}` (v4 added radial / conic, so "linear" disambiguates).
-  - **Ring default**: `ring` (was 3px) → `ring-3`; `ring-1` is now the default `ring`.
-  - **Renames**: `outline-none` → `outline-hidden`; `decoration-clone` → `box-decoration-clone`; `decoration-slice` → `box-decoration-slice`; `overflow-ellipsis` → `text-ellipsis`; `flex-shrink-*` → `shrink-*`; `flex-grow-*` → `grow-*`.
-  - **Opacity modifiers**: `bg-opacity-50`, `text-opacity-*`, `border-opacity-*`, `divide-opacity-*`, `placeholder-opacity-*`, `ring-opacity-*` → use `<color>/<n>` (e.g., `bg-blue-500/50`).
-  - See `/bymax-workflow:standards` § 12 "Renamed utilities (v3 → v4)" for the full table.
-- **Hardcoded hex value in JSX `className`** outside `tailwind.config.js`. Always use a token (`bg-primary`, `text-ink-base`).
-- **Dynamic Tailwind class string** the JIT can't see (e.g., `` `text-${size}` ``). Use full literals + `cn()` / `clsx()`.
-
-### Rust (MEDIUM — Rust projects; the Tailwind/TS-syntax checks above do not apply)
-- **Comment not in English**, or a **plan phase/task reference** in a committed comment (timeless-comments rule) — applies to `//` / `///` / `//!`.
-- **Magic number/string** without a named `const`.
-- **Avoidable `.clone()`** where a borrow would do, or `.to_string()` / `format!` in a hot path.
-- **Blocking work inside an `async fn`** (CPU-bound hashing, `std::fs`, blocking locks) without `spawn_blocking` — starves the runtime.
-- **Internal type leaked** through a crate's public API (`pub use` / `pub mod` exposing an implementation detail).
-- **Missing `#[must_use]`** on a pure function whose result must not be silently dropped.
-- **A new dependency** not justified or not cleared by `cargo deny` / the project's supply-chain policy.
-
----
-
-## LOW — Nit
-
-- Inconsistent naming with surrounding code.
-- Unnecessary re-exports.
-- Verbose comments that restate the code.
-
----
-
-## Report format
+## Usage
 
 ```
-## Code Review Report
+/bymax-quality:code-review [quick|full|deep] [target] [--fix]
+```
+
+| Argument | Meaning |
+| --- | --- |
+| `quick` | Mechanical gate + CRITICAL/HIGH judgment checks on changed lines only. Sanity check before a push. |
+| `full` *(default)* | Everything: mechanical gate, single-pass bug hunt, full convention checklist, verification. |
+| `deep` | `full`, but the bug hunt fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified. Use before merging a feature branch. |
+| `target` | Optional. A branch name (`feature-x` → reviews `main...feature-x`), a ref range (`main...feature-x`), a PR number (`#123`, checked out locally so `$RANGE` works with `git diff` — see Step 1), or a file path. Without a target: uncommitted changes, plus the branch's commits ahead of upstream when the working tree is clean. |
+| `--fix` | After the report, apply the confirmed mechanical MEDIUM fixes (Tailwind renames, canonical tokens) and any finding the user approves. Never commits. |
+
+> **Stack-adaptive.** Detect the stack first. On a **Rust** project (`Cargo.toml`), apply the
+> **Rust checks** flagged in each section below and **skip** the TypeScript/Tailwind-specific ones
+> (`any`/`enum`/`interface vs type`/JSDoc/`../../../` aliases/Tailwind rules). On a **TypeScript**
+> project (`package.json`), apply the TS checks as written. The CRITICAL security and suppression
+> rules apply to both.
+
+> **Composes with the built-in engine.** Claude Code ships its own multi-agent bug-hunting review
+> (`/code-review <effort>`, `/code-review ultra` for the cloud run) — it finds logic bugs but knows
+> nothing about Bymax conventions and never blocks. This command is the convention gate that does
+> block. For the heaviest bug pass, run the built-in `/code-review high` (or `ultra`) alongside this
+> command; `deep` mode approximates its finder→verify architecture locally with this plugin's agents.
+
+## Step 1 — Resolve the scope
+
+```bash
+# Default: uncommitted work first — tracked changes AND untracked new files
+# (a brand-new file with a secret or suppression must not slip the gate)…
+git diff --name-only HEAD
+git ls-files --others --exclude-standard          # untracked files, add to the set
+# …and if the working tree is clean, review the branch's committed work instead:
+git diff --name-only @{upstream}...HEAD   # fallback: main...HEAD
+```
+
+For the mechanical gate, include untracked files by intent-to-add them first
+(`git add -N .`) so `git diff` surfaces their added lines, or grep them directly.
+
+- Branch target → `git diff main...<branch>` (fetch from origin if the branch is only remote).
+- Ref range target → use it verbatim.
+- PR target → check it out locally so the range works with `git diff`:
+  `gh pr checkout <N>`, then `$RANGE` = `<base-branch>...HEAD`. When checkout
+  isn't possible, `git fetch origin pull/<N>/head` and use
+  `<base-branch>...FETCH_HEAD`.
+- File target → limit every step below to that file.
+
+Record the resolved diff range once and reuse it in every command below as `$RANGE`
+(for uncommitted work, `HEAD`).
+
+## Step 2 — Mechanical gate (deterministic)
+
+Run these greps over the diff so findings are exact facts, not model impressions. The
+`added()` helper isolates **added content lines** by re-marking them with `>` via
+`--output-indicator-new` — this leaves the `+++ b/path` file header untouched (so a
+filename containing a flagged token can't false-positive) and, unlike a `^\+` /
+`grep -v '^+++'` filter, never drops a real content line that happens to start with
+`++` (which would otherwise collide with the header prefix). Match the token anywhere on
+the line — never fold an anchor and the token into one pattern like `^\+[^+].*TOKEN`,
+because `[^+]` eats the first character of a token sitting at column 0 (`+console.log`,
+`+#[allow(...)]`) and misses it. The `added()` output is content only — to get the
+`file:line` of a hit, re-grep the working tree for it (`git grep -n '<pattern>'`), since
+these are exact string matches. Anything matched here is a finding — no judgment call, no
+verification needed.
+
+```bash
+# Added content lines only: git marks them '>' instead of '+', leaving the
+# '+++ b/path' header as-is — no header collision, no lost '++'-prefixed content.
+added() { git diff --output-indicator-new='>' -U0 "$@" | grep '^>'; }
+
+# CRITICAL — suppression comments (zero tolerance, see policy below)
+added $RANGE | grep -E 'eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|prettier-ignore|as any|as unknown as|#\[allow\(|#!\[allow\(|# noqa|# type: ignore|@SuppressWarnings'
+
+# CRITICAL — CLI bypasses committed in scripts or hooks
+added $RANGE | grep -E -- '--no-verify|--skip-checks|--no-gpg-sign'
+
+# HIGH — raw console in production code (frontend must use the project logger).
+# Exclude test files by the `.test.`/`.spec.` convention — matched as a substring so
+# `latest.ts`/`contest.ts` are NOT excluded (a bare `*test*` would wrongly drop them).
+added $RANGE -- '*.ts' '*.tsx' ':!*.test.*' ':!*.spec.*' | grep -E 'console\.(log|warn|error|debug|info)'
+
+# HIGH — TODO/FIXME without an issue link
+added $RANGE | grep -E '(^|[^A-Za-z])(TODO|FIXME|XXX|HACK)([^A-Za-z]|$)' | grep -vE '#[0-9]+|issues/'
+
+# HIGH — file over 800 lines (NUL-delimited so paths with spaces survive)
+git diff --name-only -z $RANGE | while IFS= read -r -d '' f; do [ -f "$f" ] && wc -l "$f"; done | awk '$1 > 800'
+
+# MEDIUM — Tailwind v4 non-canonical forms (skip on Tailwind v3 / NativeWind projects)
+added $RANGE -- '*.tsx' '*.jsx' | grep -E '\[var\(--|aria-\[(invalid|disabled|pressed|expanded|hidden|selected|checked|busy|modal|required|readonly)=(true|false)\]|z-\[[0-9]+\]|-(bottom|top|left|right|m)-0([^.0-9]|$)'
+
+# MEDIUM — Tailwind v3 utilities renamed in v4
+added $RANGE -- '*.tsx' '*.jsx' | grep -E 'bg-gradient-to-|outline-none|decoration-(clone|slice)|overflow-ellipsis|flex-(shrink|grow)-|(bg|text|border|divide|placeholder|ring)-opacity-[0-9]'
+
+# MEDIUM — hardcoded hex colors in className (use design tokens)
+added $RANGE -- '*.tsx' '*.jsx' | grep -E 'className=.*#[0-9a-fA-F]{3,8}'
+
+# MEDIUM — dynamic Tailwind class strings the JIT cannot see
+added $RANGE -- '*.tsx' '*.jsx' | grep -E 'className=\{`[^`]*\$\{'
+```
+
+Severity mapping for Tailwind canonical forms (flag → suggest): `[var(--x)]` → `(--x)` ·
+`aria-[invalid=true]:` → `aria-invalid:` · `z-[200]` → `z-200` · `-bottom-0` → `bottom-0` ·
+`bg-gradient-to-r` → `bg-linear-to-r` · `outline-none` → `outline-hidden` ·
+`bg-opacity-50` → `bg-blue-500/50` form · on-scale arbitrary rem (`p-[1rem]` → `p-4`,
+`min-w-[8rem]` → `min-w-32`; token = rem × 4, off-scale values stay arbitrary) · filter px
+(`backdrop-blur-[12px]` → `backdrop-blur-md`: 4=xs 8=sm 12=md 16=lg 24=xl 40=2xl 64=3xl) ·
+v3 scale shifts (`shadow`→`shadow-sm`, `rounded`→`rounded-sm`, `blur`→`blur-sm`,
+`ring`→`ring-3`). Full table: `/bymax-workflow:standards` §12.
+
+Also scan added lines for secrets (AWS keys, GitHub PATs, JWTs, PEM blocks, provider tokens) —
+the `secret-scanner` hook blocks writes, but the diff may predate the hook.
+
+## Step 3 — Bug hunt
+
+Skipped in `quick` mode.
+
+**`full` (default):** hunt logic bugs yourself, single pass. For each changed file, read the whole
+file plus its call sites — never review a hunk in isolation. Hunt specifically for: broken edge
+cases (empty/null/zero/unicode), off-by-one and boundary errors, async races and unawaited
+promises, error paths that leave state inconsistent, wrong operator or inverted condition,
+regressions in callers the diff didn't touch. Report only what you are >80% confident is real.
+
+**`deep`:** spawn two finder sub-agents **in parallel** on the resolved diff and collect their
+candidates:
+
+1. The stack reviewer (`typescript-reviewer` on TS projects, `rust-reviewer` on Rust) — logic and
+   type-level bugs.
+2. `security-reviewer` — injection, SSRF, authz gaps, unsafe crypto, PII leaks.
+
+Finder output is **candidates, not findings** — every one of them goes through Step 5 before it
+can be reported. Never spawn agents that run test suites; finders read code only.
+
+## Step 4 — Convention checklist (judgment)
+
+The mechanical patterns already ran in Step 2; this step covers what needs reading comprehension.
+In `quick` mode, check only CRITICAL and HIGH.
+
+### CRITICAL — block on sight
+
+- SQL injection (string-built queries), XSS (unsafe `dangerouslySetInnerHTML`, unescaped user
+  input), path traversal (user input feeding `fs`/`path.join`).
+- Missing input validation on a public boundary (HTTP handler, IPC, file parser).
+- Logging or analytics that include PII, credentials, medical data, or other sensitive fields.
+- Insecure dependencies (known CVEs, abandoned packages).
+
+### Suppression policy — zero tolerance
+
+Any suppression matched in Step 2 (or spotted while reading) is a CRITICAL block:
+`eslint-disable` in any form, `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`, `as any`,
+`as unknown as <T>` laundering a real type error, `prettier-ignore` (unless preserving a
+deliberately-formatted table), cross-language suppressions (`# noqa`, `# type: ignore`,
+`@SuppressWarnings`), and in Rust: `#[allow(...)]` silencing a clippy/rustc gate without a
+user-accepted justification, `unsafe` without a `// SAFETY:` comment or inside a
+`#![forbid(unsafe_code)]` crate, `#[ignore]` hiding a failing test.
+
+**The rule:** fix the underlying cause. A failing lint or type error means the code is wrong, the
+type is wrong, or the rule is wrong — choose one and fix it. Never silence the messenger.
+
+**The only acceptable exception:** a suppression that (1) references a specific issue or PR
+(`// eslint-disable-next-line no-unused-vars -- see #1234, follow-up tracked`) AND (2) has a
+clear, time-bounded reason. Even then, flag it as HIGH so the reviewer accepts it explicitly.
+If the user is fighting a wrong rule, change the rule config with justification — never scatter
+`disable` comments through the code.
+
+### HIGH — must fix before merge
+
+- Functions > 50 lines; nesting depth > 4.
+- **Docs (per `/bymax-workflow:standards`):** non-trivial source file missing the file-header
+  JSDoc (Purpose + Layer); exported function/hook/component/service/store missing JSDoc with
+  `@param`/`@returns`/`@throws`; test `it`/`test` block without a comment naming the scenario
+  and the rule it protects. **Rust:** public item missing rustdoc (`///`, crate `//!`,
+  `# Errors` on fallible items, `# Safety` on `unsafe fn`).
+- **Architecture:** cross-feature import (`features/X/` importing `features/Y/` — orchestrate one
+  level up); domain import inside `shared/ui/`; internal export leaked through a feature barrel.
+- **Reinvented wheel (standards §0 simplicity ladder):** new code reimplements something that
+  exists in this repo, in a `@bymax-one/*` lib, in the stdlib/platform (`Intl`,
+  `crypto.randomUUID()`, `URL`, `structuredClone`, native `<input>` types, `std`/`core`), or in
+  an installed dependency — point to the existing symbol. A new dependency for something already
+  covered must be justified.
+- **Error handling:** empty `catch`, `catch` that only logs without surfacing, ignored rejected
+  promises, missing boundary validation (Zod or equivalent). **Rust:** `unwrap()`/`expect()`/
+  `panic!`/`todo!()` on a library path (tests exempt); stringly-typed errors instead of a
+  `thiserror` enum; `anyhow` in a library's public API; `let _ =` discarding a `Result`.
+- **TS discipline:** `any` introduced (use `unknown` + guard, a generic, or the upstream type);
+  non-null assertion `!` without a comment proving the invariant.
+- An existing suppression retained without an issue-link justification (see policy above).
+
+### MEDIUM — should fix
+
+- Mutation where immutable would do; magic numbers without a named constant; emoji in code.
+- Missing tests for new code.
+- Copy-pasted logic across ≥ 2 places that belongs in `shared/` or a `@bymax-one/*` lib.
+- Speculative generality (YAGNI) — options/params/abstractions with no current caller.
+- Accessibility: missing labels, keyboard traps, color contrast.
+- `enum` instead of a string-literal union; `interface` for a union/utility type or `type` for an
+  entity shape (standards §1); boolean not prefixed `is/has/should/can`; `../../../` where a path
+  alias exists.
+- Comment not in English; plan phase/task references in committed comments (timeless-comments
+  rule). **Rust:** avoidable `.clone()`/`format!` in a hot path; blocking work in an `async fn`
+  without `spawn_blocking`; internal type leaked through the public API; missing `#[must_use]`;
+  a dependency not cleared by `cargo deny`.
+
+### LOW — nit
+
+- Inconsistent naming with surrounding code; unnecessary re-exports; comments restating the code.
+
+## Step 5 — Verify before reporting
+
+Candidate ≠ finding. For **every** non-mechanical candidate (yours or a finder agent's):
+
+1. Re-open the file at the cited line and confirm the claim against the actual code — the guard
+   the finder "missed" is often three lines up.
+2. For behavior claims, trace the call path; a claim that survives only as an inference from
+   naming is dropped.
+3. Consolidate duplicates ("5 functions missing JSDoc" is one finding with five locations).
+4. Drop everything unconfirmed. Track the dropped count for the report.
+
+Step 2 (mechanical) findings skip verification — they are already exact.
+
+## Step 6 — Report and verdict
+
+```
+## Code Review Report  (mode: <quick|full|deep> · scope: <range>)
 
 ### CRITICAL (n)
 - <file>:<line> — <issue> — <suggested fix>
@@ -158,7 +245,13 @@ If the user is genuinely fighting a wrong rule, the right fix is to change the r
 ### LOW (n)
 - ...
 
+Candidates dropped in verification: <n>
 Verdict: BLOCK / APPROVE WITH CHANGES / APPROVE
 ```
 
 **Never approve code with security vulnerabilities or new suppression comments.**
+Any CRITICAL or HIGH ⇒ verdict is BLOCK.
+
+With `--fix`: after the report, apply the mechanical MEDIUM fixes (Tailwind renames and canonical
+tokens are deterministic rewrites) and any other finding the user approves, then re-run Step 2 to
+confirm the gate is clean. Never commit — the user commits.

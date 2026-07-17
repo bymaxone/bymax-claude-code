@@ -1,7 +1,7 @@
 {
   "name": "bymax-quality",
-  "description": "Quality gates and review tooling for TypeScript and Rust: /bymax-quality:code-review (CRITICAL→LOW severity), /bymax-quality:tdd (red-green-refactor), multi-stack tester skill, seven specialist sub-agents, and pre/post hooks (secret-scanner blocks credential commits, console-log-scan warns on stale logs).",
-  "version": "1.3.0",
+  "description": "Quality gates and review tooling for TypeScript and Rust: /bymax-quality:code-review (deterministic mechanical gate + bug hunt with adversarial verification, modes quick/full/deep, CRITICAL→LOW severity, blocks on CRITICAL/HIGH), /bymax-quality:review-md (generates a repo REVIEW.md so Anthropic's cloud Code Review enforces the same rules), /bymax-quality:tdd (red-green-refactor), multi-stack tester skill, seven specialist sub-agents, and pre/post hooks (secret-scanner blocks credential commits, console-log-scan warns on stale logs).",
+  "version": "1.4.0",
   "author": {
     "name": "Bymax One",
     "email": "support@bymax.one",

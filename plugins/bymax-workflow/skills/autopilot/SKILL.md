@@ -103,6 +103,20 @@ Per-project parameters live in **`docs/AUTOPILOT.md`** in the target repo
    (e.g. `docker info` non-zero), report precisely and STOP — the operator
    fixes the environment; you do not.
 
+6. **Unattended-session hardening** — the chain runs for hours with no human:
+   - Recommend the operator set `CLAUDE_CODE_RETRY_WATCHDOG` in the
+     orchestrator's environment — it is Claude Code's supported mechanism for
+     keeping an unattended session retrying through extended API incidents
+     (`CLAUDE_CODE_MAX_RETRIES` is capped at 15 and is not meant for this).
+   - Confirm the Claude login is fresh — an expiring login interrupts
+     background sessions mid-chain. If the CLI is warning that authentication
+     is about to expire, re-authenticate before launch.
+   - Confirm the permissions the implementers will need are pre-approved
+     (project `.claude/settings.json` allowlist or auto mode). A background
+     sub-agent hitting an unapproved tool call does not auto-deny — it
+     surfaces the prompt in the main session and **waits**, stalling the
+     chain until a human answers.
+
 ---
 
 ## INIT mode — generate `docs/AUTOPILOT.md`

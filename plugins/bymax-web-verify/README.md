@@ -1,6 +1,6 @@
 # 🌐 Bymax Web Verify
 
-> Real-browser verification for web apps, powered by the [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (Vercel Labs). One-command setup, a `SessionStart` reminder when the CLI is missing, and a verify command that drives a live browser — navigate, interact, screenshot, read console/errors.
+> Real-browser verification **and assisted UI testing** for web apps. `/bymax-web-verify:test` brings the full stack up and walks a UI flow while you watch — in the Claude Desktop Browser pane (preview) when available, or the [`agent-browser`](https://github.com/vercel-labs/agent-browser) CLI (Vercel Labs) in a terminal. `/bymax-web-verify:verify` confirms a single change in a live browser. One-command setup, plus a `SessionStart` reminder when the CLI is missing.
 
 This plugin **depends on** `agent-browser` but never bundles it — the same "require, don't embed" approach as [`bymax-mobile`](../bymax-mobile) (which depends on Xcode / the Android SDK). `agent-browser` is `~93%` lighter on context than the Playwright MCP because it returns compact snapshot **refs** (`@e1`, `@e2`) instead of a full accessibility tree.
 
@@ -25,6 +25,7 @@ That's the whole "format-my-Mac" recovery path: install the plugin, run `/bymax-
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `/bymax-web-verify:setup`    | One-shot, idempotent install of the `agent-browser` CLI **and** its Chrome for Testing engine, finished by a live smoke test. |
 | `/bymax-web-verify:verify`   | Drives a real browser to confirm a change works: opens a URL (default: your local dev server), exercises the path, and reports PASS/FAIL with screenshot + console/page errors. |
+| `/bymax-web-verify:test`     | **Assisted UI testing, full stack up.** Discovers frontend/backend, reuses an already-running backend (or starts one and waits for health), opens the frontend in the **Claude Desktop Browser pane** (`.claude/launch.json` + preview) and walks a flow step by step while you watch — verifying each step via page state, console, network calls (2xx gate), and server logs. Falls back to `agent-browser` in a terminal. Args: free-text flow (default: smoke test), `browser`, `mobile`, `dark`. |
 
 Plus a **`SessionStart` hook** that stays silent when the CLI is present, and — only when it's missing — nudges Claude to offer `/bymax-web-verify:setup`. It never installs anything unprompted and never blocks the session.
 

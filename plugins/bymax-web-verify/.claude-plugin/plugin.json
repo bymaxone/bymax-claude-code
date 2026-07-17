@@ -1,7 +1,7 @@
 {
   "name": "bymax-web-verify",
-  "description": "Real-browser verification for web apps, powered by the `agent-browser` CLI (Vercel Labs). /bymax-web-verify:setup installs everything in one shot (CLI + Chrome for Testing) — ideal as a portable backup after a fresh macOS install. /bymax-web-verify:verify drives a real browser to confirm a change works (navigate, interact, screenshot, read console/errors). A SessionStart hook detects a missing CLI and offers to install it. Depends on `agent-browser` but never bundles it.",
-  "version": "1.0.1",
+  "description": "Real-browser verification and assisted UI testing for web apps. /bymax-web-verify:test brings the full stack up — reuses a running backend instance or starts one, opens the frontend in the Claude Desktop Browser pane (preview) — and walks a UI flow step by step while the user watches, verifying via page state, console, network (2xx gate), and server logs; falls back to the agent-browser CLI in a terminal. /bymax-web-verify:verify drives a real browser to confirm a single change works. /bymax-web-verify:setup installs the agent-browser CLI + Chrome for Testing in one shot. A SessionStart hook detects a missing CLI and offers to install it. Depends on `agent-browser` but never bundles it.",
+  "version": "1.1.0",
   "author": {
     "name": "Bymax One",
     "email": "support@bymax.one",
