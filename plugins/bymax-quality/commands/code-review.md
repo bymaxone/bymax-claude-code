@@ -19,7 +19,7 @@ and a verification pass that filters false positives before anything is reported
 | `quick` | Mechanical gate + CRITICAL/HIGH judgment checks on changed lines only. Sanity check before a push. |
 | `full` *(default)* | Everything: mechanical gate, single-pass bug hunt, full convention checklist, verification. |
 | `deep` | `full`, but the bug hunt fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified. Use before merging a feature branch. |
-| `target` | Optional. A branch name (`feature-x` → reviews `main...feature-x`), a ref range (`main...feature-x`), a PR number (`#123`, uses `gh pr diff`), or a file path. Without a target: uncommitted changes, plus the branch's commits ahead of upstream when the working tree is clean. |
+| `target` | Optional. A branch name (`feature-x` → reviews `main...feature-x`), a ref range (`main...feature-x`), a PR number (`#123`, checked out locally so `$RANGE` works with `git diff` — see Step 1), or a file path. Without a target: uncommitted changes, plus the branch's commits ahead of upstream when the working tree is clean. |
 | `--fix` | After the report, apply the confirmed mechanical MEDIUM fixes (Tailwind renames, canonical tokens) and any finding the user approves. Never commits. |
 
 > **Stack-adaptive.** Detect the stack first. On a **Rust** project (`Cargo.toml`), apply the

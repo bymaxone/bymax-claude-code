@@ -134,9 +134,10 @@ URL and update nothing — the push already refreshed it.
 
 Otherwise author the PR from **everything the PR will contain** — the full range
 `git log <default>..HEAD` and `git diff <default>...HEAD --stat`, not just the last
-commit — and create it:
+commit — write the body to a temp file, and create it:
 
 ```bash
+body=$(mktemp)   # write the full PR body (shape below) to "$body"
 gh pr create --base <default-branch> --title "<title>" --body-file "$body"
 ```
 
