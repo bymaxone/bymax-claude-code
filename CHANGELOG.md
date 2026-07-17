@@ -48,7 +48,7 @@ A new command in `bymax-web-verify` that brings the project's full stack up and 
 
 ### Changed — toolkit-wide sync with recent Claude Code capabilities
 
-An audit of every plugin against the Claude Code 2.1.17x–2.1.212 changelog produced four more updates:
+An audit of every plugin against the Claude Code `2.1.174`–`2.1.212` changelog range produced four more updates:
 
 - **`bymax-pr` / babysit-pr — CI-duration-driven pacing.** The fixed 270 s wake-up was justified by the old 5-minute prompt-cache TTL; the TTL is now one hour, so cache pressure no longer dictates cadence. The delay is now chosen from what the loop is actually waiting for — remaining CI time estimated from the workflow's recent run durations, 900–1800 s when waiting on a review bot or human — with 270 s kept as the floor. Fewer wake-ups, same responsiveness.
 - **`bymax-workflow` / autopilot — unattended-session hardening (new precondition 6).** Three launch checks matching how Claude Code now treats unattended sessions: recommend `CLAUDE_CODE_RETRY_WATCHDOG` (the supported retry mechanism now that `CLAUDE_CODE_MAX_RETRIES` caps at 15), confirm the login will not expire mid-chain (an expiring login interrupts background sessions), and pre-approve implementer permissions — background sub-agents no longer auto-deny on a permission prompt; they surface it in the main session and wait, which would stall the chain.

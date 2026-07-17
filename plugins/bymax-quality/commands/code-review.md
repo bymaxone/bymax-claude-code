@@ -69,8 +69,9 @@ filename containing a flagged token can't false-positive) and, unlike a `^\+` /
 `++` (which would otherwise collide with the header prefix). Match the token anywhere on
 the line — never fold an anchor and the token into one pattern like `^\+[^+].*TOKEN`,
 because `[^+]` eats the first character of a token sitting at column 0 (`+console.log`,
-`+#[allow(...)]`) and misses it. Map each match back to its `file:line` via the `@@` hunk
-headers (or re-grep the file). Anything matched here is a finding — no judgment call, no
+`+#[allow(...)]`) and misses it. The `added()` output is content only — to get the
+`file:line` of a hit, re-grep the working tree for it (`git grep -n '<pattern>'`), since
+these are exact string matches. Anything matched here is a finding — no judgment call, no
 verification needed.
 
 ```bash
