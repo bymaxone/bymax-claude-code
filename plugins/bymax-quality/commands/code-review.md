@@ -62,17 +62,21 @@ Record the resolved diff range once and reuse it in every command below as `$RAN
 ## Step 2 — Mechanical gate (deterministic)
 
 Run these greps over the diff so findings are exact facts, not model impressions. The
-`added()` helper isolates **added content lines**: it keeps `+`-prefixed lines and drops
-the `+++ b/path` file header (which a bare `^\+` would false-positive on when a filename
-contains a flagged token). Match the token anywhere on the line — never fold the anchor
-and the token into one pattern like `^\+[^+].*TOKEN`, because `[^+]` eats the first
-character of a token sitting at column 0 (`+console.log`, `+#[allow(...)]`) and misses it.
-Map each match back to its `file:line` via the `@@` hunk headers (or re-grep the file).
-Anything matched here is a finding — no judgment call, no verification needed.
+`added()` helper isolates **added content lines** by re-marking them with `>` via
+`--output-indicator-new` — this leaves the `+++ b/path` file header untouched (so a
+filename containing a flagged token can't false-positive) and, unlike a `^\+` /
+`grep -v '^+++'` filter, never drops a real content line that happens to start with
+`++` (which would otherwise collide with the header prefix). Match the token anywhere on
+the line — never fold an anchor and the token into one pattern like `^\+[^+].*TOKEN`,
+because `[^+]` eats the first character of a token sitting at column 0 (`+console.log`,
+`+#[allow(...)]`) and misses it. Map each match back to its `file:line` via the `@@` hunk
+headers (or re-grep the file). Anything matched here is a finding — no judgment call, no
+verification needed.
 
 ```bash
-# Added content lines only: keep '+' lines, drop the '+++ '/'--- ' headers.
-added() { git diff -U0 "$@" | grep -E '^\+' | grep -vE '^\+\+\+ '; }
+# Added content lines only: git marks them '>' instead of '+', leaving the
+# '+++ b/path' header as-is — no header collision, no lost '++'-prefixed content.
+added() { git diff --output-indicator-new='>' -U0 "$@" | grep '^>'; }
 
 # CRITICAL — suppression comments (zero tolerance, see policy below)
 added $RANGE | grep -E 'eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|prettier-ignore|as any|as unknown as|#\[allow\(|#!\[allow\(|# noqa|# type: ignore|@SuppressWarnings'
