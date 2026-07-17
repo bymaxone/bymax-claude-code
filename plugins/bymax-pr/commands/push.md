@@ -39,10 +39,15 @@ Determine:
 - **Default branch**: `git symbolic-ref --quiet refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'`
   (fallback: `main`, then `master`).
 - **Is anything staged?** `git diff --cached --quiet` → exit 1 means yes.
-- **Anything to ship at all?** Something to commit (staged OR unstaged OR untracked),
-  **or** the branch is already ahead of its upstream (`git log @{upstream}..HEAD --oneline`
-  non-empty) — in that case skip Steps 2–3 and go straight to push (and PR if requested):
-  the work is committed, it just never left the machine.
+- **Anything to ship at all?** There must be either something to commit (staged OR
+  unstaged OR untracked) **or** commits already ahead of upstream
+  (`git log @{upstream}..HEAD --oneline` non-empty). If there is nothing to commit
+  **and** nothing ahead → stop (see below).
+- **Skip Steps 2–3 only when the working tree is clean AND there are commits ahead** —
+  i.e. the sole thing to ship is already-committed work that never left the machine, so
+  go straight to push (and PR if requested). Whenever there is *any* uncommitted change
+  (staged, unstaged, or untracked), you MUST run Steps 2–3 to stage and commit it, even
+  if the branch also has earlier commits ahead of upstream.
 
 Stop early and report (do NOT proceed) if:
 
