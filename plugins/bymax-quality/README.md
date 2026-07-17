@@ -15,7 +15,8 @@ claude plugin install bymax-quality@bymax-claude-code
 
 | Command         | Purpose                                                                                                                                                  |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/bymax-quality:code-review`  | CRITICAL → HIGH → MEDIUM → LOW review (TypeScript and Rust). Blocks suppression comments (`@ts-ignore`, `eslint-disable`, `as any`, Rust `#[allow]`/`unsafe`). Reports JSDoc/rustdoc gaps, cross-feature imports, swallowed errors. |
+| `/bymax-quality:code-review`  | CRITICAL → HIGH → MEDIUM → LOW review (TypeScript and Rust) with selectable depth: `quick` \| `full` \| `deep` and an optional target (branch, ref range, PR#, file). Deterministic mechanical gate (grep-exact findings for suppressions, `console.*`, Tailwind canonical forms), then a bug hunt (`deep` fans out to the stack + security reviewer agents), then adversarial verification — every non-mechanical candidate is re-checked against the file before it is reported. Blocks suppression comments (`@ts-ignore`, `eslint-disable`, `as any`, Rust `#[allow]`/`unsafe`). `--fix` applies mechanical fixes after the report. |
+| `/bymax-quality:review-md`    | Generates a repo-root `REVIEW.md` — the distilled Bymax rules injected verbatim into Anthropic's built-in Code Review (cloud `@claude review` on PRs, `/code-review ultra`), so the cloud engine enforces the same invariants the local gate blocks on. |
 | `/bymax-quality:tdd`          | Strict red-green-refactor cycle (Jest/Vitest or Rust `#[test]`/`cargo test`). Forces failing test before implementation. 80%+ coverage minimum (100% on critical paths). Every `it()` / `#[test]` carries a block comment. |
 
 ### Skill

@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "bymax-claude-code",
   "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), loop-engineering autopilot (autonomous roadmap execution, one merge-gated PR per phase), quality gates (TDD + code-review + security-review) for TypeScript and Rust, specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, autonomous PR babysitting, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "owner": {
     "name": "Bymax One",
     "email": "support@bymax.one",
@@ -18,7 +18,7 @@
     },
     {
       "name": "bymax-quality",
-      "description": "Quality gates: /bymax-quality:code-review (CRITICAL → LOW severity, blocks suppression comments), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, seven specialist sub-agents (incl. a Rust reviewer), and two pre/post hooks (secret-scanner, console-log-scan).",
+      "description": "Quality gates: /bymax-quality:code-review (mechanical gate + verified bug hunt, modes quick/full/deep, CRITICAL → LOW severity, blocks suppression comments), /bymax-quality:review-md (REVIEW.md generator for Anthropic's cloud Code Review), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, seven specialist sub-agents (incl. a Rust reviewer), and two pre/post hooks (secret-scanner, console-log-scan).",
       "category": "quality",
       "source": "./plugins/bymax-quality",
       "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-quality"
@@ -39,14 +39,14 @@
     },
     {
       "name": "bymax-web-verify",
-      "description": "Real-browser verification powered by the agent-browser CLI (Vercel Labs). /bymax-web-verify:setup installs everything in one shot (CLI + Chrome) — ideal as a portable backup after a fresh macOS install. /bymax-web-verify:verify drives a live browser to confirm a web change works. A SessionStart hook offers to install the CLI when it's missing. Depends on agent-browser; never bundles it.",
+      "description": "Real-browser verification and assisted UI testing. /bymax-web-verify:test brings the full stack up (reuses or starts the backend, frontend in the Claude Desktop Browser pane) and walks a UI flow while the user watches, with console/network/server-log verification per step; agent-browser fallback in terminals. /bymax-web-verify:verify confirms a single web change in a live browser. /bymax-web-verify:setup installs the agent-browser CLI + Chrome in one shot. Depends on agent-browser; never bundles it.",
       "category": "quality",
       "source": "./plugins/bymax-web-verify",
       "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-web-verify"
     },
     {
       "name": "bymax-pr",
-      "description": "Autonomously shepherds an open PR to merge-readiness, powered by the gh CLI. /bymax-pr:babysit-pr resolves conflicts, polls CI every 270s, classifies failures as real vs flaky (re-running flaky checks), fixes real failures locally before pushing, triages bot review comments, and notifies you when the PR is green. Never merges, never pushes to the base branch. A built-in preflight verifies gh is installed and authenticated. Depends on gh + git; never bundles them.",
+      "description": "The PR lifecycle, powered by the gh CLI. /bymax-pr:push ships work safely (feature branch — never the default branch — staged set respected, complete Conventional-Commits message, push with upstream; `pr` token opens a fully-described PR). /bymax-pr:babysit-pr shepherds the open PR to merge-readiness: resolves conflicts, polls CI at a cadence matched to the CI's real duration (270 s floor), classifies real vs flaky failures, fixes real ones locally, triages bot review comments, and notifies you when green. Never merges, never pushes to the base branch. Depends on gh + git; never bundles them.",
       "category": "workflow",
       "source": "./plugins/bymax-pr",
       "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-pr"

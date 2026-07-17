@@ -11,6 +11,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.7.0] — 2026-07-17
+
+### Changed — `/bymax-quality:code-review` v2: mechanical gate, verified bug hunt, selectable depth
+
+The command graduates from a single-pass checklist to a pipeline that borrows the architecture of Claude Code's built-in review engine (finders → adversarial verification) while keeping what only this gate does: enforce the Bymax conventions and **block** on CRITICAL/HIGH — the built-in engine never blocks.
+
+- **Modes**: `quick` (mechanical gate + CRITICAL/HIGH on changed lines — pre-push sanity check), `full` (default — everything, single-pass bug hunt), `deep` (bug hunt fans out to the `typescript-reviewer`/`rust-reviewer` + `security-reviewer` sub-agents in parallel as finders; read-only, never test-running).
+- **Flexible targets**: branch (`main...feature-x`), explicit ref range, PR number (`gh pr diff`), or single file — previously only `git diff HEAD` (uncommitted work). With a clean working tree it now reviews the branch's commits ahead of upstream instead of finding nothing.
+- **Mechanical gate (Step 2)**: the regex-shaped checklist items (suppression comments, CLI bypasses, raw `console.*`, TODO without issue link, files > 800 lines, every Tailwind v4 canonical-form and v3-rename rule, hex in `className`, JIT-invisible dynamic classes) are now executed as concrete `git diff -U0 | grep` commands over added lines — findings are exact `file:line` facts instead of model impressions, faster and immune to hallucinated locations.
+- **Adversarial verification (Step 5)**: candidate ≠ finding. Every non-mechanical candidate — the main agent's or a finder's — is re-checked against the file at the cited line, behavior claims must survive a call-path trace (naming-based inference is dropped), duplicates are consolidated, and the report states how many candidates were dropped. Mechanical findings skip verification because they are already exact.
+- **`--fix`**: applies the deterministic mechanical MEDIUM rewrites (Tailwind renames/canonical tokens) plus any user-approved finding after the report, then re-runs the gate; never commits.
+- Checklist content is otherwise preserved (zero-tolerance suppression policy, standards §0 simplicity ladder, JSDoc/rustdoc, cross-feature imports, timeless comments), reorganized into mechanical vs judgment items.
+
+### Added — `/bymax-quality:review-md`: REVIEW.md generator for Anthropic's cloud Code Review
+
+Anthropic's Code Review (cloud `@claude review` on PRs, `/code-review ultra`) reads a repo-root `REVIEW.md` and injects it verbatim into every review agent as the highest-priority instruction block — but it knows nothing about Bymax conventions out of the box. The new command distills the `/bymax-quality:code-review` checklist plus the project's `CLAUDE.md` invariants into that file: suppressions/secrets escalated to 🔴 Important, nit cap with re-review convergence, skip rules (generated files, lockfiles, CI-enforced checks), and a per-repo "Always check" list. Constraints are enforced by the command: self-contained (no `@` imports — the file is pasted verbatim), ≤ ~100 lines, refreshed rather than duplicated when one already exists. Division of labor stays explicit: the local command is the blocking gate; `REVIEW.md` is the projection of the same rules onto the cloud engine.
+
+### Added — `/bymax-pr:push`: ship work safely, with an explicit PR opt-in
+
+The user-scope `/push` skill graduates into the `bymax-pr` plugin (versioned, installable on any machine) and gains a PR mode. The flow: inspect (read-only) → branch (**a commit never lands on the default branch** — create `<type>/<slug>` when on it, reuse the current feature branch otherwise, always `git switch -c`) → stage (respect a pre-staged index; `git add -A` only when the index is empty) → commit (complete Conventional-Commits message: title ≤ 72 chars validated before committing, body bullets carrying the what + why) → push with upstream.
+
+- **`pr` token = explicit opt-in.** `/bymax-pr:push` alone never opens a PR (it prints the compare URL); `/bymax-pr:push pr` also creates the GitHub PR via `gh` with a complete body (Summary / Changes / How to verify / Notes) authored from the **entire** `default..HEAD` range, not just the last commit. An existing PR for the branch is detected and reported, not duplicated.
+- **Ship-what's-committed**: a clean tree with commits ahead of upstream skips straight to push/PR instead of reporting "nothing to do".
+- Safety rails: never force-push, never `--no-verify`, no AI-attribution trailers in commits or PR bodies, timeless messages (no plan-phase refs), `gh auth` preflight when `pr` is requested, one verified git mutation per step.
+- README reframed: the plugin now covers the PR lifecycle end to end — `/bymax-pr:push pr` → `/bymax-pr:babysit-pr <PR#>`.
+
+### Added — `/bymax-web-verify:test`: assisted UI testing in the Claude Desktop preview
+
+A new command in `bymax-web-verify` that brings the project's full stack up and tests the UI **while the user watches**. Mode is detected from the session's toolset, no argument needed: when the Claude Desktop Browser-pane tools are present it runs PREVIEW mode (the primary target — `.claude/launch.json` + `preview_start`, the user sees every click); in a plain terminal it falls back to the `agent-browser` CLI (with the plugin's existing setup pre-flight).
+
+- **Backend orchestration**: discovers the layout (single app or `frontend/`+`backend/` monorepo), and an instance already running on the device is **reused** (port + health check probe) — never duplicated, never killed; only when nothing is running does it start the dev script in the background and wait for health before touching the frontend.
+- **Assisted loop**: the flow argument (free text, e.g. `"login"`) becomes a numbered test script; each step is announced, executed via page refs (click/type/forms), and verified against **four evidence sources** — UI state, console (an error fails the step), network calls (an unexpected 4xx/5xx fails the step even when the UI looks fine), and server logs — with screenshots as proof. No argument = smoke test. `browser` forces the external browser; `mobile`/`dark` set the viewport.
+- **Safety rails**: never real credentials (seeded/test users only), never destructive actions unasked, created test data is named `test-…` and listed in the report. Servers are left running at the end — the user keeps interacting with the preview — with exact stop instructions for whatever the command itself started.
+- Positioning vs `verify`: `verify` confirms one change, pointed and browser-only; `test` walks a flow with the stack up, preview-first. `bymax-web-verify` bumped to `1.1.0`.
+
+### Changed — toolkit-wide sync with recent Claude Code capabilities
+
+An audit of every plugin against the Claude Code 2.1.17x–2.1.212 changelog produced four more updates:
+
+- **`bymax-pr` / babysit-pr — CI-duration-driven pacing.** The fixed 270 s wake-up was justified by the old 5-minute prompt-cache TTL; the TTL is now one hour, so cache pressure no longer dictates cadence. The delay is now chosen from what the loop is actually waiting for — remaining CI time estimated from the workflow's recent run durations, 900–1800 s when waiting on a review bot or human — with 270 s kept as the floor. Fewer wake-ups, same responsiveness.
+- **`bymax-workflow` / autopilot — unattended-session hardening (new precondition 6).** Three launch checks matching how Claude Code now treats unattended sessions: recommend `CLAUDE_CODE_RETRY_WATCHDOG` (the supported retry mechanism now that `CLAUDE_CODE_MAX_RETRIES` caps at 15), confirm the login will not expire mid-chain (an expiring login interrupts background sessions), and pre-approve implementer permissions — background sub-agents no longer auto-deny on a permission prompt; they surface it in the main session and wait, which would stall the chain.
+- **`personal/settings.template.json` — attribution off at the harness level.** New `attribution: { coAuthoredBy: false, sessionUrl: false }` block: the no-AI-attribution rule is now enforced by Claude Code itself (no `Co-Authored-By` trailer, no claude.ai session link on commits/PRs) instead of relying on prompt instructions.
+- **`personal/settings.template.json` — `Notification` hook.** macOS notification on `Notification` events, which since 2.1.198 include background-agent signals (`agent_needs_input` / `agent_completed`) — a stalled babysit-pr or autopilot chain waiting on input now pings the operator instead of being discovered hours later.
+- **`bymax-bootstrap` — seeds `REVIEW.md`.** Bootstrap now runs `/bymax-quality:review-md` after writing `CLAUDE.md`, so every new project starts with the cloud review calibrated; `claude-md.template.md` gained the pointer line.
+- **`bymax-workflow` — explicit review depth at the two decision points.** Bare `/bymax-quality:code-review` calls stay backward compatible (no argument = `full`), but the two places where depth matters are now explicit: `/bymax-workflow:task` §2.3 (the phase-closing, pre-PR pass) runs `deep` — finder fan-out + adversarial verification — while the per-task Gate 3 keeps the cheaper `full`; and the autopilot implementer prompt pins `full` with a rationale — `deep` spawns finder sub-agents and implementers are sub-agents that never spawn (the orchestrator's merge gate is the deeper second opinion).
+
+- `bymax-quality` bumped to `1.4.0`, `bymax-pr` to `1.1.0`, `bymax-workflow` to `1.4.2`, `bymax-bootstrap` to `1.1.3`, `bymax-web-verify` to `1.1.0`; `marketplace.json` to `1.7.0`. Toolkit totals: **19 slash commands**, 4 skills, 7 sub-agents, 3 hooks, 20 templates.
+
 ## [1.6.1] — 2026-07-08
 
 ### Fixed — autopilot: unresponsive review bot could hold the merge gate forever

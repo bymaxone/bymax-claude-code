@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: Autonomously shepherd an open PR to merge-readiness on ANY project — verify the gh CLI is ready, resolve merge conflicts, monitor CI checks every 270 seconds, classify failures as real vs flaky (re-running flaky checks), fix real failures locally before pushing, triage bot review comments, and notify the developer when the PR is green. Never merges. Invoked via /bymax-pr:babysit-pr.
+description: Autonomously shepherd an open PR to merge-readiness on ANY project — verify the gh CLI is ready, resolve merge conflicts, monitor CI checks at a cadence matched to the CI's real duration (270-second floor), classify failures as real vs flaky (re-running flaky checks), fix real failures locally before pushing, triage bot review comments, and notify the developer when the PR is green. Never merges. Invoked via /bymax-pr:babysit-pr.
 user-invocable: true
 argument-hint: "[pr-number-or-url]"
 allowed-tools:
@@ -187,12 +187,25 @@ exit without scheduling.
 Every code path that does NOT terminate the loop must end with:
 
 ```
-ScheduleWakeup delaySeconds=270 prompt="/bymax-pr:babysit-pr <PR_NUMBER>"
+ScheduleWakeup delaySeconds=<delay> prompt="/bymax-pr:babysit-pr <PR_NUMBER>"
 ```
 
-270 seconds (4.5 min) keeps the wake-up inside the 5-minute prompt-cache TTL
-so the next invocation reuses the cached system prompt. Always pass the PR
-number back in the prompt so a session restart re-targets the same PR.
+Pick `<delay>` from what you are actually waiting for, with **270 seconds as
+the floor**:
+
+- **CI running** — estimate the time remaining from the workflow's typical
+  duration (`gh run list --workflow=<name> --limit 5 --json updatedAt,createdAt`
+  averages it) minus what has already elapsed, and wake up shortly after that.
+  A pipeline that takes ~10 minutes deserves one ~600 s check, not three 270 s
+  ones.
+- **Waiting on a review bot or a human** — 900–1800 s; that state changes
+  slowly.
+- **Just pushed a fix, CI about to start** — the 270 s floor.
+
+The prompt cache is not a constraint at these delays (the cache TTL is one
+hour), so never schedule tighter wake-ups just to "stay inside the cache" —
+pacing is driven by how fast the watched state actually changes. Always pass
+the PR number back in the prompt so a session restart re-targets the same PR.
 
 Skip scheduling when:
 - All termination conditions are met → fire the "ready to merge" notification.
@@ -465,10 +478,10 @@ state comment so a future `/bymax-pr:babysit-pr` on the same PR exits immediatel
 Otherwise:
 
 ```
-ScheduleWakeup delaySeconds=270 prompt="/bymax-pr:babysit-pr <PR_NUMBER>"
+ScheduleWakeup delaySeconds=<delay> prompt="/bymax-pr:babysit-pr <PR_NUMBER>"
 ```
 
-and end the wake-up.
+(with `<delay>` chosen per "Scheduling the next wake-up") and end the wake-up.
 
 ---
 

@@ -25,6 +25,7 @@ That's the whole "format-my-Mac" recovery path: install the plugin, run `/bymax-
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `/bymax-web-verify:setup`    | One-shot, idempotent install of the `agent-browser` CLI **and** its Chrome for Testing engine, finished by a live smoke test. |
 | `/bymax-web-verify:verify`   | Drives a real browser to confirm a change works: opens a URL (default: your local dev server), exercises the path, and reports PASS/FAIL with screenshot + console/page errors. |
+| `/bymax-web-verify:test`     | **Assisted UI testing, full stack up.** Discovers frontend/backend, reuses an already-running backend (or starts one and waits for health), opens the frontend in the **Claude Desktop Browser pane** (`.claude/launch.json` + preview) and walks a flow step by step while you watch — verifying each step via page state, console, network calls (2xx gate), and server logs. Falls back to `agent-browser` in a terminal. Args: free-text flow (default: smoke test), `browser`, `mobile`, `dark`. |
 
 Plus a **`SessionStart` hook** that stays silent when the CLI is present, and — only when it's missing — nudges Claude to offer `/bymax-web-verify:setup`. It never installs anything unprompted and never blocks the session.
 
