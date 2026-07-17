@@ -65,7 +65,10 @@ curl -sf http://localhost:<port><health-path>
 **PREVIEW mode:** ensure `.claude/launch.json` has an entry for the frontend dev
 server (create it from the discovered dev script + port if missing — the file the
 Desktop app also manages), then `preview_start {name: "<entry>"}`. It reuses the
-server when one is already running. Apply `mobile`/`dark` via `resize_window` now.
+server when one is already running. Apply the viewport now: `mobile` via
+`resize_window` with the 375×812 preset, `dark` via the same tool's
+`colorScheme: "dark"` option (color scheme is a `resize_window` parameter, not
+a side effect of resizing).
 
 **BROWSER mode:** if a dev server already answers on the discovered port, reuse
 it; else start it as a background Bash task and wait for the port. Then

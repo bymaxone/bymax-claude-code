@@ -37,11 +37,16 @@ and a verification pass that filters false positives before anything is reported
 ## Step 1 — Resolve the scope
 
 ```bash
-# Default: uncommitted work first…
+# Default: uncommitted work first — tracked changes AND untracked new files
+# (a brand-new file with a secret or suppression must not slip the gate)…
 git diff --name-only HEAD
+git ls-files --others --exclude-standard          # untracked files, add to the set
 # …and if the working tree is clean, review the branch's committed work instead:
 git diff --name-only @{upstream}...HEAD   # fallback: main...HEAD
 ```
+
+For the mechanical gate, include untracked files by intent-to-adding them first
+(`git add -N .`) so `git diff` surfaces their added lines, or grep them directly.
 
 - Branch target → `git diff main...<branch>` (fetch from origin if the branch is only remote).
 - Ref range target → use it verbatim.
