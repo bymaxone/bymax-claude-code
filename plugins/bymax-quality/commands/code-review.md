@@ -86,7 +86,7 @@ added $RANGE | grep -E -- '--no-verify|--skip-checks|--no-gpg-sign'
 added $RANGE -- '*.ts' '*.tsx' ':!*.test.*' ':!*.spec.*' | grep -E 'console\.(log|warn|error|debug|info)'
 
 # HIGH — TODO/FIXME without an issue link
-added $RANGE | grep -E 'TODO|FIXME|XXX|HACK' | grep -vE '#[0-9]+|issues/'
+added $RANGE | grep -E '(^|[^A-Za-z])(TODO|FIXME|XXX|HACK)([^A-Za-z]|$)' | grep -vE '#[0-9]+|issues/'
 
 # HIGH — file over 800 lines (NUL-delimited so paths with spaces survive)
 git diff --name-only -z $RANGE | while IFS= read -r -d '' f; do [ -f "$f" ] && wc -l "$f"; done | awk '$1 > 800'
