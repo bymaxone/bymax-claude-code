@@ -62,39 +62,46 @@ Record the resolved diff range once and reuse it in every command below as `$RAN
 ## Step 2 — Mechanical gate (deterministic)
 
 Run these greps over the diff so findings are exact facts, not model impressions. The
-`^\+[^+]` anchor keeps **added content lines only** — it matches a `+` followed by a
-non-`+` char, so removed lines and the `+++ b/path` diff header (which a bare `^\+` would
-false-positive on when a filename contains a flagged token) never match. Map each match
-back to its `file:line` via the `@@` hunk headers (or re-grep the file). Anything
-matched here is a finding — no judgment call, no verification needed.
+`added()` helper isolates **added content lines**: it keeps `+`-prefixed lines and drops
+the `+++ b/path` file header (which a bare `^\+` would false-positive on when a filename
+contains a flagged token). Match the token anywhere on the line — never fold the anchor
+and the token into one pattern like `^\+[^+].*TOKEN`, because `[^+]` eats the first
+character of a token sitting at column 0 (`+console.log`, `+#[allow(...)]`) and misses it.
+Map each match back to its `file:line` via the `@@` hunk headers (or re-grep the file).
+Anything matched here is a finding — no judgment call, no verification needed.
 
 ```bash
+# Added content lines only: keep '+' lines, drop the '+++ '/'--- ' headers.
+added() { git diff -U0 "$@" | grep -E '^\+' | grep -vE '^\+\+\+ '; }
+
 # CRITICAL — suppression comments (zero tolerance, see policy below)
-git diff -U0 $RANGE | grep -E '^\+[^+].*(eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|prettier-ignore|as any|as unknown as|#\[allow\(|#!\[allow\(|# noqa|# type: ignore|@SuppressWarnings)'
+added $RANGE | grep -E 'eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|prettier-ignore|as any|as unknown as|#\[allow\(|#!\[allow\(|# noqa|# type: ignore|@SuppressWarnings'
 
 # CRITICAL — CLI bypasses committed in scripts or hooks
-git diff -U0 $RANGE | grep -E '^\+[^+].*(--no-verify|--skip-checks|--no-gpg-sign)'
+added $RANGE | grep -E -- '--no-verify|--skip-checks|--no-gpg-sign'
 
-# HIGH — raw console in production code (frontend must use the project logger)
-git diff -U0 $RANGE -- '*.ts' '*.tsx' ':!*test*' ':!*spec*' | grep -E '^\+[^+].*console\.(log|warn|error|debug|info)'
+# HIGH — raw console in production code (frontend must use the project logger).
+# Exclude test files by the `.test.`/`.spec.` convention — matched as a substring so
+# `latest.ts`/`contest.ts` are NOT excluded (a bare `*test*` would wrongly drop them).
+added $RANGE -- '*.ts' '*.tsx' ':!*.test.*' ':!*.spec.*' | grep -E 'console\.(log|warn|error|debug|info)'
 
 # HIGH — TODO/FIXME without an issue link
-git diff -U0 $RANGE | grep -E '^\+[^+].*(TODO|FIXME|XXX|HACK)' | grep -vE '#[0-9]+|issues/'
+added $RANGE | grep -E 'TODO|FIXME|XXX|HACK' | grep -vE '#[0-9]+|issues/'
 
 # HIGH — file over 800 lines (NUL-delimited so paths with spaces survive)
 git diff --name-only -z $RANGE | while IFS= read -r -d '' f; do [ -f "$f" ] && wc -l "$f"; done | awk '$1 > 800'
 
 # MEDIUM — Tailwind v4 non-canonical forms (skip on Tailwind v3 / NativeWind projects)
-git diff -U0 $RANGE -- '*.tsx' '*.jsx' | grep -E '^\+[^+].*(\[var\(--|aria-\[(invalid|disabled|pressed|expanded|hidden|selected|checked|busy|modal|required|readonly)=(true|false)\]|z-\[[0-9]+\]|-(bottom|top|left|right|m)-0([^.0-9]|$))'
+added $RANGE -- '*.tsx' '*.jsx' | grep -E '\[var\(--|aria-\[(invalid|disabled|pressed|expanded|hidden|selected|checked|busy|modal|required|readonly)=(true|false)\]|z-\[[0-9]+\]|-(bottom|top|left|right|m)-0([^.0-9]|$)'
 
 # MEDIUM — Tailwind v3 utilities renamed in v4
-git diff -U0 $RANGE -- '*.tsx' '*.jsx' | grep -E '^\+[^+].*(bg-gradient-to-|outline-none|decoration-(clone|slice)|overflow-ellipsis|flex-(shrink|grow)-|(bg|text|border|divide|placeholder|ring)-opacity-[0-9])'
+added $RANGE -- '*.tsx' '*.jsx' | grep -E 'bg-gradient-to-|outline-none|decoration-(clone|slice)|overflow-ellipsis|flex-(shrink|grow)-|(bg|text|border|divide|placeholder|ring)-opacity-[0-9]'
 
 # MEDIUM — hardcoded hex colors in className (use design tokens)
-git diff -U0 $RANGE -- '*.tsx' '*.jsx' | grep -E '^\+[^+].*className=.*#[0-9a-fA-F]{3,8}'
+added $RANGE -- '*.tsx' '*.jsx' | grep -E 'className=.*#[0-9a-fA-F]{3,8}'
 
 # MEDIUM — dynamic Tailwind class strings the JIT cannot see
-git diff -U0 $RANGE -- '*.tsx' '*.jsx' | grep -E '^\+[^+].*className=\{`[^`]*\$\{'
+added $RANGE -- '*.tsx' '*.jsx' | grep -E 'className=\{`[^`]*\$\{'
 ```
 
 Severity mapping for Tailwind canonical forms (flag → suggest): `[var(--x)]` → `(--x)` ·
