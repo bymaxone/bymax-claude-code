@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 nextlevelbuilder
+Copyright (c) 2024 Next Level Builder
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,11 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Source: https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
-
-This is a verbatim copy of the upstream LICENSE preserved as part of vendoring
-under the MIT terms. If the upstream LICENSE file changes, please update this
-file to match.

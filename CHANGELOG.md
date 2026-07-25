@@ -9,7 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No changes yet._
+### Fixed
+
+- **Design-skill install commands** — the `skills` CLI takes one skill name per `--skill` flag, but `scripts/install.sh` and `vendor/README.md` passed a comma-separated list. The CLI read it as a single skill named `a,b,c`, matched nothing, and exited 1 — so none of the five `taste-skill` design skills were ever installable by either path. Now one flag per name.
+- **`ui-ux-pro-max` install command** — `claude plugin install ui-ux-pro-max@ui-ux-pro-max` fails: the upstream marketplace is `ui-ux-pro-max-skill` (after the repo), only the plugin inside it is `ui-ux-pro-max`. Corrected in `vendor/README.md` and `vendor/ui-ux-pro-max/ATTRIBUTION.md`.
+- **Vendor update procedure** — the documented `rm -rf vendor/ui-ux-pro-max` step deleted `ATTRIBUTION.md`, which lives inside the folder being replaced. The procedure now saves and restores it, uses `cp -R …/.` so dotfiles survive, and ends with the upstream validator + unit tests.
+
+### Changed
+
+- **`ui-ux-pro-max` snapshot refreshed** to upstream **v2.11.0** (from the 2026-04-25 snapshot): 67→84 styles, 96→192 palettes, 57→74 font pairings, 96→192 product types, 13→22 stacks, plus a new `references/` folder and GSAP motion presets. Verified with the skill's own `scripts/validate_data.py` and 16 unit tests.
+- **Vendor content counts corrected** — `ATTRIBUTION.md` and `vendor/README.md` described an older snapshot than the one committed (claimed 161 palettes / 161 product types / 10 stacks). Counts are now verified against `data/*.csv` with a CSV-aware parser, since embedded newlines make `wc -l` undercount.
+- **`ecc-skills/` audited** against upstream and deliberately left unrefreshed — the drift is cosmetic only (frontmatter renesting, ✅/❌ → `PASS:`/`FAIL:`).
+
+### Documentation
+
+- `vendor/README.md` now warns that the `skills` CLI always prints `PromptScript does not support global skill installation`. That is a different agent target failing, not Claude Code — the exit code stays 0 and the same output reports `symlinked: Claude Code`. Verify installs with `ls ~/.claude/skills/<name>/SKILL.md`, not the error text.
 
 ## [1.7.0] — 2026-07-17
 

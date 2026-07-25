@@ -19,11 +19,16 @@ The seven skills bundled here are domain-knowledge skills for backend, frontend,
 
 → For the full collection, install ECC at <https://github.com/affaan-m/everything-claude-code>.
 
+Audited against upstream on 2026-07-25: all seven have drifted, but only cosmetically —
+upstream renested `origin: ECC` under a `metadata:` key and swapped ✅/❌ markers for
+`PASS:`/`FAIL:` text (which reads worse in places, e.g. `// PASS: GOOD: …`). No content
+change, so this snapshot is deliberately **not** refreshed.
+
 ### [`ui-ux-pro-max/`](./ui-ux-pro-max/) — UI/UX Design Intelligence
 
 A complete UI/UX design intelligence skill from [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) by **nextlevelbuilder**.
 
-Bundles 50+ styles, 161 color palettes, 57 font pairings, 99 UX guidelines, 25 chart types across 10 stacks (React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui, HTML/CSS).
+Vendored at **v2.11.0**. Bundles 84 styles, 192 color palettes, 74 font pairings, 99 UX guidelines, 192 product types, and 25 chart types across 22 stacks (React, Next.js, Astro, Vue, Nuxt.js, Nuxt UI, Svelte, SwiftUI, React Native, Flutter, Jetpack Compose, Tailwind/HTML, shadcn/ui, Angular, Laravel, JavaFX, WPF, WinUI, Avalonia, Uno Platform, UWP, Three.js).
 
 → For updates and the canonical version, install at <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>.
 
@@ -45,8 +50,20 @@ Install them yourself (or let `install.sh` do it):
 npx skills add emilkowalski/skill --global --skill emil-design-eng --yes
 npx skills add pbakaus/impeccable --global --skill impeccable --yes
 npx skills add Leonxlnx/taste-skill --global \
-  --skill design-taste-frontend,redesign-existing-projects,minimalist-ui,industrial-brutalist-ui,high-end-visual-design --yes
+  --skill design-taste-frontend \
+  --skill redesign-existing-projects \
+  --skill minimalist-ui \
+  --skill industrial-brutalist-ui \
+  --skill high-end-visual-design --yes
 ```
+
+> **`--skill` takes one name per flag.** A comma-separated list is read as a single
+> skill name, so the CLI finds nothing and exits 1 with `No matching skills found`.
+>
+> The CLI also prints `Failed to install → PromptScript does not support global skill
+> installation` on every run. That is a *different* agent target failing, not Claude
+> Code — the same output says `symlinked: Claude Code` on success, and the exit code
+> stays 0. Verify the real result with `ls ~/.claude/skills/<name>/SKILL.md`.
 
 Skip the automatic fetch with `./scripts/install.sh --no-design-skills`.
 
@@ -74,6 +91,6 @@ git clone https://github.com/affaan-m/everything-claude-code ~/dotfiles-ecc
 
 # ui-ux-pro-max
 claude plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
-claude plugin install ui-ux-pro-max@ui-ux-pro-max
+claude plugin install ui-ux-pro-max@ui-ux-pro-max-skill
 # (or follow the upstream README)
 ```

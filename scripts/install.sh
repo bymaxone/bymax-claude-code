@@ -190,7 +190,10 @@ if [[ "${INCLUDE_DESIGN}" == true ]]; then
     design_cmds=(
       "npx -y skills add emilkowalski/skill --global --skill emil-design-eng --yes"
       "npx -y skills add pbakaus/impeccable --global --skill impeccable --yes"
-      "npx -y skills add Leonxlnx/taste-skill --global --skill design-taste-frontend,redesign-existing-projects,minimalist-ui,industrial-brutalist-ui,high-end-visual-design --yes"
+      # NOTE: `--skill` takes ONE name per flag. A comma-separated list is not
+      # parsed as multiple names — the CLI looks for a single skill literally
+      # called "a,b,c", finds nothing, and exits 1 with "No matching skills found".
+      "npx -y skills add Leonxlnx/taste-skill --global --skill design-taste-frontend --skill redesign-existing-projects --skill minimalist-ui --skill industrial-brutalist-ui --skill high-end-visual-design --yes"
     )
     for cmd in "${design_cmds[@]}"; do
       if [[ "${DRY_RUN}" == true ]]; then
