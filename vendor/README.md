@@ -19,11 +19,16 @@ The seven skills bundled here are domain-knowledge skills for backend, frontend,
 
 → For the full collection, install ECC at <https://github.com/affaan-m/everything-claude-code>.
 
+Audited against upstream on 2026-07-25: all seven have drifted, but only cosmetically —
+upstream renested `origin: ECC` under a `metadata:` key and swapped ✅/❌ markers for
+`PASS:`/`FAIL:` text (which reads worse in places, e.g. `// PASS: GOOD: …`). No content
+change, so this snapshot is deliberately **not** refreshed.
+
 ### [`ui-ux-pro-max/`](./ui-ux-pro-max/) — UI/UX Design Intelligence
 
 A complete UI/UX design intelligence skill from [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) by **nextlevelbuilder**.
 
-Bundles 67 styles, 96 color palettes, 57 font pairings, 99 UX guidelines, 96 product types, and 25 chart types across 13 stacks (React, Next.js, Astro, Vue, Nuxt.js, Nuxt UI, Svelte, SwiftUI, React Native, Flutter, Jetpack Compose, Tailwind/HTML, shadcn/ui).
+Vendored at **v2.11.0**. Bundles 84 styles, 192 color palettes, 74 font pairings, 99 UX guidelines, 192 product types, and 25 chart types across 22 stacks (React, Next.js, Astro, Vue, Nuxt.js, Nuxt UI, Svelte, SwiftUI, React Native, Flutter, Jetpack Compose, Tailwind/HTML, shadcn/ui, Angular, Laravel, JavaFX, WPF, WinUI, Avalonia, Uno Platform, UWP, Three.js).
 
 → For updates and the canonical version, install at <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>.
 
