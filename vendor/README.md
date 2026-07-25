@@ -23,7 +23,7 @@ The seven skills bundled here are domain-knowledge skills for backend, frontend,
 
 A complete UI/UX design intelligence skill from [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) by **nextlevelbuilder**.
 
-Bundles 50+ styles, 161 color palettes, 57 font pairings, 99 UX guidelines, 25 chart types across 10 stacks (React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui, HTML/CSS).
+Bundles 67 styles, 96 color palettes, 57 font pairings, 99 UX guidelines, 96 product types, and 25 chart types across 13 stacks (React, Next.js, Astro, Vue, Nuxt.js, Nuxt UI, Svelte, SwiftUI, React Native, Flutter, Jetpack Compose, Tailwind/HTML, shadcn/ui).
 
 → For updates and the canonical version, install at <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>.
 
@@ -45,8 +45,20 @@ Install them yourself (or let `install.sh` do it):
 npx skills add emilkowalski/skill --global --skill emil-design-eng --yes
 npx skills add pbakaus/impeccable --global --skill impeccable --yes
 npx skills add Leonxlnx/taste-skill --global \
-  --skill design-taste-frontend,redesign-existing-projects,minimalist-ui,industrial-brutalist-ui,high-end-visual-design --yes
+  --skill design-taste-frontend \
+  --skill redesign-existing-projects \
+  --skill minimalist-ui \
+  --skill industrial-brutalist-ui \
+  --skill high-end-visual-design --yes
 ```
+
+> **`--skill` takes one name per flag.** A comma-separated list is read as a single
+> skill name, so the CLI finds nothing and exits 1 with `No matching skills found`.
+>
+> The CLI also prints `Failed to install → PromptScript does not support global skill
+> installation` on every run. That is a *different* agent target failing, not Claude
+> Code — the same output says `symlinked: Claude Code` on success, and the exit code
+> stays 0. Verify the real result with `ls ~/.claude/skills/<name>/SKILL.md`.
 
 Skip the automatic fetch with `./scripts/install.sh --no-design-skills`.
 
@@ -74,6 +86,6 @@ git clone https://github.com/affaan-m/everything-claude-code ~/dotfiles-ecc
 
 # ui-ux-pro-max
 claude plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
-claude plugin install ui-ux-pro-max@ui-ux-pro-max
+claude plugin install ui-ux-pro-max@ui-ux-pro-max-skill
 # (or follow the upstream README)
 ```
