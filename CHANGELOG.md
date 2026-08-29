@@ -74,7 +74,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carries a session ID nobody else uses (`CODEX_COMPANION_SESSION_ID`, exported to the launch and
   the cancel and to nothing else), and a cancel that fails is reported in the `timeout` line rather
   than swallowed — the caller must know a run may still be billing, because nothing else in the
-  script can reach it. The scope measurement was likewise corrected to mirror the runtime's own
+  script can reach it. The cancel is itself bounded to 15 s: it talks to the broker over a socket,
+  and a hung broker is precisely the case a timeout is handling, so an unbounded cancel would have
+  blocked forever without ever reaching the group kill or emitting `timeout` — found by the
+  standard review on the following round. The scope measurement was likewise corrected to mirror the runtime's own
   commands (staged and unstaged diffed separately, `--binary`), since `git diff HEAD` undercounts
   exactly the cases where the runtime has already switched to self-collection.
 

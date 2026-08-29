@@ -343,12 +343,29 @@ review_session="bymax-review-$$-$(date +%s)"
 #
 # A cancel that fails is reported, not swallowed: the caller must know a run may
 # still be billing, because nothing else in this script can reach it.
+# The cancel itself is bounded. It talks to the broker over a socket, and a
+# broker that has hung is exactly the case in which a timeout is being handled
+# — an unbounded cancel would then block here forever, never reaching the
+# group kill below and never emitting `timeout`. macOS ships no `timeout`, so
+# the deadline is the same poll-and-kill loop the main budget uses.
+CANCEL_DEADLINE=15
 cancel_failed=0
 stop_review() {
   [ "${run_active}" -eq 1 ] || return 0
   if [ "${MODE}" = "adversarial" ] && [ -n "${companion}" ]; then
     CODEX_COMPANION_SESSION_ID="${review_session}" \
-      node "${companion}" cancel >/dev/null 2>&1 || cancel_failed=1
+      node "${companion}" cancel >/dev/null 2>&1 &
+    local cancel_pid=$! cancel_waited=0
+    while kill -0 "${cancel_pid}" 2>/dev/null; do
+      if [ "${cancel_waited}" -ge "${CANCEL_DEADLINE}" ]; then
+        kill -KILL "${cancel_pid}" 2>/dev/null
+        cancel_failed=1
+        break
+      fi
+      sleep 1
+      cancel_waited=$((cancel_waited + 1))
+    done
+    wait "${cancel_pid}" 2>/dev/null || cancel_failed=1
   fi
   { kill -TERM -- -"${codex_pid}"
     sleep 2
