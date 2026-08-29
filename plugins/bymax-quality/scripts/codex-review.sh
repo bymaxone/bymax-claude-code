@@ -269,6 +269,16 @@ workdir="$(mktemp -d 2>/dev/null)" || status_only "failed" "cannot create a temp
 # "a billed run is still in flight and this script is going away".
 run_active=0
 
+# The plugin runtime scopes job lookup by CODEX_COMPANION_SESSION_ID. An ID-less
+# `cancel` resolves the jobs of the current session and refuses when there is
+# more than one ("Multiple Codex jobs are active") — so if the user has their own
+# `/codex:*` job running when this review times out, a cancel issued under the
+# shared session would fail and the billed turn would survive. Giving this run a
+# session ID nobody else uses makes the ID-less cancel unambiguous: exactly one
+# job carries it. The same variable is exported to the launch and to the cancel,
+# and to nothing else.
+review_session="bymax-review-$$-$(date +%s)"
+
 # Stop the Codex work this script started, by the most specific means available.
 #
 # In adversarial mode the plugin runtime does NOT keep Codex inside this
@@ -279,10 +289,15 @@ run_active=0
 # it interrupts the Codex turn (which is what bills) and terminates that job's
 # process tree, without killing the broker daemon, which is shared per workspace
 # and may be serving another session's review.
+#
+# A cancel that fails is reported, not swallowed: the caller must know a run may
+# still be billing, because nothing else in this script can reach it.
+cancel_failed=0
 stop_review() {
   [ "${run_active}" -eq 1 ] || return 0
   if [ "${MODE}" = "adversarial" ] && [ -n "${companion}" ]; then
-    node "${companion}" cancel >/dev/null 2>&1 || true
+    CODEX_COMPANION_SESSION_ID="${review_session}" \
+      node "${companion}" cancel >/dev/null 2>&1 || cancel_failed=1
   fi
   { kill -TERM -- -"${codex_pid}"
     sleep 2
@@ -339,7 +354,8 @@ if [ "${MODE}" = "standard" ]; then
     -c sandbox_mode="read-only" -c approval_policy="never" \
     >"${raw}" 2>"${err}" &
 else
-  node "${companion}" adversarial-review "${codex_args[@]}" \
+  CODEX_COMPANION_SESSION_ID="${review_session}" \
+    node "${companion}" adversarial-review "${codex_args[@]}" \
     >"${raw}" 2>"${err}" &
 fi
 codex_pid=$!
@@ -354,6 +370,9 @@ while kill -0 "${codex_pid}" 2>/dev/null; do
     # through the plugin runtime in adversarial mode, where the billed process
     # is deliberately outside this group.
     stop_review
+    if [ "${cancel_failed}" -eq 1 ]; then
+      status_only "timeout" "exceeded ${BUDGET}s — and the cancel FAILED: the Codex run may still be billing, check /codex:status"
+    fi
     status_only "timeout" "exceeded ${BUDGET}s"
   fi
   sleep "${POLL_INTERVAL}"
@@ -446,12 +465,26 @@ emit "CODEX_STATUS: ok"
 # lib/git.mjs (openai-codex 1.0.6). They are upstream's numbers, not ours — if
 # they drift, this note becomes wrong in the conservative direction (claiming a
 # self-collected scope that was in fact inlined), never the dangerous one.
+#
+# The measurements mirror the runtime's own commands rather than approximating
+# them. `git diff HEAD` undercounts a file with both staged and unstaged edits
+# (it shows one combined hunk where the runtime sends two), and omits binary
+# payloads the runtime includes via `--binary` — so a naive measure could stay
+# under the byte limit while the runtime had already crossed it and switched to
+# self-collection, and this note would then fail to fire exactly when it mattered.
+diff_flags=(--binary --no-ext-diff --submodule=diff)
 if [ "${MODE}" = "adversarial" ]; then
   case "${TARGET}" in
-    uncommitted) scope_files="$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l)"
-                 scope_bytes="$(git diff HEAD 2>/dev/null | wc -c)" ;;
-    *)           scope_files="$(git diff --name-only "${REF}...HEAD" 2>/dev/null | wc -l)"
-                 scope_bytes="$(git diff "${REF}...HEAD" 2>/dev/null | wc -c)" ;;
+    uncommitted)
+      # Unique files across staged, unstaged and untracked, as the runtime counts.
+      scope_files="$( { git diff --cached --name-only; git diff --name-only;
+                        git ls-files --others --exclude-standard; } 2>/dev/null \
+                      | sort -u | grep -c .)"
+      scope_bytes="$(( $(git diff --cached "${diff_flags[@]}" 2>/dev/null | wc -c)
+                     + $(git diff "${diff_flags[@]}" 2>/dev/null | wc -c) ))" ;;
+    *)
+      scope_files="$(git diff --name-only "${REF}...HEAD" 2>/dev/null | grep -c .)"
+      scope_bytes="$(git diff "${diff_flags[@]}" "${REF}...HEAD" 2>/dev/null | wc -c)" ;;
   esac
   scope_files="${scope_files//[[:space:]]/}"
   scope_bytes="${scope_bytes//[[:space:]]/}"

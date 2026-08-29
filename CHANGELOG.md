@@ -68,6 +68,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interrupts the billed turn and terminates that job's process tree without killing the broker
   daemon, shared per workspace — and the cleanup runs on `INT`/`TERM` too, not only `EXIT`.
 
+  The second review of that fix found the cancel itself ambiguous: an ID-less `cancel` resolves
+  the current session's jobs and refuses when there is more than one, so a user with their own
+  `/codex:*` job running when this review timed out would have kept paying for both. The run now
+  carries a session ID nobody else uses (`CODEX_COMPANION_SESSION_ID`, exported to the launch and
+  the cancel and to nothing else), and a cancel that fails is reported in the `timeout` line rather
+  than swallowed — the caller must know a run may still be billing, because nothing else in the
+  script can reach it. The scope measurement was likewise corrected to mirror the runtime's own
+  commands (staged and unstaged diffed separately, `--binary`), since `git diff HEAD` undercounts
+  exactly the cases where the runtime has already switched to self-collection.
+
 - **A failed adversarial review was published as a healthy one.** When Codex returns unparseable
   JSON the runtime still exits 0 and renders a human-readable failure page to stdout; the only
   check on that path was "is stdout non-empty", so the page shipped under `CODEX_STATUS: ok` and
