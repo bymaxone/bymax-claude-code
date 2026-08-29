@@ -261,24 +261,40 @@ scope_unpinned=0
 scope_reason=""
 diff_flags=(--binary --no-ext-diff --submodule=diff)
 
-# exceeds_inline_limits <file-list-command> <byte-count-command>
-# Each argument is an eval'd command whose stdout is the list / the diff.
+# exceeds_inline_limits <kind> — <kind> is `uncommitted` or `base`.
+# Each measurement is a named function that receives the ref as a quoted
+# argument. Never `eval` a string that carries the ref: git accepts a branch
+# named `$(printf pwn)`, `rev-parse` only proves it resolves, and an eval'd
+# measurement would run that payload with the user's permissions — before any
+# Codex gate, so without Codex even installed.
+list_changed_uncommitted() {
+  git diff --cached --name-only && git diff --name-only && git ls-files --others --exclude-standard
+}
+diff_uncommitted() { git diff --cached "${diff_flags[@]}" && git diff "${diff_flags[@]}"; }
+list_changed_base()  { git diff --name-only "$1...HEAD"; }
+diff_base()          { git diff "${diff_flags[@]}" "$1...HEAD"; }
+
 exceeds_inline_limits() {
-  local files bytes
-  files="$(eval "$1" 2>/dev/null | sort -u | grep -c .)" \
-    || { [ "${files:-0}" -eq 0 ] && [ "${PIPESTATUS[0]}" -ne 0 ] && { scope_reason="the scope could not be measured (git failed)"; return 0; }; }
+  local kind="$1" files bytes list_fn diff_fn
+  case "${kind}" in
+    uncommitted) list_fn=list_changed_uncommitted; diff_fn=diff_uncommitted ;;
+    base)        list_fn=list_changed_base;        diff_fn=diff_base ;;
+  esac
+  # A git failure is an unmeasured scope, and an unmeasured scope is unpinned:
+  # stderr is discarded and `grep -c` of nothing is 0, which would otherwise
+  # read as "small change, inlined".
+  if ! files="$("${list_fn}" "${REF}" 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
+    scope_reason="the scope could not be measured (git failed)"; return 0
+  fi
   if [ "${files}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
-    scope_reason="${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"
-    return 0
+    scope_reason="${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"; return 0
   fi
-  bytes="$(eval "$2" 2>/dev/null | wc -c | tr -d ' ')" || bytes=""
-  if [ -z "${bytes}" ]; then
-    scope_reason="the scope could not be measured (git failed)"
-    return 0
+  if ! bytes="$("${diff_fn}" "${REF}" 2>/dev/null | wc -c; exit "${PIPESTATUS[0]}")"; then
+    scope_reason="the scope could not be measured (git failed)"; return 0
   fi
+  bytes="${bytes//[[:space:]]/}"
   if [ "${bytes}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
-    scope_reason="${bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"
-    return 0
+    scope_reason="${bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"; return 0
   fi
   return 1
 }
@@ -287,19 +303,13 @@ count_untracked() { git ls-files --others --exclude-standard 2>/dev/null | grep 
 
 case "${MODE}:${TARGET}" in
   adversarial:uncommitted)
-    if exceeds_inline_limits \
-        'git diff --cached --name-only; git diff --name-only; git ls-files --others --exclude-standard' \
-        'git diff --cached "${diff_flags[@]}"; git diff "${diff_flags[@]}"'; then
-      scope_unpinned=1
-    fi ;;
+    exceeds_inline_limits uncommitted && scope_unpinned=1 ;;
   adversarial:base)
     dirty="$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null | sort -u | grep -c .)"
     if [ "${dirty:-0}" -gt 0 ]; then
       scope_unpinned=1
       scope_reason="${dirty} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
-    elif exceeds_inline_limits \
-        'git diff --name-only "${REF}...HEAD"' \
-        'git diff "${diff_flags[@]}" "${REF}...HEAD"'; then
+    elif exceeds_inline_limits base; then
       scope_unpinned=1
     fi ;;
   standard:base)
@@ -615,6 +625,10 @@ fi
 # line and never on prose, so the one fact that changes how the review may be
 # used has to live in the status. The review is still published — its findings
 # are about this change — but its silence is not evidence.
+# Marked as emitted BEFORE the exit: the EXIT trap prints a `failed` status for
+# any run that reported nothing, and a success that forgot to say so was
+# measured producing two status lines — `ok-unpinned`, then `failed`.
+status_emitted=1
 if [ "${scope_unpinned}" -eq 1 ]; then
   emit "CODEX_STATUS: ok-unpinned"
   emit "CODEX_SCOPE: self-collected — ${scope_reason}; the reviewer chose its own scope"
