@@ -128,10 +128,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the scope flags, a `Verdict:` line in the output — is undocumented and was verified by reading
   1.0.6 only. A routine plugin update could change any of it, and the failure modes are the bad
   kind: a run still billing past its budget, or a Node process with the user's permissions whose
-  read-only guarantee no longer holds. So an installed version outside `1.0.*` is now refused with
-  `adversarial-absent` and a message saying why; `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` runs it
-  anyway as the user's explicit decision. Widening the range means re-reading four upstream files,
-  and the comment names them.
+  read-only guarantee no longer holds. So only versions that were actually read are accepted — an
+  exact allowlist, currently `1.0.6`. The first cut admitted `1.0.*`, which the next adversarial
+  round correctly called a range hoped compatible rather than a contract verified. Any other
+  version is refused with `adversarial-absent` and a message saying why;
+  `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` runs it anyway as the user's explicit decision.
+  Adding a version means re-reading four upstream files, and the comment names them.
 
   The same review argued the direct runtime call bypasses upstream's `disable-model-invocation`
   boundary. Refused, with the reasoning recorded in the script header: that flag gates the

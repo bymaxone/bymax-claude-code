@@ -213,12 +213,14 @@ COMPANION_PLUGIN_ID="codex@openai-codex"
 # openai-codex 1.0.6. A routine plugin update can change any of it, and the
 # failure modes are the bad kind: a run that keeps billing past its budget, or
 # a Node process with the user's permissions whose read-only guarantee no
-# longer holds. So a version outside the verified range is refused, not
-# assumed. Widen this range only after re-reading lib/codex.mjs,
-# lib/broker-lifecycle.mjs, lib/job-control.mjs and lib/render.mjs in the new
-# version; BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1 runs it anyway, as the
-# user's own explicit decision.
-COMPANION_VERIFIED_PATTERN='1.0.*'
+# longer holds. So only versions that were actually read are accepted — an
+# exact allowlist, not a range. An earlier draft admitted `1.0.*` while its own
+# comment said 1.0.6 was the only version inspected, which is a range hoped
+# compatible, not a contract verified. Add a version here only after re-reading
+# lib/codex.mjs, lib/broker-lifecycle.mjs, lib/job-control.mjs and
+# lib/render.mjs in that version; BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1 runs
+# any other version anyway, as the user's own explicit decision.
+COMPANION_VERIFIED_VERSIONS="1.0.6"
 companion_version=""
 companion_record=""
 
@@ -297,13 +299,15 @@ if [ "${MODE}" = "adversarial" ]; then
     || status_only "adversarial-absent" "openai-codex plugin not found — install it to enable the adversarial review"
   companion_version="${companion_record%%	*}"
   companion="${companion_record#*	}"
-  # The pattern is left unquoted on purpose: a quoted case pattern matches
-  # literally, and this one is a glob.
-  case "${companion_version}" in
-    override|${COMPANION_VERIFIED_PATTERN}) ;;
-    *) [ "${BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED:-0}" = "1" ] || status_only "adversarial-absent" \
-         "openai-codex ${companion_version:-?} is outside the verified range (${COMPANION_VERIFIED_PATTERN}) — the runtime contract this script relies on is undocumented and was checked against 1.0.6 only; set BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1 to run it anyway" ;;
-  esac
+  version_verified=0
+  [ "${companion_version}" = "override" ] && version_verified=1
+  for verified in ${COMPANION_VERIFIED_VERSIONS}; do
+    [ "${companion_version}" = "${verified}" ] && version_verified=1
+  done
+  if [ "${version_verified}" -eq 0 ] && [ "${BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED:-0}" != "1" ]; then
+    status_only "adversarial-absent" \
+      "openai-codex ${companion_version:-?} is not a verified version (verified: ${COMPANION_VERIFIED_VERSIONS}) — the runtime contract this script relies on is undocumented and was read in those versions only; set BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1 to run it anyway"
+  fi
 fi
 
 # --- Run under a budget -----------------------------------------------------
