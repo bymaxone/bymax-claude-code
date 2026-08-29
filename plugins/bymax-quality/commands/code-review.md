@@ -1,5 +1,5 @@
 ---
-description: 'Comprehensive security and quality review with selectable depth: mechanical gate (deterministic greps for secrets/suppressions/Tailwind/console), bug hunt (single-pass or parallel finder agents with adversarial verification), and the Bymax convention checklist across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic, speculative generality), and LOW (nits). Every candidate finding is re-verified against the file before it is reported. In full and deep two independent Codex reviews run in parallel background shells — a standard one (is this correct?) and an adversarial one (is this the right approach?) — and deep additionally runs Claude''s own /code-review max in-session; the report carries every review side by side with a cross-read. All of it is optional: absent, logged-out or slow Codex degrades to a one-line status and changes nothing, and the adversarial review additionally needs the openai-codex plugin. Blocks the commit on any CRITICAL or HIGH from the Bymax review. Modes: quick | full (default) | deep. Optional target (branch, ref range, PR#, file), --fix and --no-codex. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
+description: 'Comprehensive security and quality review with selectable depth: mechanical gate (deterministic greps for secrets/suppressions/Tailwind/console), bug hunt (single-pass or parallel finder agents with adversarial verification), and the Bymax convention checklist across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic, speculative generality), and LOW (nits). Every candidate finding is re-verified against the file before it is reported. In every mode, quick included, two independent Codex reviews run in parallel background shells — a standard one (is this correct?) and an adversarial one (is this the right approach?) — and full and deep additionally run Claude''s own /code-review max in-session; the report carries every review side by side with a cross-read. All of it is optional: absent, logged-out or slow Codex degrades to a one-line status and changes nothing, and the adversarial review additionally needs the openai-codex plugin. Blocks the commit on any CRITICAL or HIGH from the Bymax review. Modes: quick | full (default) | deep. Optional target (branch, ref range, PR#, file), --fix and --no-codex. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
 argument-hint: "[quick|full|deep] [target] [--fix] [--no-codex]"
 ---
 
@@ -23,12 +23,12 @@ the report says so in one line and nothing else changes.
 
 | Argument | Meaning |
 | --- | --- |
-| `quick` | Mechanical gate + CRITICAL/HIGH judgment checks on changed lines only. Sanity check before a push. |
-| `full` *(default)* | Everything: mechanical gate, single-pass bug hunt, full convention checklist, verification. |
-| `deep` | `full`, but the bug hunt fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified, **and** Claude's built-in `/code-review max` runs in-session as Review D. Slowest mode by a wide margin. Use before merging a feature branch. |
+| `quick` | Mechanical gate + CRITICAL/HIGH judgment checks on changed lines only, plus both Codex reviews. Sanity check before a push. |
+| `full` *(default)* | Everything: mechanical gate, single-pass bug hunt, full convention checklist, verification, both Codex reviews, and Claude's built-in `/code-review max` as Review D. |
+| `deep` | `full`, but the bug hunt additionally fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified. Use before merging a feature branch. |
 | `target` | Optional. A branch name (`feature-x` → reviews `<default-branch>...feature-x`), a ref range (`main...feature-x`), a PR number (`#123`, checked out locally so `$RANGE` works with `git diff` — see Step 1), or a file path. Without a target: uncommitted changes, plus the branch's commits ahead of upstream when the working tree is clean. |
 | `--fix` | After the report, apply the confirmed mechanical MEDIUM fixes (Tailwind renames, canonical tokens) and any finding the user approves. Never commits. |
-| `--no-codex` | Skip **both** Codex reviews (Steps 1.5). They are on by default in `full` and `deep`, and never run in `quick`. Does not affect Review D, which is tied to `deep`. |
+| `--no-codex` | Skip **both** Codex reviews (Steps 1.5). They run in **every** mode otherwise, `quick` included — they cost background wall-clock, not session time, and a second opinion is worth as much before a quick push as before a merge. Does not affect Review D, which is `full`/`deep` only. |
 
 > **Stack-adaptive.** Detect the stack first. On a **Rust** project (`Cargo.toml`), apply the
 > **Rust checks** flagged in each section below and **skip** the TypeScript/Tailwind-specific ones
@@ -39,9 +39,9 @@ the report says so in one line and nothing else changes.
 > **Composes with the built-in engine.** Claude Code ships its own multi-agent bug-hunting review
 > (`/code-review <effort>`, `/code-review ultra` for the cloud run) — it finds logic bugs but knows
 > nothing about Bymax conventions and never blocks. This command is the convention gate that does
-> block. `deep` now invokes `/code-review max` for you (Step 1.6); `quick` and `full` do not, so
-> run it yourself alongside them when a diff deserves the heavier bug pass. `ultra` is always the
-> user's to launch — it is billed, and a skill must not trigger it.
+> block. `full` and `deep` now invoke `/code-review max` for you (Step 1.6), so there is nothing
+> to run alongside them; only `quick` leaves the bug hunt to you. `ultra` is always the user's to
+> launch — it is billed, and a skill must not trigger it.
 
 > **Both Codex reviews are optional; only the standard one is self-contained.** Review B needs
 > only the `codex` binary on `PATH` with an active session — run **`/bymax-quality:codex-setup`**
@@ -147,9 +147,9 @@ For the mechanical gate, include untracked files by intent-to-add them first
 Record the resolved diff range once and reuse it in every command below as `$RANGE`
 (for uncommitted work, `HEAD`).
 
-## Step 1.5 — Launch the independent Codex review (optional, non-blocking)
+## Step 1.5 — Launch the independent Codex reviews (optional, non-blocking)
 
-Skipped in `quick` mode, and whenever `--no-codex` is passed.
+Runs in every mode, `quick` included. Skipped only when `--no-codex` is passed.
 
 A second model reading the same diff catches what a grep and a convention checklist
 structurally cannot — and, more usefully, what **you** miss. This is a second opinion,
@@ -184,11 +184,11 @@ questions of the same diff, so neither substitutes for the other:
 ```bash
 # Review B — standard: is this change correct?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
-  --target <target> [--ref <ref>] --budget <180 in full | 600 in deep>
+  --target <target> [--ref <ref>] --budget <180 in quick and full | 600 in deep>
 
 # Review C — adversarial: is this the right approach at all?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" --mode adversarial \
-  --target <target> [--ref <ref>] --budget <180 in full | 600 in deep>
+  --target <target> [--ref <ref>] --budget <180 in quick and full | 600 in deep>
 ```
 
 Two background shells, launched together, cost wall-clock once. Running them in
@@ -213,10 +213,11 @@ else. `--target commit` has no adversarial equivalent and reports
 > anchors Steps 2–5 on what Codex saw, which destroys the independence that makes a
 > second review worth running at all. Harvest both in Step 5.5.
 
-## Step 1.6 — Claude's own bug hunt at max effort (`deep` only)
+## Step 1.6 — Claude's own bug hunt at max effort (`full` and `deep`)
 
-Skipped in `quick` and `full`. Run **after** launching the background shells above, so
-Codex is working while this runs.
+Skipped in `quick` — this is the one step that costs session time, and `quick` exists
+to be cheap. Run **after** launching the background shells above, so Codex
+is working while this runs.
 
 Invoke the built-in review skill at max effort over the same scope:
 `/code-review max` (add the resolved target when it is not the working tree).
@@ -227,10 +228,10 @@ verifier passes. Say that plainly in the report rather than presenting it as a t
 independent voice, because two agreeing runs of the same model is weak evidence and a
 reader who mistakes it for corroboration will over-trust it.
 
-It runs in the session and cannot be backgrounded — a skill invocation is not a shell.
-That makes it the long pole of `deep`, which is why it is confined to `deep`: `full` is
-the mode that runs before every push, and it has to stay fast enough that people
-actually run it.
+It runs in the session and cannot be backgrounded — a skill invocation is not a shell —
+so it is the long pole of both modes. That is the accepted cost: `full` runs before every
+push, and a bug that reaches a reviewer because the fast mode skipped the bug hunt costs
+more than the minutes saved. Run `quick` when you need the cheap pre-push sanity check.
 
 > **`/code-review ultra` is not an option here.** It is user-triggered and billed; a
 > skill must not launch it. If the diff warrants that depth, say so in the report and
@@ -503,7 +504,7 @@ Status: ok
 - [P1 → HIGH] <the approach or assumption being challenged>
   <body, verbatim>
 
-### Review D — Claude, /code-review max (deep only)
+### Review D — Claude, /code-review max
 
 Same model family as Review A, different method — not an independent voice.
 - <file>:<line> — <finding>
@@ -530,8 +531,8 @@ Run /bymax-quality:codex-setup to enable it.
 Status: adversarial-absent — the openai-codex plugin is not installed.
 ```
 
-Omit Review D's heading entirely outside `deep`, rather than printing it as skipped —
-a reader scanning a `full` report should not have to work out that an empty section is
+Omit Review D's heading entirely in `quick`, rather than printing it as skipped — a
+reader scanning a `quick` report should not have to work out that an empty section is
 expected.
 
 **Never approve code with security vulnerabilities or new suppression comments.**
