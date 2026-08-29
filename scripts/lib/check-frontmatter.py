@@ -11,7 +11,12 @@ scalar stops parsing the moment a colon-space lands inside it, as in
 Prints a one-line summary on success; the caller decorates it. Exit codes:
   0 — every file valid
   1 — at least one file has invalid frontmatter
-  2 — check skipped (PyYAML unavailable); the message is still on stdout
+
+The check never skips itself. Without PyYAML it drops to a reduced mode that still
+catches the failure classes this exists for — an unclosed block, an unquoted scalar
+carrying a colon-space, a bracketed value that YAML would read as a list — and says so
+in its summary. A gate that reports success without having run is worse than no gate,
+so "PyYAML is missing" must not be spelled "all valid".
 """
 
 from __future__ import annotations
@@ -28,6 +33,109 @@ REQUIRED_STRING_FIELDS = ("description",)
 OPTIONAL_STRING_FIELDS = ("argument-hint", "name", "model")
 
 
+class ReducedYAMLError(Exception):
+    """A frontmatter problem the dependency-free parser can prove without PyYAML."""
+
+
+def reduced_scalar(value: str, key: str, lineno: int):
+    """Read one scalar, refusing every shape this parser cannot prove is valid."""
+    quote = value[:1]
+    if quote in ("'", '"'):
+        if len(value) < 2 or value[-1] != quote:
+            raise ReducedYAMLError(
+                f"line {lineno}: '{key}' opens with {quote} but the line does not close it"
+            )
+        inner = value[1:-1]
+        if quote == "'" and inner.replace("''", "").count("'"):
+            raise ReducedYAMLError(
+                f"line {lineno}: '{key}' holds an unescaped apostrophe — double it as ''"
+            )
+        return inner.replace("''", "'") if quote == "'" else inner
+    if ": " in value:
+        raise ReducedYAMLError(
+            f"line {lineno}: unquoted '{key}' contains ': ', which YAML reads as a nested mapping"
+        )
+    # A bracketed value is a flow sequence. Returned as a list on purpose, so the
+    # string-field check reports it the same way PyYAML would.
+    return [value[1:-1]] if value.startswith("[") else value
+
+
+def reduced_parse(block: str) -> dict:
+    """Parse a frontmatter block well enough to police it, without PyYAML.
+
+    This is not a YAML implementation and must never grow into one. It reads the
+    subset every command and skill in this repo actually uses — one scalar per
+    line, plus the indented `- item` block sequence that `allowed-tools` uses —
+    and raises on anything else it cannot prove correct.
+
+    Refusing the unknown is the whole point. An earlier version skipped indented
+    lines silently, which meant malformed nested YAML passed the reduced check
+    and failed only where a real parser ran: a gate whose verdict depended on
+    which machine ran it.
+    """
+    data: dict = {}
+    sequence_key = None
+    for lineno, line in enumerate(block.split("\n"), 2):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+
+        if line[:1].isspace():
+            item = line.strip()
+            if sequence_key is None or not item.startswith("- "):
+                raise ReducedYAMLError(
+                    f"line {lineno}: indented line that is not a '- item' under a key —"
+                    " install PyYAML for full validation of this file"
+                )
+            data[sequence_key].append(reduced_scalar(item[2:].strip(), sequence_key, lineno))
+            continue
+
+        sequence_key = None
+        key, separator, value = line.partition(":")
+        if not separator:
+            raise ReducedYAMLError(f"line {lineno}: '{line.strip()}' is not 'key: value'")
+        key, value = key.strip(), value.strip()
+        if not value:
+            # `key:` alone opens a block sequence; an empty list is also the right
+            # answer when nothing follows, and a required field will be rejected.
+            data[key] = []
+            sequence_key = key
+            continue
+        data[key] = reduced_scalar(value, key, lineno)
+    return data
+
+
+SELF_TEST_CASES = (
+    ("description: plain value", False),
+    ("description: 'quoted value'", False),
+    ("description: 'it''s escaped'", False),
+    ("description: value\nallowed-tools:\n  - Bash\n  - Read", False),
+    ("description: Prove it. Modes: quick | full", True),
+    ("description: 'unterminated", True),
+    ("description: 'it's unescaped'", True),
+    ("description: ok\n  stray: indented", True),
+    ("description ok", True),
+)
+
+
+def self_test() -> int:
+    """Prove the reduced parser accepts this repo's shapes and rejects the rest."""
+    failures = []
+    for block, should_reject in SELF_TEST_CASES:
+        try:
+            reduced_parse(block)
+            rejected = False
+        except ReducedYAMLError:
+            rejected = True
+        if rejected != should_reject:
+            verb = "accepted" if not rejected else "rejected"
+            failures.append(f"  ✗ reduced parser {verb} {block!r}")
+    if failures:
+        print("\n".join(failures))
+        return 1
+    print(f"Reduced frontmatter parser passes {len(SELF_TEST_CASES)} self-test cases")
+    return 0
+
+
 def frontmatter_files() -> list[pathlib.Path]:
     """Every Markdown file whose frontmatter Claude Code parses at load time."""
     files = list(REPO_ROOT.glob("plugins/*/commands/*.md"))
@@ -35,7 +143,7 @@ def frontmatter_files() -> list[pathlib.Path]:
     return sorted(files)
 
 
-def check(path: pathlib.Path, yaml) -> list[str]:
+def check(path: pathlib.Path, parse, parse_error) -> list[str]:
     """Return a list of human-readable problems with one file's frontmatter."""
     rel = path.relative_to(REPO_ROOT)
     text = path.read_text(encoding="utf-8")
@@ -49,8 +157,8 @@ def check(path: pathlib.Path, yaml) -> list[str]:
         return [f"{rel}: frontmatter is never closed (no terminating '---')"]
 
     try:
-        data = yaml.safe_load("\n".join(lines[1:closing]))
-    except yaml.YAMLError as exc:
+        data = parse("\n".join(lines[1:closing]))
+    except parse_error as exc:
         # A colon-space inside an unquoted scalar is by far the most common cause,
         # so name the fix rather than only echoing the parser's complaint.
         return [
@@ -80,22 +188,36 @@ def check(path: pathlib.Path, yaml) -> list[str]:
 
 
 def main() -> int:
+    """Validate every command and skill file, printing one summary or the problems."""
+    if "--self-test" in sys.argv[1:]:
+        return self_test()
+
     try:
         import yaml
     except ImportError:
-        print("PyYAML not installed — skipping (install with: pip install pyyaml)")
-        return 2
+        parse, parse_error, mode = reduced_parse, ReducedYAMLError, "reduced"
+    else:
+        parse, parse_error, mode = yaml.safe_load, yaml.YAMLError, "full"
 
     files = frontmatter_files()
     if not files:
-        print("No command or skill files found")
-        return 2
+        # No files is a broken invocation, not a clean repo: this script is only
+        # ever run from a checkout that has commands in it.
+        print("No command or skill files found — is this the right repository?")
+        return 1
 
-    problems = [problem for path in files for problem in check(path, yaml)]
+    problems = [problem for path in files for problem in check(path, parse, parse_error)]
     if problems:
         for problem in problems:
             print(f"  ✗ {problem}")
         return 1
+
+    if mode == "reduced":
+        print(
+            f"Checked {len(files)} command/skill files — reduced check only "
+            "(PyYAML not installed; install it for full YAML validation)"
+        )
+        return 0
 
     print(f"Checked {len(files)} command/skill files for valid frontmatter")
     return 0

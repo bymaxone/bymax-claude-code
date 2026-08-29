@@ -11,6 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`/bymax-quality:code-review` now runs three reviews beside its own, not one.** The second
+  opinion was a single unsteered `codex exec review`. It gains an adversarial sibling that asks a
+  different question — is this the right approach, rather than is this code correct — and, in
+  `deep`, Claude's own `/code-review max`. The two Codex runs launch as concurrent background
+  shells before this command forms any opinion, so the pair costs wall-clock once and neither can
+  anchor the other.
+
+  The adversarial mode drives the openai-codex plugin's own `codex-companion.mjs` runtime by
+  absolute path rather than reimplementing it. That plugin marks `/codex:adversarial-review` as
+  `disable-model-invocation: true` — a deliberate user-only gate — so the slash command stays
+  off-limits to a skill, while the plain Node runtime underneath it does not. Reusing it keeps the
+  adversarial prompt tracking upstream instead of drifting in a copy here; the price is that the
+  mode reports the new `adversarial-absent` status when the plugin is not installed, which changes
+  nothing else. The runtime is invoked without its `--background` flag on purpose: backgrounding it
+  there would put the Codex process outside the group this script signals at budget expiry, leaving
+  an orphan run billing after the review was already reported as `timeout`.
+
+  `/code-review max` is reported as Review D and labelled for what it is — the same model family as
+  the Bymax review running a different method, not a third independent voice. Two agreeing runs of
+  one model is weak evidence, and a reader who mistakes it for corroboration will over-trust it. It
+  cannot be backgrounded (a skill invocation is not a shell), which is why it is confined to `deep`:
+  `full` runs before every push and has to stay fast enough that people actually run it.
+
 - **`argument-hint` on every command that takes arguments** — typing a slash command showed no
   hint of what it accepts, because only `/bymax-pr:push` and `/bymax-web-verify:test` declared the
   field. Eleven commands now do: `/bymax-quality:code-review`, `/bymax-quality:tdd`,
@@ -29,6 +52,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   explicitly, because a gate that skips itself is worse than no gate.
 
 ### Fixed
+
+- **The frontmatter gate could report success without having run.** `check-frontmatter.py` exited
+  with a "skipped" status when PyYAML was missing and `validate.sh` treated that as a warning, so a
+  machine without PyYAML got `✓ All validations passed` over a check that never executed — the exact
+  fail-open shape the gate was added to prevent, and the opposite of what its own changelog entry
+  claimed. Found by the new adversarial review on its first real run. The checker now degrades to a
+  dependency-free reduced mode that still catches the failure classes it exists for (an unclosed
+  block, an unquoted scalar carrying a colon-space, a bracketed value YAML reads as a list) and says
+  which mode ran; a missing `python3` is now a failure rather than a warning.
+
+  The reduced parser then refuses everything it cannot prove rather than skipping it: an
+  unterminated or mismatched quote, an unescaped apostrophe inside a single-quoted scalar, and any
+  indented line that is not a `- item` under a key (the one nested shape this repo uses, in
+  `allowed-tools`). The first cut silently ignored indented lines and stripped quotes without
+  checking they closed, so malformed YAML passed the reduced check and failed only where a real
+  parser ran — a gate whose verdict depended on which machine ran it. `--self-test` locks the
+  behaviour down with nine cases and runs on every `validate.sh`, because the reduced path is the
+  one least likely to be exercised by hand. Both independent reviews found the quote bug; the
+  indentation half came from the adversarial one.
 
 - **`argument-hint` in the `tester` skill parsed as a list, not a string** — it was written
   unquoted (`argument-hint: [file-path]`), which YAML reads as a one-element sequence. Found by

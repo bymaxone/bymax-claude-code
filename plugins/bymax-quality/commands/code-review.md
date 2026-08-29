@@ -1,5 +1,5 @@
 ---
-description: 'Comprehensive security and quality review with selectable depth: mechanical gate (deterministic greps for secrets/suppressions/Tailwind/console), bug hunt (single-pass or parallel finder agents with adversarial verification), and the Bymax convention checklist across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic, speculative generality), and LOW (nits). Every candidate finding is re-verified against the file before it is reported. In full and deep an independent second review runs in parallel through the Codex CLI (optional: absent, logged-out or slow Codex degrades to a one-line status and changes nothing), and the report carries both reviews side by side with a cross-read. Blocks the commit on any CRITICAL or HIGH from the Bymax review. Modes: quick | full (default) | deep. Optional target (branch, ref range, PR#, file), --fix and --no-codex. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
+description: 'Comprehensive security and quality review with selectable depth: mechanical gate (deterministic greps for secrets/suppressions/Tailwind/console), bug hunt (single-pass or parallel finder agents with adversarial verification), and the Bymax convention checklist across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic, speculative generality), and LOW (nits). Every candidate finding is re-verified against the file before it is reported. In full and deep two independent Codex reviews run in parallel background shells — a standard one (is this correct?) and an adversarial one (is this the right approach?) — and deep additionally runs Claude''s own /code-review max in-session; the report carries every review side by side with a cross-read. All of it is optional: absent, logged-out or slow Codex degrades to a one-line status and changes nothing, and the adversarial review additionally needs the openai-codex plugin. Blocks the commit on any CRITICAL or HIGH from the Bymax review. Modes: quick | full (default) | deep. Optional target (branch, ref range, PR#, file), --fix and --no-codex. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
 argument-hint: "[quick|full|deep] [target] [--fix] [--no-codex]"
 ---
 
@@ -25,10 +25,10 @@ the report says so in one line and nothing else changes.
 | --- | --- |
 | `quick` | Mechanical gate + CRITICAL/HIGH judgment checks on changed lines only. Sanity check before a push. |
 | `full` *(default)* | Everything: mechanical gate, single-pass bug hunt, full convention checklist, verification. |
-| `deep` | `full`, but the bug hunt fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified. Use before merging a feature branch. |
+| `deep` | `full`, but the bug hunt fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified, **and** Claude's built-in `/code-review max` runs in-session as Review D. Slowest mode by a wide margin. Use before merging a feature branch. |
 | `target` | Optional. A branch name (`feature-x` → reviews `<default-branch>...feature-x`), a ref range (`main...feature-x`), a PR number (`#123`, checked out locally so `$RANGE` works with `git diff` — see Step 1), or a file path. Without a target: uncommitted changes, plus the branch's commits ahead of upstream when the working tree is clean. |
 | `--fix` | After the report, apply the confirmed mechanical MEDIUM fixes (Tailwind renames, canonical tokens) and any finding the user approves. Never commits. |
-| `--no-codex` | Skip the independent Codex review (Step 1.5). It is on by default in `full` and `deep`, and never runs in `quick`. |
+| `--no-codex` | Skip **both** Codex reviews (Steps 1.5). They are on by default in `full` and `deep`, and never run in `quick`. Does not affect Review D, which is tied to `deep`. |
 
 > **Stack-adaptive.** Detect the stack first. On a **Rust** project (`Cargo.toml`), apply the
 > **Rust checks** flagged in each section below and **skip** the TypeScript/Tailwind-specific ones
@@ -39,14 +39,23 @@ the report says so in one line and nothing else changes.
 > **Composes with the built-in engine.** Claude Code ships its own multi-agent bug-hunting review
 > (`/code-review <effort>`, `/code-review ultra` for the cloud run) — it finds logic bugs but knows
 > nothing about Bymax conventions and never blocks. This command is the convention gate that does
-> block. For the heaviest bug pass, run the built-in `/code-review high` (or `ultra`) alongside this
-> command; `deep` mode approximates its finder→verify architecture locally with this plugin's agents.
+> block. `deep` now invokes `/code-review max` for you (Step 1.6); `quick` and `full` do not, so
+> run it yourself alongside them when a diff deserves the heavier bug pass. `ultra` is always the
+> user's to launch — it is billed, and a skill must not trigger it.
 
-> **The Codex review is optional and self-contained.** It needs only the `codex` binary on
-> `PATH` with an active session — not the OpenAI Codex *plugin*, whose `/codex:review` and
-> `/codex:adversarial-review` are user-only commands a skill cannot invoke. Run
-> **`/bymax-quality:codex-setup`** to install and authenticate it. Without it, this command
-> behaves exactly as it did before.
+> **Both Codex reviews are optional; only the standard one is self-contained.** Review B needs
+> only the `codex` binary on `PATH` with an active session — run **`/bymax-quality:codex-setup`**
+> to install and authenticate it. Review C needs the OpenAI Codex *plugin* on top of that, because
+> the adversarial stance lives in that plugin's prompt.
+>
+> Note what is and is not being invoked there. That plugin's `/codex:review` and
+> `/codex:adversarial-review` are marked `disable-model-invocation: true` — user-only by design,
+> and a skill must not route around that by pretending to be the user. What Review C drives is the
+> plugin's `codex-companion.mjs` runtime directly, by absolute path: a plain Node script with no
+> such gate, which locates its own prompts relative to itself. Reusing it is what keeps the
+> adversarial prompt tracking upstream instead of drifting in a copy here.
+>
+> Without either, this command behaves exactly as it did before.
 
 ## Step 1 — Resolve the scope
 
@@ -168,21 +177,64 @@ Map the scope resolved in Step 1 onto the one flag Codex understands:
 > compare **is** the scope you resolved in Step 1. Never switch branches to make it fit —
 > a review command must not mutate the working tree. Skip Codex and say so in Review B.
 
-Launch it with `run_in_background: true` so it runs while you do Steps 2–4, and note
-the shell id for Step 5.5:
+Launch **both** Codex reviews with `run_in_background: true`, in the same message so
+they run concurrently, and note each shell id for Step 5.5. They ask different
+questions of the same diff, so neither substitutes for the other:
 
 ```bash
+# Review B — standard: is this change correct?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
+  --target <target> [--ref <ref>] --budget <180 in full | 600 in deep>
+
+# Review C — adversarial: is this the right approach at all?
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" --mode adversarial \
   --target <target> [--ref <ref>] --budget <180 in full | 600 in deep>
 ```
 
-The script always exits 0 and never prompts. A missing CLI, an expired session, a rate
-limit, a timeout and a parse failure all come back as a status line — none of them can
-stall this command.
+Two background shells, launched together, cost wall-clock once. Running them in
+sequence would double the time for no gain — nothing in the second depends on the
+first, which is the whole point.
 
-> **Do not read its output yet.** Reading it before your own findings are frozen anchors
-> Steps 2–5 on what Codex saw, which destroys the independence that makes the second
-> review worth running at all. Harvest it in Step 5.5.
+The script always exits 0 and never prompts, in either mode. A missing CLI, an expired
+session, a rate limit, a timeout and a parse failure all come back as a status line —
+none of them can stall this command.
+
+**Review C needs the openai-codex plugin, Review B does not.** The adversarial stance
+lives in that plugin's prompt, and its `/codex:adversarial-review` command is marked
+`disable-model-invocation: true` — a deliberate user-only gate that a skill must not
+work around by pretending to be the user. What the script drives instead is the plain
+Node runtime underneath it, by absolute path. Reusing that runtime keeps the adversarial
+prompt tracking upstream rather than drifting in a copy here; the cost is that Review C
+reports `adversarial-absent` when the plugin is not installed, which changes nothing
+else. `--target commit` has no adversarial equivalent and reports
+`unsupported-target`.
+
+> **Do not read either output yet.** Reading them before your own findings are frozen
+> anchors Steps 2–5 on what Codex saw, which destroys the independence that makes a
+> second review worth running at all. Harvest both in Step 5.5.
+
+## Step 1.6 — Claude's own bug hunt at max effort (`deep` only)
+
+Skipped in `quick` and `full`. Run **after** launching the background shells above, so
+Codex is working while this runs.
+
+Invoke the built-in review skill at max effort over the same scope:
+`/code-review max` (add the resolved target when it is not the working tree).
+
+Unlike Steps 1.5, this one is **not** a second opinion — it is the same model family as
+Review A, running a different method: a multi-agent bug hunt with its own finder and
+verifier passes. Say that plainly in the report rather than presenting it as a third
+independent voice, because two agreeing runs of the same model is weak evidence and a
+reader who mistakes it for corroboration will over-trust it.
+
+It runs in the session and cannot be backgrounded — a skill invocation is not a shell.
+That makes it the long pole of `deep`, which is why it is confined to `deep`: `full` is
+the mode that runs before every push, and it has to stay fast enough that people
+actually run it.
+
+> **`/code-review ultra` is not an option here.** It is user-triggered and billed; a
+> skill must not launch it. If the diff warrants that depth, say so in the report and
+> let the user decide.
 
 ## Step 2 — Mechanical gate (deterministic)
 
@@ -355,12 +407,12 @@ Step 2 (mechanical) findings skip verification — they are already exact.
 
 **Your findings are now frozen.** Do not revise them after reading Step 5.5.
 
-## Step 5.5 — Harvest the Codex review
+## Step 5.5 — Harvest the Codex reviews
 
-Only now, with your own findings frozen, read the background shell's output.
+Only now, with your own findings frozen, read **both** background shells' output.
 
-Its first line is `CODEX_STATUS: <status>`. Branch on it deterministically — never on
-the prose that follows:
+Each one's first line is `CODEX_STATUS: <status>`. Branch on it deterministically —
+never on the prose that follows:
 
 | Status | Meaning | What to do |
 | --- | --- | --- |
@@ -370,19 +422,28 @@ the prose that follows:
 | `unsupported-target` | the scope has no Codex equivalent | idem |
 | `timeout` | exceeded the budget | idem |
 | `failed` | non-zero exit, or no readable output | idem |
+| `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing | report the status, change nothing else |
 
-If the shell has not finished, wait up to the remaining budget, then treat it as
-`timeout`. Never hold the report for it.
+The two shells are read independently. One of them degrading says nothing about the
+other: Review B needs only the `codex` binary, Review C needs the plugin on top of it,
+so `adversarial-absent` next to a healthy `ok` is the expected shape on a machine
+without the plugin — not a symptom.
 
-On `absent` or `unauthenticated`, add one line to Review B offering
-`/bymax-quality:codex-setup`, which installs and authenticates the CLI. Offer it once,
-and only in the report — never interrupt the review to ask, and never install anything
-on the user's behalf mid-review.
+If a shell has not finished, wait up to the remaining budget, then treat it as
+`timeout`. Never hold the report for either.
+
+On `absent` or `unauthenticated`, add one line to the affected review offering
+`/bymax-quality:codex-setup`, which installs and authenticates the CLI. On
+`adversarial-absent`, name the openai-codex plugin instead — `codex-setup` installs the
+CLI and will not fix that one. Offer either once, and only in the report — never
+interrupt the review to ask, and never install anything on the user's behalf mid-review.
 
 ### The four independence rules
 
 They exist because the dangerous failure here is not Codex being wrong. It is you
-quietly making Codex agree with you.
+quietly making Codex agree with you. They apply to Review B and Review C alike, and to
+Review D — where the pull is stronger, not weaker, because that reviewer shares your
+model and its findings will feel familiar and therefore right.
 
 1. **Never read it early.** If you did read it before Step 5 finished, say so in the
    report instead of pretending the reviews were independent.
@@ -400,6 +461,12 @@ quietly making Codex agree with you.
 > **It is a sample, not a measurement.** Three runs over the same commit returned
 > overlapping but different findings, and the same issue came back as `P1` in one run and
 > `P2` in another. An empty Codex review is not evidence the diff is clean.
+
+> **Agreement between A and D is not corroboration.** They are the same model family
+> reading the same diff by different methods, so they fail in correlated ways. Two of
+> them missing something is roughly one model missing it. Only B and C are outside
+> voices — and Review C is outside on a second axis, since it argues about the approach
+> rather than about the code.
 
 ## Step 6 — Report and verdict
 
@@ -423,28 +490,49 @@ quietly making Codex agree with you.
 Candidates dropped in verification: <n>
 Verdict: BLOCK / APPROVE WITH CHANGES / APPROVE
 
-### Review B — Codex (independent)
+### Review B — Codex, standard (independent)
 
 Status: ok
 - [P1 → HIGH] <file>:<lines> — <title>
   <body, verbatim>
   <optional annotation, clearly marked as yours>
 
+### Review C — Codex, adversarial (independent)
+
+Status: ok
+- [P1 → HIGH] <the approach or assumption being challenged>
+  <body, verbatim>
+
+### Review D — Claude, /code-review max (deep only)
+
+Same model family as Review A, different method — not an independent voice.
+- <file>:<line> — <finding>
+
 ### Cross-read
 
-- **Both found:** <issue> — highest confidence, fix first.
-- **Only A:** <issue> — the convention and mechanical axes Codex does not cover.
-- **Only B — needs your disposition:** <issue>
+- **Both outside reviews found it (B + C):** <issue> — highest confidence, fix first.
+- **A and D agree, B and C silent:** <issue> — one model's opinion twice; state that.
+- **Only A:** <issue> — the convention and mechanical axes no bug hunter covers.
+- **Only C:** <issue> — a design objection, not a defect. Answer it on the merits.
+- **Only B or C — needs your disposition:** <issue>
 ```
 
-When Codex did not run, Review B is a single line and nothing else changes:
+Each review that did not run collapses to a single line, and nothing else changes:
 
 ```
-### Review B — Codex (independent)
+### Review B — Codex, standard (independent)
 
 Status: unauthenticated — no second opinion in this report.
 Run /bymax-quality:codex-setup to enable it.
+
+### Review C — Codex, adversarial (independent)
+
+Status: adversarial-absent — the openai-codex plugin is not installed.
 ```
+
+Omit Review D's heading entirely outside `deep`, rather than printing it as skipped —
+a reader scanning a `full` report should not have to work out that an empty section is
+expected.
 
 **Never approve code with security vulnerabilities or new suppression comments.**
 Any CRITICAL or HIGH in Review A ⇒ verdict is BLOCK.
@@ -452,8 +540,13 @@ Any CRITICAL or HIGH in Review A ⇒ verdict is BLOCK.
 **Every Codex-only P0/P1 needs an explicit disposition** — fixed, or refused with a
 stated reason — before this review counts as done. This is the same rule the project
 already applies to a reviewer's comment on a PR: a finding you choose not to fix needs
-a justification on the record, not silence. It is what gives Review B teeth while
+a justification on the record, not silence. It is what gives Reviews B and C teeth while
 keeping the automated verdict independent of whether Codex was reachable.
+
+A Review C objection is dispositionable in the same way, and it is the one most easily
+waved away, because "the approach is wrong" has no line number to check it against.
+Answer it with the reasoning or the constraint that makes the current approach right —
+or accept it. "Out of scope" disposes of a defect, never of a design objection.
 
 With `--fix`: after the report, apply the mechanical MEDIUM fixes (Tailwind renames and canonical
 tokens are deterministic rewrites) and any other finding the user approves, then re-run Step 2 to

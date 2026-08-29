@@ -123,20 +123,28 @@ fi
 
 section "Verifying command / skill frontmatter"
 
+# This gate fails closed. A missing interpreter is an environment problem, not a
+# clean repository, and printing "all validations passed" over a check that never
+# ran is the failure mode the gate exists to prevent — the same reasoning that
+# makes the checker degrade to a reduced mode instead of skipping when PyYAML is
+# absent. shellcheck above is genuinely optional; frontmatter validity is not.
 if command -v python3 >/dev/null 2>&1; then
-  # 0 = all valid, 2 = skipped (PyYAML missing), anything else = real failures.
   # Capture the status via `||` rather than reading $? in a conditional, which
   # shellcheck flags (SC2181) and which any command in between would clobber.
+  # Self-test first: the reduced parser is the path that runs when PyYAML is
+  # missing, which is exactly the path least likely to be exercised by hand.
   frontmatter_status=0
-  frontmatter_output="$(python3 "${SCRIPT_DIR}/lib/check-frontmatter.py" 2>&1)" \
+  frontmatter_output="$(python3 "${SCRIPT_DIR}/lib/check-frontmatter.py" --self-test 2>&1 \
+    && python3 "${SCRIPT_DIR}/lib/check-frontmatter.py" 2>&1)" \
     || frontmatter_status=$?
-  case "${frontmatter_status}" in
-    0) ok "${frontmatter_output}" ;;
-    2) warn "${frontmatter_output}" ;;
-    *) printf '%s\n' "${frontmatter_output}" >&2; fail "frontmatter validation failed" ;;
-  esac
+  if [[ "${frontmatter_status}" -eq 0 ]]; then
+    ok "${frontmatter_output}"
+  else
+    printf '%s\n' "${frontmatter_output}" >&2
+    fail "frontmatter validation failed"
+  fi
 else
-  warn "python3 not installed — skipping frontmatter check"
+  fail "python3 is required for the frontmatter check but is not installed"
 fi
 
 # ---------------------------------------------------------------------------
