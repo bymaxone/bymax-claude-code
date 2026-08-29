@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`AGENTS.md`, with the shared Bymax code-review rules and the `agents-sync` workflow.** Codex
+  reviews every pull request here and reads its guidance from `AGENTS.md` alone — root rules apply
+  broadly, a nested file governs its directory, one file per directory, up to 32 KiB combined. The shared block between the
+  `shared:begin`/`shared:end` markers is the canonical copy from `bymaxone/.github@v1`, byte for
+  byte, and `.github/workflows/agents-sync.yml` offers a pull request whenever it drifts. What
+  this repository says for itself sits below the markers: here the product is instruction text,
+  so the shared source-shaped limits are moved onto the executable files, an ambiguity in a
+  command is a defect, a reportable status needs its verifying read, and two passages that look
+  trimmable are named as load-bearing.
+
+### Changed
+
+- **`templates/AGENTS.md` is now `templates/AGENTS.starter.md`.** It is a 26 KB starter for other
+  projects, with `{{PROJECT_NAME}}` placeholders. Under its old name Codex would have discovered it
+  as this repository's nested `AGENTS.md` for anything changed under `templates/` — applying a
+  fictional project's rules to a review here, and pushing the combined guidance past the 32 KiB
+  cap. The starter itself is unchanged.
+
 ## [1.9.0] — 2026-08-29
 
 Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1.5.0 ·

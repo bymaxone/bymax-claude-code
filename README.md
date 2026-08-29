@@ -408,7 +408,7 @@ bymax-claude-code/
 │
 ├── templates/                          ← project bootstrapping templates
 │   ├── CLAUDE.md                       ← starter CLAUDE.md (load-on-demand pattern)
-│   ├── AGENTS.md                       ← starter AGENTS.md (full spec for agents)
+│   ├── AGENTS.starter.md               ← starter AGENTS.md (full spec for agents; named so Codex does not read it as this repo's guidance)
 │   └── README.md                       ← beautiful README starter (badges + sections + emojis)
 │
 ├── vendor/                             ← third-party MIT-licensed extras (backup, not in marketplace)

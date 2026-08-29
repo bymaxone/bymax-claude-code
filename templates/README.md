@@ -4,6 +4,12 @@ README.md TEMPLATE — Bymax style
 Replace every {{PLACEHOLDER}} with real content. Delete sections you don't need
 (but think twice — most are valuable for adoption).
 
+The agent spec next to this file ships as AGENTS.starter.md, not AGENTS.md: under
+its real name, Codex would read it as guidance for THIS repository's templates/
+directory. Rename it to AGENTS.md when you copy it into your project. The links
+in CLAUDE.md already point at AGENTS.md — they do not resolve inside this
+repository on purpose, and resolve in yours once the file is renamed.
+
 Visual conventions:
 - Centered logo / badge at top
 - Tagline + subtitle

@@ -1,0 +1,260 @@
+# AGENTS.md — bymax-claude-code
+
+Guidance for coding agents working in this repository, and the rules Codex applies when it
+reviews a pull request here. Codex reads this file from the tree under review: per its GitHub
+review documentation, root-level rules apply broadly and a nested `AGENTS.md` governs the code
+in its directory, and per its `AGENTS.md` guide at most one file is read per directory, up to a
+combined `project_doc_max_bytes` of 32 KiB by default. So the shared half below has to exist
+here as a real file, kept in step by the `agents-sync` workflow.
+
+## What this repository is
+
+A Claude Code plugin marketplace. The product is **instruction text**: every file under
+`plugins/*/commands/`, `plugins/*/skills/*/SKILL.md` and `plugins/*/agents/` is a contract read
+by a model at run time, and most of the reviewable surface is Markdown. The executable parts are
+small — `scripts/validate.sh`, `scripts/lib/check-frontmatter.py`, `plugins/*/scripts/*.sh` and
+`plugins/*/hooks/*.sh`.
+
+## How to verify work
+
+```bash
+./scripts/validate.sh        # manifests, +x bits, shellcheck, frontmatter, required files
+```
+
+It needs the `claude` CLI and PyYAML (`python3 -m pip install pyyaml`; `--break-system-packages`
+on a PEP 668 Python, as CI does). A missing `claude`, `python3` or PyYAML is a red run, not a
+skipped check. **shellcheck is the one optional dependency:** absent locally, the lint step
+prints a warning and is skipped, and CI — which installs it — is where that gate is enforced.
+So a green local run proves the manifests, the frontmatter and the required files, and proves
+shellcheck only when it is installed. Done means `validate.sh` is green **and** the command text
+says what it means — see the first narrowing below.
+
+## Code Review Rules
+
+<!-- shared:begin -->
+<!--
+  CANONICAL COPY: bymaxone/.github → agents/code-review-rules.md
+  Do not edit this block in a consuming repository. It is replaced wholesale by
+  the `agents-sync` reusable workflow, so a local edit is reverted on the next
+  run. Change it here, cut a release, and every repository is offered the update.
+
+  Repository-specific rules go OUTSIDE this block, below the closing marker.
+-->
+
+These rules hold in every Bymax repository. What is specific to this one is written after this
+block, and the two are read together.
+
+The pipeline already enforces formatting, linting, dependency policy, coverage and — where the
+repository has one — the mutation gate. Do not spend a review on a **violation** of one of those: it
+is a red check, not a comment. What follows is what CI cannot see.
+
+**A change to the enforcing configuration is the opposite case, and it is in scope.** Every gate runs
+the configuration from the branch under review — that branch's lint config, its coverage thresholds,
+its mutation thresholds. So a pull request that deletes a rule, lowers a threshold or widens an
+ignore glob turns the check **green**, because a gate reports on the rules it was handed. For those
+diffs the review is the only independent check there is, and a weakened gate needs the same
+justification a suppression does.
+
+### A finding names what it read
+
+Every factual claim in a review — about a library's API, about this repository's history, about what
+a file contains — has to come from something read in the tree under review, and the finding should
+say which. A claim assembled from recollection is likely to describe a previous version of whatever
+it is about.
+
+**Safe path**, by the kind of claim:
+
+| Claim about                         | Read this                                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| A library's API **shape**           | `node_modules/<pkg>/dist/**/*.d.ts` in this tree                               |
+| A library's **runtime behaviour**   | that version's changelog entry, its documentation, or a test that exercises it |
+| Commit authorship, dates or history | `git log --format='%an <%ae> / %cn <%ce>' <sha>`                               |
+| What a file contains                | the file at the revision under review, not an earlier one                      |
+
+The first two rows are separate on purpose, and the rule below says why: a field can stay optional
+in the published type while becoming mandatory in behaviour. A `.d.ts` settles what a signature
+accepts and nothing about what the implementation does with it, so a behavioural claim resting on
+one is unfounded.
+
+Weight the checking by what acting on the finding would cost. A comment that asks for a reworded
+sentence is cheap to be wrong about; one that asks for history to be rewritten, a merge reverted, or
+a release pulled is not — verify that class before raising it, and raise it at the severity the
+evidence supports rather than the severity the consequence would deserve if true.
+
+### A dependency upgrade migrates every call site, not only the ones that fail to compile
+
+When an upgrade tightens a contract, the compiler catches only the call sites whose **shape**
+changed. A field that stays optional in the published type while becoming mandatory in behaviour
+compiles, passes the unit suite, and fails in production.
+
+A `@bymax-one/*` version number carries **no compatibility information** while the libraries are
+pre-stable: breaking changes ship in minor and patch releases by explicit policy, so `^` and `~`
+protect against nothing. The migration note under **Apply to a derived backend** in the library's own
+changelog is the compatibility contract.
+
+**Safe path:** read **every** changelog entry from the version being replaced up to the proposed
+one, not only the proposed one's, and check every call site they name — not only the ones the
+compiler rejected. Upgrades routinely skip releases, and the entry that matters is often not the
+last one: adopting `@bymax-one/nest-cache` 1.1.0 → 1.2.1 skipped 1.2.0, where a namespace-validation
+security fix lives; 1.2.1's own entry is a field rename. Diff the `.d.ts` of the **previously adopted** version against
+the **proposed** one — `npm pack` both, and name the two versions. Reaching for "the installed
+declarations" is the trap: in a checkout of the branch under review the installed tree is already
+the new version, so that diff compares a release with itself and shows nothing.
+
+### Settled decisions are not review findings
+
+Both are settled deliberately, and reopening either costs a round trip and changes nothing:
+
+- **Do not propose a major version bump** for a breaking change in a `@bymax-one/*` library, and do
+  not assert that this ecosystem follows strict SemVer. Until an API is declared stable, breaking
+  changes ship in minor and patch releases; the migration note carries the compatibility information
+  the number does not. If a document claims strict SemVer, the finding is that the claim is wrong —
+  not that the version should be raised.
+- **Do not propose pinning `bymaxone/.github` reusable workflows to a commit SHA.** They are
+  referenced by the `@v1` alias on purpose: a fix has to land once and reach every repository, the
+  tag is immutable and the alias moves only on a release, and pinning was measured to cost ~58
+  dependency pull requests to propagate one change. Third-party actions are the opposite case and
+  **are** pinned by SHA.
+
+**Safe path:** if you believe a settled decision is now wrong, say so as a question in the pull
+request rather than as a finding.
+
+### Suppressions are refusals, not exceptions
+
+`@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`, `eslint-disable` in any form,
+`as unknown as` laundering a real type error, `istanbul ignore`, and in Rust `#[allow(...)]` over a
+lint gate or `unsafe` without a `// SAFETY:` comment are blocking findings.
+
+Anything a configured gate already reports belongs to the gate, not to a review: where a repository
+lints `no-explicit-any` as an error — most do — an `as any` is a red check, and raising it here only
+duplicates it. Check the repository's lint configuration before reporting a suppression rather than
+assuming the list is exhaustive in either direction.
+
+A failing gate means the code is wrong, the type is wrong, or the rule is wrong. **Safe path:** fix
+whichever it is. Changing a rule's configuration with a stated reason is legitimate; scattering
+per-call-site silencers is not.
+
+### Comments state constraints, never history
+
+A comment must read as true for whoever opens the file next. Flag any comment that narrates what a
+previous version did, names a phase, task, ticket or review round, or explains a change rather than
+the code. **Safe path:** state the constraint that still holds, and let `git log` carry the history.
+
+### Size and layering
+
+Functions over **50 lines** and nesting deeper than four levels are findings in the repository's own
+source and test directories. Every non-trivial source file opens with a header stating its purpose
+and its layer, and every exported symbol carries a doc comment.
+
+**The 800-line file limit applies to what a change introduces, not to what it inherits.** A
+repository that already carries a file past the line — a generator, a long end-to-end suite — would
+otherwise produce a finding on every pull request touching three lines of it, which the author
+cannot act on and did not cause. Raise it for a **new** file over the limit, or when a change pushes
+a file past it or materially grows one already over.
+
+Markdown, generated output and lockfiles are **out of scope**: a changelog is an append-only log that
+only grows, a lockfile is generated, and neither has layers. Reporting their length is a false
+positive on every dependency bump and every release note.
+
+**Safe path:** extract by responsibility rather than by line count — the limit is a symptom, and one
+file doing two jobs is the defect.
+
+### No placeholders for empty directories
+
+`.gitkeep`, `.keep` and pre-created empty directory skeletons do not belong in the tree. A directory
+exists when there is a real file to put in it. **Safe path:** document the intended structure in a
+plan or README, and let the first real file create the path.
+
+### Language and attribution
+
+Everything published is English — source, comments, tests, commit messages, pull request titles and
+bodies, `README.md`, `CHANGELOG.md` and everything under `.github/`. Bymax projects keep `docs/` in
+**Portuguese** by explicit decision; do not report Portuguese there as a finding.
+
+No commit, pull request, comment or code may attribute authorship to an AI assistant or coding tool,
+in any form. **This governs text a change introduces** — a trailer, a "generated with" line, a
+signature in a comment or a description.
+
+Git's own author and committer fields are set by the contributor's git configuration rather than by
+anything in the diff. Before reporting one as a violation, read it:
+`git log -1 --format='%an <%ae> / %cn <%ce>' <sha>`. The claim is trivially checkable and expensive
+to act on — it asks for history to be rewritten.
+
+<!-- shared:end -->
+
+## Where this repository narrows a shared rule
+
+### The product is instruction text, so the source-shaped rules move
+
+The shared limits on function length, nesting, file size, header comments and doc comments
+apply to the executable files — `scripts/**`, `plugins/*/scripts/**`, `plugins/*/hooks/**` — and
+to nothing else. The shared "Markdown is out of scope" applies to **length** only: here the
+Markdown under `plugins/*/commands/`, `plugins/*/skills/` and `plugins/*/agents/` is the code,
+and it is reviewed for what it instructs. Do not apply TypeScript discipline to a skill file;
+do not skip a skill file because it is Markdown.
+
+### An ambiguity in an instruction is a defect
+
+A command file is a contract with a model. A step whose outcome depends on how the reader
+resolves it is broken, even when every word is true. Measured: `/bymax-quality:code-review`
+did not say that running its greps by hand records no push-gate marker; a session did exactly
+that, was blocked, and had to guess why. **Safe path:** state the case, name the measured
+failure when there is one, and prefer a table to a sentence when two readings are possible.
+
+### A status the model reports must come with the read that proves it
+
+Any instruction of the form "report X" without "and here is how you know X" invites a report
+assembled from expectation. `/bymax-pr:babysit-pr` does this right — "never report success you
+did not verify", with the `gh` read named. **Safe path:** pair every reportable state with its
+verification, and reject an instruction that names a state without one.
+
+### Load-bearing reasoning is not verbosity
+
+Some passages look like they could be trimmed and exist because the shorter form is the bug:
+
+- The `added()` helper in `code-review.md` uses `--output-indicator-new='>'` so a `+++ b/path`
+  header cannot false-positive and a content line starting with `++` is not dropped. The
+  "tidier" `grep '^+' | grep -v '^+++'` is the defect it avoids.
+- `/bymax-pr:babysit-pr` re-fetches review-thread ids **fresh, this turn** before acting on
+  them; the anti-hallucination framing around that instruction is what keeps a stale id from
+  becoming a reported resolve.
+
+**Safe path:** a simplification of an instruction needs the same justification as a
+suppression — say what the longer form guarded against and why that no longer applies.
+
+### Frontmatter is code
+
+Command, skill and agent frontmatter is parsed at load time and validated by
+`scripts/lib/check-frontmatter.py`. The failures that ship silently are an unquoted
+`description:` that gains a colon-space (`Modes: quick | full` becomes a nested mapping) and an
+unquoted `argument-hint: [a|b]` (a one-element list, not the hint). **Safe path:** quote the
+value, double any apostrophe inside single quotes, and run `validate.sh`.
+
+### Suppressions, narrowed to this repository's linters
+
+`validate.sh` runs shellcheck with two project-wide exclusions, each with a stated reason
+(`SC1091`, `SC2059`). Those are configuration, not suppression. The tree carries exactly one
+per-line `shellcheck disable`, at `plugins/bymax-quality/hooks/secret-scanner.sh:34`, with its
+reason on the lines above it (overlapping `case` globs that all lead to the same `exit 0`).
+That is the accepted shape and the accepted count: a new per-line disable is a finding, raised
+so the reviewer accepts it explicitly, and it needs a reason on the line above it the way that
+one has. The Python here carries no suppression comments — `# noqa` and `# type: ignore` are
+findings like any other.
+
+### A command change ships with a version bump
+
+Every `plugins/<name>/.claude-plugin/plugin.json` carries its own version, and the marketplace
+version moves with any of them. A change to a command file without a bump to its plugin is a
+finding: an installed copy sees no update signal. Measured: 1.8.0 had to bump `bymax-pr` after
+the fact because #10 changed `push.md` substantially and left 1.1.0 in place. **Safe path:**
+bump the plugin, bump the marketplace, add the `CHANGELOG.md` line, in the same change.
+
+### `templates/` holds starters, not this repository's guidance
+
+`templates/AGENTS.starter.md` and its siblings are reference files for **other** projects,
+with `{{PROJECT_NAME}}` placeholders. The starter is named so that Codex, applying nested
+guidance by file location, does not read a 26 KB fictional project's spec as this repository's
+`AGENTS.md` for `templates/` — nor push root plus nested past the 32 KiB cap. A project that
+adopts the starter renames it to `AGENTS.md` on copy; `templates/README.md` says so, and the
+links in `templates/CLAUDE.md` already target that adopted name — unresolved here by design. Do not
+apply the starter's rules to this repository, and do not rename it back here.
