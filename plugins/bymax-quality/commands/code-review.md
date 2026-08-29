@@ -60,6 +60,12 @@ out, rate-limited or slow, the report says so in one line and nothing else chang
 >
 > Without either, this command behaves exactly as it did before.
 
+> **Invoking this command is not the same as running its steps.** Some environments gate
+> `git push` on a marker that a hook records when *this command* runs — running the greps
+> and the checklist by hand records nothing, however faithfully. Measured: a session that
+> ran Step 2 manually twice and then pushed was blocked with "No review recorded". In `quick`
+> and `full` alike, the marker comes from the invocation, not from the work.
+
 ## Step 1 — Resolve the scope
 
 ```bash
