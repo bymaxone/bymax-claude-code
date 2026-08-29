@@ -1,5 +1,6 @@
 ---
 description: 'Drive a strict red-green-refactor TDD cycle for NEW code — scaffold interfaces, write failing tests FIRST, run them and confirm they fail, then write the minimal implementation to make them pass, then refactor. Enforces 80% coverage minimum (100% on critical paths). Every it() must carry a block comment per /bymax-workflow:standards. Use for new features and bug fixes (write the regression test first). For tests on EXISTING code without changing behavior, use the `tester` skill instead. Triggers: "implementar com tdd", "tdd", "test first", "red green refactor", "vou implementar", "criar função", "criar serviço", "fix this bug".'
+argument-hint: "[what to build]"
 ---
 
 # TDD Command

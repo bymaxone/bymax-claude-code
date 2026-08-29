@@ -1,5 +1,6 @@
 ---
 description: Prove a change actually works before declaring it done. Runs the project's verification gates, exercises the affected paths, and checks the root cause was fixed — not just the symptom. Use after implementation, before /bymax-quality:code-review or commit.
+argument-hint: "[what changed]"
 ---
 
 # Verify Command

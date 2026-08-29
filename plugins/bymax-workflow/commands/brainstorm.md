@@ -1,5 +1,6 @@
 ---
 description: Refine a rough idea before planning. Ask clarifying questions, explore alternatives, surface tradeoffs, and produce a short design spec the user signs off on. WAIT for explicit user approval before handing off to /bymax-workflow:plan.
+argument-hint: "[rough idea]"
 ---
 
 # Brainstorm Command

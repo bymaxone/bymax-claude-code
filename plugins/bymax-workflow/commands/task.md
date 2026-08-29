@@ -1,5 +1,6 @@
 ---
 description: 'Execute a phase or a single task end-to-end with all quality gates wired in. Loads /bymax-workflow:standards + project docs, runs the embedded agent prompt (using /bymax-quality:tdd for new code or `tester` for adding tests), then enforces /bymax-workflow:verify → /security-review → /bymax-quality:code-review with apply-all-findings on each, with re-verification after every fix. Closes the phase by auditing every acceptance criterion, updating dashboards (task status, completion log, master roadmap progress), and STOPS — never auto-commits, never skips a gate, never bypasses with --no-verify or @ts-ignore. Modes: `/bymax-workflow:task phase <N>` runs all tasks in a phase + close-phase audit; `/bymax-workflow:task <task-id>` runs one task only. Triggers: "executar task", "executar fase", "rodar task", "run task", "run phase", "task <id>", "fase <N>", "execute phase".'
+argument-hint: "phase <N> | <task-id>"
 ---
 
 # Task Command — Execute Phase / Task with Full Quality Gates

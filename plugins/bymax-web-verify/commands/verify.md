@@ -1,5 +1,6 @@
 ---
 description: Verify a web change in a real browser using the agent-browser CLI. Navigates to a URL (default the local dev server), exercises the affected path, and reports what it observed — screenshots, console errors, page errors, and the accessibility snapshot. Read-only by default; only interacts when the task requires it. Pre-flights the CLI and offers /bymax-web-verify:setup if missing. Triggers, "verificar no browser", "testar no navegador", "web verify", "confirmar no browser", "rodar e2e", "validar a página", "/bymax-web-verify:verify".
+argument-hint: "[url] [what to check]"
 ---
 
 # /bymax-web-verify:verify — verify a web change in a real browser

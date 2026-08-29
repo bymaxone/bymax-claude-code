@@ -1,5 +1,6 @@
 ---
 description: 'Layer 1 of the feature workflow — write a complete technical specification document for a new feature. Asks clarifying questions if the request is vague, then drafts a spec covering goal, scope, user stories, success criteria, technical approach, constraints, risks, and open questions. WAITS for user approval before any next step. Does NOT create plans or tasks. Triggers: "novo recurso", "nova feature", "spec", "specification", "especificacao", "preciso especificar", "vou implementar X", "documentar feature", "começar feature".'
+argument-hint: "[feature description]"
 ---
 
 # Spec Command — Layer 1

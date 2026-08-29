@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`argument-hint` on every command that takes arguments** — typing a slash command showed no
+  hint of what it accepts, because only `/bymax-pr:push` and `/bymax-web-verify:test` declared the
+  field. Eleven commands now do: `/bymax-quality:code-review`, `/bymax-quality:tdd`,
+  `/bymax-web-verify:verify`, and all of `/bymax-workflow:brainstorm`, `:checkpoint`, `:phase-tasks`,
+  `:plan`, `:roadmap`, `:spec`, `:task`, `:verify`. Each hint was derived from the command's own
+  documented invocation, not invented. Commands that genuinely take no argument
+  (`bootstrap`, `upgrade-standards`, `sim-ios`, `sim-android`, `codex-setup`, `review-md`,
+  `web-verify:setup`) deliberately declare none — a hint there would promise an argument that is
+  ignored.
+
+### Fixed
+
+- **`/bymax-workflow:checkpoint` documented three of its four actions** — the `## Usage` line listed
+  `create|verify|list` while the `## Arguments` section below it also documented `clear`. The usage
+  line now matches.
+
 ### Security
 
 - **`validate.yml` ran with the default `GITHUB_TOKEN` scope** — the workflow declared no `permissions` block, so it inherited whatever the repository default grants (write, on many repos). CodeQL flagged it as `actions/missing-workflow-permissions` (medium). Every step only reads the repository — checkout, a toolchain install, and a local script — so it now declares `contents: read` at workflow level, which also makes any job added later inherit the restriction rather than silently getting the default.

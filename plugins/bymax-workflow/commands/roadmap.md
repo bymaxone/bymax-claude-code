@@ -1,5 +1,6 @@
 ---
 description: 'Layer 2 of the feature workflow — take an APPROVED spec and break it into a phased plan with a status dashboard, dependency graph, and definition-of-done per phase. Produces the "how we''ll build it" document. WAITS for user approval before any next step. Does NOT create task files yet. Triggers: "criar plano", "criar roadmap", "fasear", "roadmap", "plano mestre", "executar spec", "phase plan", "execution plan".'
+argument-hint: "[feature or spec path]"
 ---
 
 # Roadmap Command — Layer 2

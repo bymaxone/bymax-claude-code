@@ -1,5 +1,6 @@
 ---
 description: 'Create a step-by-step implementation plan for a single task or small feature — restate requirements, identify risks, break work into phases with file paths and complexity estimates, and WAIT for user confirmation before any code is written. Loads the universal /bymax-workflow:standards as a refresher first. Use this for tasks that fit one PR. For BIG multi-phase features, use the /bymax-workflow:spec → /bymax-workflow:roadmap → /bymax-workflow:phase-tasks chain instead. Triggers: "plano de", "criar plano", "preciso planejar", "make a plan", "plan this", "step by step", "como implementar".'
+argument-hint: "[what to plan]"
 ---
 
 # Plan Command
