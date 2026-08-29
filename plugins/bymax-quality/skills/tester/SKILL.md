@@ -2,7 +2,7 @@
 name: tester
 description: Write tests for a file or component. Detects the project's test stack (Jest/Vitest, React Native/React DOM/pure logic, or Rust cargo test), enforces 100% file coverage, every it() carries a comment, no fake classNames, real branches. Auto-runs tests and verifies coverage on completion.
 user-invocable: true
-argument-hint: [file-path]
+argument-hint: "[file-path]"
 ---
 
 # Tester Skill

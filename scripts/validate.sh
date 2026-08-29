@@ -12,7 +12,8 @@
 #   2. Every plugin under plugins/ validates via `claude plugin validate`.
 #   3. Every shell hook is executable (chmod +x).
 #   4. Every shell script passes shellcheck (if installed).
-#   5. Every required project-level file is present.
+#   5. Every command / skill Markdown file has parseable YAML frontmatter.
+#   6. Every required project-level file is present.
 #
 # Exit codes:
 #   0 — all valid
@@ -111,7 +112,35 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Verify required project-level files exist
+# 5. Verify command / skill frontmatter parses as YAML
+# ---------------------------------------------------------------------------
+#
+# `claude plugin validate` checks the JSON manifests, not the Markdown that
+# actually defines the commands. That gap is not theoretical: an unquoted
+# `description:` scalar breaks the moment someone adds a colon-space to it
+# (`Modes: quick | full`), and the manifests keep validating while the command
+# itself silently stops parsing. Catch it here instead.
+
+section "Verifying command / skill frontmatter"
+
+if command -v python3 >/dev/null 2>&1; then
+  # 0 = all valid, 2 = skipped (PyYAML missing), anything else = real failures.
+  # Capture the status via `||` rather than reading $? in a conditional, which
+  # shellcheck flags (SC2181) and which any command in between would clobber.
+  frontmatter_status=0
+  frontmatter_output="$(python3 "${SCRIPT_DIR}/lib/check-frontmatter.py" 2>&1)" \
+    || frontmatter_status=$?
+  case "${frontmatter_status}" in
+    0) ok "${frontmatter_output}" ;;
+    2) warn "${frontmatter_output}" ;;
+    *) printf '%s\n' "${frontmatter_output}" >&2; fail "frontmatter validation failed" ;;
+  esac
+else
+  warn "python3 not installed — skipping frontmatter check"
+fi
+
+# ---------------------------------------------------------------------------
+# 6. Verify required project-level files exist
 # ---------------------------------------------------------------------------
 
 section "Verifying required project files"
@@ -141,7 +170,7 @@ for f in "${REQUIRED_FILES[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
-# 6. Summary
+# 7. Summary
 # ---------------------------------------------------------------------------
 
 echo

@@ -21,7 +21,7 @@ claude plugin install bymax-workflow@bymax-claude-code
 | `/bymax-workflow:task`         | exec  | Execute a phase or single task with `/bymax-workflow:verify` → `/security-review` → `/bymax-quality:code-review` chain.     |
 | `/bymax-workflow:brainstorm`   | pre   | Refine vague ideas, explore alternatives, surface tradeoffs.                                    |
 | `/bymax-workflow:plan`         | mini  | Lightweight plan for single-PR work that doesn't need the full chain.                           |
-| `/bymax-workflow:verify`       | post  | 5-gate verification: static checks, exercise, root-cause, regression scan, acceptance criteria. |
+| `/bymax-workflow:verify`       | post  | 5-gate verification: static checks, exercise, root-cause, regression scan, acceptance criteria. `quick` = Gate 1 only. |
 | `/bymax-workflow:checkpoint`   | util  | Snapshot SHA + tests + coverage for later comparison.                                            |
 
 ### Skills

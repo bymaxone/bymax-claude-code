@@ -21,8 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `web-verify:setup`) deliberately declare none — a hint there would promise an argument that is
   ignored.
 
+- **`validate.sh` now parses command and skill frontmatter** — `claude plugin validate` reads the
+  JSON manifests, not the Markdown that defines the commands, so a malformed frontmatter block
+  shipped green: the plugin validated while the command itself silently stopped parsing. The new
+  `scripts/lib/check-frontmatter.py` walks every `commands/*.md` and `skills/*/SKILL.md`, requires
+  parseable YAML and a `description`, and rejects a non-string `argument-hint`. CI installs PyYAML
+  explicitly, because a gate that skips itself is worse than no gate.
+
 ### Fixed
 
+- **`argument-hint` in the `tester` skill parsed as a list, not a string** — it was written
+  unquoted (`argument-hint: [file-path]`), which YAML reads as a one-element sequence. Found by
+  the new frontmatter check on its first run.
+- **`/bymax-workflow:verify quick` was called but never defined** — `/bymax-workflow:checkpoint`
+  has always run `/bymax-workflow:verify quick` before snapshotting, while `verify` documented no
+  modes at all and presented its five gates as unconditional. The mode is now defined where it is
+  implemented: `quick` runs Gate 1 (static gates plus the suppression scan) and nothing else,
+  the default still runs all five. It is a smaller scope, not a lower bar — Gate 1 still fails on
+  one type error, one failing test, or one new suppression comment.
 - **`/bymax-workflow:checkpoint` documented three of its four actions** — the `## Usage` line listed
   `create|verify|list` while the `## Arguments` section below it also documented `clear`. The usage
   line now matches.
