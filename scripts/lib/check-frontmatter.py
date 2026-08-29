@@ -35,7 +35,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 REQUIRED_FIELDS = {
     "command": ("description",),
     "skill": ("name", "description"),
-    "agent": ("name", "description", "tools"),
+    "agent": ("name", "description", "tools", "model"),
 }
 
 # CONTRIBUTING.md requires every agent to run on at least `sonnet`; a `haiku`
@@ -122,6 +122,7 @@ def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
                 " — wrap it in quotes"
             )
 
+    # `model` is required above; this rejects the one value CONTRIBUTING.md forbids.
     if kind == "agent" and str(data.get("model", "")).lower() in AGENT_FORBIDDEN_MODELS:
         problems.append(
             f"{relative}: agent model '{data['model']}' is below the minimum (sonnet) CONTRIBUTING.md requires"
