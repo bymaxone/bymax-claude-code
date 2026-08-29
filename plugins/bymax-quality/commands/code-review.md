@@ -63,19 +63,48 @@ DEFAULT_BRANCH=$(git symbolic-ref --quiet refs/remotes/origin/HEAD \
   git ls-remote --symref origin HEAD 2>/dev/null \
     | sed -n 's@^ref: refs/heads/\(.*\)[[:space:]]HEAD$@\1@p')
 
-# The name is not always a usable ref here: `git clone --branch develop` creates
-# only the local `develop` while still fetching `origin/main`. Prefer the
-# remote-tracking ref, and never settle on one that does not resolve.
+# A DETECTED default must resolve to that branch and no other. Falling through
+# to another conventional name would silently compare against an unrelated one:
+# in a `--branch develop --single-branch` clone whose remote default is `main`,
+# that is exactly how `origin/develop` gets chosen to stand in for `main`.
 DEFAULT_REF=""
-for candidate in "origin/${DEFAULT_BRANCH}" "${DEFAULT_BRANCH}" \
-                 origin/main main origin/master master \
-                 origin/develop develop origin/trunk trunk; do
-  case "${candidate}" in ""|origin/) continue ;; esac
-  git rev-parse --verify -q "${candidate}" >/dev/null 2>&1 \
-    && DEFAULT_REF="${candidate}" && break
-done
-# When only the ref could be resolved, take the name from it.
-[ -n "${DEFAULT_BRANCH}" ] || DEFAULT_BRANCH="${DEFAULT_REF#origin/}"
+if [ -n "${DEFAULT_BRANCH}" ]; then
+  for candidate in "origin/${DEFAULT_BRANCH}" "${DEFAULT_BRANCH}"; do
+    git rev-parse --verify -q "${candidate}" >/dev/null 2>&1 \
+      && DEFAULT_REF="${candidate}" && break
+  done
+  # Detected but never fetched (single-branch clone). Fetch just that one ref,
+  # non-interactively — it creates a remote-tracking ref and touches nothing in
+  # the working tree. If it fails, leave DEFAULT_REF empty: require_base then
+  # refuses, which is correct. Never substitute a different branch.
+  [ -n "${DEFAULT_REF}" ] || {
+    GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -oBatchMode=yes' \
+      git fetch --quiet origin \
+        "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" 2>/dev/null \
+      && git rev-parse --verify -q "origin/${DEFAULT_BRANCH}" >/dev/null 2>&1 \
+      && DEFAULT_REF="origin/${DEFAULT_BRANCH}"
+  }
+else
+  # No default could be detected at all — only here is a conventional name a
+  # reasonable guess, and only one that actually exists.
+  for candidate in origin/main main origin/master master \
+                   origin/develop develop origin/trunk trunk; do
+    git rev-parse --verify -q "${candidate}" >/dev/null 2>&1 \
+      && DEFAULT_REF="${candidate}" && break
+  done
+  DEFAULT_BRANCH="${DEFAULT_REF#origin/}"
+fi
+
+# EVERY comparison below must go through this. An empty ref does not make git
+# fail: it reads `"...X"` as `HEAD...X`, so the comparison silently becomes
+# "the checkout vs X" — or `HEAD...HEAD`, an empty diff reported as a clean
+# review. Requiring the base at each point of use (rather than up front) keeps
+# the uncommitted-changes scope working in a repo that has no default branch.
+require_base() {
+  [ -n "${1:-}" ] && return 0
+  echo "cannot resolve a comparison base — pass an explicit ref range" >&2
+  return 1
+}
 
 # Default: uncommitted work first — tracked changes AND untracked new files
 # (a brand-new file with a secret or suppression must not slip the gate)…
@@ -91,10 +120,7 @@ if git diff --quiet HEAD && [ -z "$(git ls-files --others --exclude-standard)" ]
   # fail instead of reporting the commits, so resolve the base first.
   BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
     || BASE="${DEFAULT_REF}"
-  # An empty base would leave git reading `...HEAD` as `HEAD...HEAD`: it exits 0
-  # and reports nothing, so an unreviewed branch would pass as clean. Refuse and
-  # ask for an explicit target rather than reporting a false all-clear.
-  [ -n "${BASE}" ] || { echo "cannot resolve a comparison base — pass an explicit target" >&2; exit 1; }
+  require_base "${BASE}" || exit 1
   git diff --name-only "${BASE}...HEAD"
 fi
 ```
@@ -102,12 +128,18 @@ fi
 For the mechanical gate, include untracked files by intent-to-add them first
 (`git add -N .`) so `git diff` surfaces their added lines, or grep them directly.
 
-- Branch target → `git diff "$DEFAULT_REF"...<branch>` (fetch from origin if the branch is only remote).
+- Branch target → `require_base "$DEFAULT_REF" || exit 1`, then
+  `git diff "$DEFAULT_REF"...<branch>` (fetch from origin if the branch is only remote).
+  Without the guard an empty `$DEFAULT_REF` turns this into `HEAD...<branch>` — the target
+  compared against whatever happens to be checked out, or `HEAD...HEAD` when it *is* the
+  checkout: an empty diff reported as a clean review.
 - Ref range target → use it verbatim.
 - PR target → check it out locally so the range works with `git diff`:
   `gh pr checkout <N>`, then `$RANGE` = `<base-branch>...HEAD`. When checkout
   isn't possible, `git fetch origin pull/<N>/head` and use
-  `<base-branch>...FETCH_HEAD`.
+  `<base-branch>...FETCH_HEAD`. The PR's own base branch comes from
+  `gh pr view <N> --json baseRefName`, so it is always non-empty — but pass it through
+  `require_base` anyway if you derived it any other way.
 - File target → limit every step below to that file.
 
 Record the resolved diff range once and reuse it in every command below as `$RANGE`

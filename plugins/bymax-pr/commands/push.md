@@ -51,19 +51,37 @@ Determine:
     git ls-remote --symref origin HEAD 2>/dev/null \
       | sed -n 's@^ref: refs/heads/\(.*\)[[:space:]]HEAD$@\1@p')
 
-  # The name is not always a usable ref here: `git clone --branch develop` creates
-  # only the local `develop` while still fetching `origin/main`. Prefer the
-  # remote-tracking ref, and never settle on one that does not resolve.
+  # A DETECTED default must resolve to that branch and no other. Falling through
+  # to another conventional name would silently compare against an unrelated one:
+  # in a `--branch develop --single-branch` clone whose remote default is `main`,
+  # that is exactly how `origin/develop` gets chosen to stand in for `main`.
   DEFAULT_REF=""
-  for candidate in "origin/${DEFAULT_BRANCH}" "${DEFAULT_BRANCH}" \
-                   origin/main main origin/master master \
-                   origin/develop develop origin/trunk trunk; do
-    case "${candidate}" in ""|origin/) continue ;; esac
-    git rev-parse --verify -q "${candidate}" >/dev/null 2>&1 \
-      && DEFAULT_REF="${candidate}" && break
-  done
-  # When only the ref could be resolved, take the name from it.
-  [ -n "${DEFAULT_BRANCH}" ] || DEFAULT_BRANCH="${DEFAULT_REF#origin/}"
+  if [ -n "${DEFAULT_BRANCH}" ]; then
+    for candidate in "origin/${DEFAULT_BRANCH}" "${DEFAULT_BRANCH}"; do
+      git rev-parse --verify -q "${candidate}" >/dev/null 2>&1 \
+        && DEFAULT_REF="${candidate}" && break
+    done
+    # Detected but never fetched (single-branch clone). Fetch just that one ref,
+    # non-interactively — it creates a remote-tracking ref and touches nothing in
+    # the working tree. If it fails, leave DEFAULT_REF empty: require_base then
+    # refuses, which is correct. Never substitute a different branch.
+    [ -n "${DEFAULT_REF}" ] || {
+      GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -oBatchMode=yes' \
+        git fetch --quiet origin \
+          "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" 2>/dev/null \
+        && git rev-parse --verify -q "origin/${DEFAULT_BRANCH}" >/dev/null 2>&1 \
+        && DEFAULT_REF="origin/${DEFAULT_BRANCH}"
+    }
+  else
+    # No default could be detected at all — only here is a conventional name a
+    # reasonable guess, and only one that actually exists.
+    for candidate in origin/main main origin/master master \
+                     origin/develop develop origin/trunk trunk; do
+      git rev-parse --verify -q "${candidate}" >/dev/null 2>&1 \
+        && DEFAULT_REF="${candidate}" && break
+    done
+    DEFAULT_BRANCH="${DEFAULT_REF#origin/}"
+  fi
   ```
 
 - **Is anything staged?** `git diff --cached --quiet` → exit 1 means yes.
@@ -182,8 +200,11 @@ If a PR already exists for this branch (`gh pr view --json url` succeeds), repor
 URL and update nothing — the push already refreshed it.
 
 Otherwise author the PR from **everything the PR will contain** — the full range
-`git log <default>..HEAD` and `git diff <default>...HEAD --stat`, not just the last
-commit — write the body to a temp file, and create it:
+`git log "$DEFAULT_REF"..HEAD` and `git diff "$DEFAULT_REF"...HEAD --stat`, not just
+the last commit. Use the resolved `$DEFAULT_REF` from Step 0, never a literal branch
+name: an empty ref does not make git fail, it silently becomes `HEAD..HEAD` and you
+would describe the PR from an empty range. Then write the body to a temp file and
+create it:
 
 ```bash
 body=$(mktemp)   # write the full PR body (shape below) to "$body"

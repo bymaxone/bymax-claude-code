@@ -10,7 +10,10 @@
 #   - ALWAYS exits 0. A missing CLI, an expired session, a rate limit, a
 #     timeout or a parse failure are all reported as status lines, never as
 #     failures that could stall /bymax-quality:code-review.
-#   - NEVER prompts, NEVER installs anything, NEVER writes to the repo.
+#   - NEVER prompts, NEVER installs anything, NEVER writes to the repo. The
+#     sandbox and approval policy are pinned per invocation rather than
+#     inherited from the user's Codex config, so this holds regardless of how
+#     they have configured Codex for their own use.
 #   - First stdout line is always `CODEX_STATUS: <status>`, so the caller can
 #     branch deterministically without interpreting prose.
 #
@@ -115,8 +118,17 @@ fi
 # `set -m` puts the job in its own process group (pgid == pid). Codex spawns
 # child processes of its own, and signalling only the pid at budget expiry
 # leaves those children running — the budget would not actually be enforced.
+#
+# The sandbox and approval policy are pinned rather than inherited. A user whose
+# `~/.codex/config.toml` sets `workspace-write` or `danger-full-access` would
+# otherwise hand the reviewer write access to their tree, breaking this script's
+# "never writes to the repo" contract; an interactive approval policy would stall
+# the run until the budget expired. Both are overridden per invocation, so the
+# user's own Codex configuration is left untouched.
 set -m
-codex exec review "${codex_args[@]}" --ephemeral >"${raw}" 2>"${err}" &
+codex exec review "${codex_args[@]}" --ephemeral \
+  -c sandbox_mode="read-only" -c approval_policy="never" \
+  >"${raw}" 2>"${err}" &
 codex_pid=$!
 set +m
 
