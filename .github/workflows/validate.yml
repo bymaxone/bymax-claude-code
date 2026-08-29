@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege for the default GITHUB_TOKEN. Every step here only reads the
+# repository — checkout, a toolchain install, and a local script — so nothing
+# needs write access. Declared at workflow level rather than per job so any job
+# added later inherits the restriction instead of silently getting the default.
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Validate marketplace + plugins

@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No changes yet._
+### Security
+
+- **`validate.yml` ran with the default `GITHUB_TOKEN` scope** — the workflow declared no `permissions` block, so it inherited whatever the repository default grants (write, on many repos). CodeQL flagged it as `actions/missing-workflow-permissions` (medium). Every step only reads the repository — checkout, a toolchain install, and a local script — so it now declares `contents: read` at workflow level, which also makes any job added later inherit the restriction rather than silently getting the default.
 
 ## [1.8.0] — 2026-08-29
 
