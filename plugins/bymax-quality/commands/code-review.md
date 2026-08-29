@@ -75,8 +75,8 @@ if [ -n "${DEFAULT_BRANCH}" ]; then
   done
   # Detected but never fetched (single-branch clone). Fetch just that one ref,
   # non-interactively — it creates a remote-tracking ref and touches nothing in
-  # the working tree. If it fails, leave DEFAULT_REF empty: require_base then
-  # refuses, which is correct. Never substitute a different branch.
+  # the working tree. If it fails, leave DEFAULT_REF empty — every use below
+  # checks for that. Never substitute a different branch.
   [ -n "${DEFAULT_REF}" ] || {
     GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -oBatchMode=yes' \
       git fetch --quiet origin \
@@ -95,17 +95,6 @@ else
   DEFAULT_BRANCH="${DEFAULT_REF#origin/}"
 fi
 
-# EVERY comparison below must go through this. An empty ref does not make git
-# fail: it reads `"...X"` as `HEAD...X`, so the comparison silently becomes
-# "the checkout vs X" — or `HEAD...HEAD`, an empty diff reported as a clean
-# review. Requiring the base at each point of use (rather than up front) keeps
-# the uncommitted-changes scope working in a repo that has no default branch.
-require_base() {
-  [ -n "${1:-}" ] && return 0
-  echo "cannot resolve a comparison base — pass an explicit ref range" >&2
-  return 1
-}
-
 # Default: uncommitted work first — tracked changes AND untracked new files
 # (a brand-new file with a secret or suppression must not slip the gate)…
 git diff --name-only HEAD
@@ -120,7 +109,9 @@ if git diff --quiet HEAD && [ -z "$(git ls-files --others --exclude-standard)" ]
   # fail instead of reporting the commits, so resolve the base first.
   BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
     || BASE="${DEFAULT_REF}"
-  require_base "${BASE}" || exit 1
+  # An empty base does not make git fail: it reads `"...HEAD"` as `HEAD...HEAD`,
+  # an empty diff reported as a clean review. Every use of a base checks this.
+  [ -n "${BASE}" ] || { echo "cannot resolve a comparison base — pass an explicit ref range" >&2; exit 1; }
   git diff --name-only "${BASE}...HEAD"
 fi
 ```
@@ -128,7 +119,8 @@ fi
 For the mechanical gate, include untracked files by intent-to-add them first
 (`git add -N .`) so `git diff` surfaces their added lines, or grep them directly.
 
-- Branch target → `require_base "$DEFAULT_REF" || exit 1`, then
+- Branch target → stop unless the base resolved (stated inline because this runs in a
+  later block than Step 1: `[ -n "$DEFAULT_REF" ] || exit 1`), then
   `git diff "$DEFAULT_REF"...<branch>` (fetch from origin if the branch is only remote).
   Without the guard an empty `$DEFAULT_REF` turns this into `HEAD...<branch>` — the target
   compared against whatever happens to be checked out, or `HEAD...HEAD` when it *is* the
@@ -138,8 +130,8 @@ For the mechanical gate, include untracked files by intent-to-add them first
   `gh pr checkout <N>`, then `$RANGE` = `<base-branch>...HEAD`. When checkout
   isn't possible, `git fetch origin pull/<N>/head` and use
   `<base-branch>...FETCH_HEAD`. The PR's own base branch comes from
-  `gh pr view <N> --json baseRefName`, so it is always non-empty — but pass it through
-  `require_base` anyway if you derived it any other way.
+  `gh pr view <N> --json baseRefName`, so it is always non-empty — but check it the same
+  way if you derived it any other way.
 - File target → limit every step below to that file.
 
 Record the resolved diff range once and reuse it in every command below as `$RANGE`

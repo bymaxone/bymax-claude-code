@@ -63,8 +63,8 @@ Determine:
     done
     # Detected but never fetched (single-branch clone). Fetch just that one ref,
     # non-interactively — it creates a remote-tracking ref and touches nothing in
-    # the working tree. If it fails, leave DEFAULT_REF empty: require_base then
-    # refuses, which is correct. Never substitute a different branch.
+    # the working tree. If it fails, leave DEFAULT_REF empty — every use below
+    # checks for that. Never substitute a different branch.
     [ -n "${DEFAULT_REF}" ] || {
       GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -oBatchMode=yes' \
         git fetch --quiet origin \
@@ -199,16 +199,32 @@ push to the default branch. After success, note the short SHA (`git rev-parse --
 If a PR already exists for this branch (`gh pr view --json url` succeeds), report its
 URL and update nothing — the push already refreshed it.
 
-Otherwise author the PR from **everything the PR will contain** — the full range
+**A PR needs a base; commit-and-push does not.** Step 0 deliberately lets the
+dirty-tree flow proceed with an unresolved default, because branching and committing
+need no comparison. Opening a PR does — both for the description range and for
+`gh pr create --base`. So gate the PR path, and never let it run on an empty ref:
+`git log "..HEAD"` collapses to `HEAD..HEAD` and would produce a PR described from an
+empty range, against an empty base.
+
+```bash
+# This runs in a later block than Step 0, so it states the rule inline rather
+# than depending on anything defined there.
+# Guarding $DEFAULT_REF covers $DEFAULT_BRANCH too — Step 0 derives the name
+# from the ref, so one is empty only when the other is.
+if [ -z "${DEFAULT_REF}" ]; then
+  echo "Pushed, but skipping the PR: the default branch could not be resolved." >&2
+  echo "Open it manually, or re-run with the base branch stated explicitly." >&2
+  exit 0          # the push already succeeded — this is not a failure
+fi
+```
+
+Then author the PR from **everything it will contain** — the full range
 `git log "$DEFAULT_REF"..HEAD` and `git diff "$DEFAULT_REF"...HEAD --stat`, not just
-the last commit. Use the resolved `$DEFAULT_REF` from Step 0, never a literal branch
-name: an empty ref does not make git fail, it silently becomes `HEAD..HEAD` and you
-would describe the PR from an empty range. Then write the body to a temp file and
-create it:
+the last commit — write the body to a temp file, and create it:
 
 ```bash
 body=$(mktemp)   # write the full PR body (shape below) to "$body"
-gh pr create --base <default-branch> --title "<title>" --body-file "$body"
+gh pr create --base "$DEFAULT_BRANCH" --title "<title>" --body-file "$body"
 ```
 
 - **Title**: Conventional-Commits style, ≤ 72 chars. For a single-commit PR, reuse
