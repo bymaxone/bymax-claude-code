@@ -55,8 +55,13 @@ DEFAULT_BRANCH=$(git symbolic-ref --quiet refs/remotes/origin/HEAD \
   | sed 's@^refs/remotes/origin/@@')
 # origin/HEAD is unset on many clones — ask the remote, the only way to learn a
 # default that is neither `main` nor `master` (e.g. `develop`).
-[ -n "${DEFAULT_BRANCH}" ] || DEFAULT_BRANCH=$(git ls-remote --symref origin HEAD 2>/dev/null \
-  | sed -n 's@^ref: refs/heads/\(.*\)[[:space:]]HEAD$@\1@p')
+# The probe is forced non-interactive: `2>/dev/null` hides a credential
+# prompt's output but does not stop it from blocking, so disable both the
+# HTTPS and the SSH prompt paths outright.
+[ -n "${DEFAULT_BRANCH}" ] || DEFAULT_BRANCH=$(
+  GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -oBatchMode=yes' \
+  git ls-remote --symref origin HEAD 2>/dev/null \
+    | sed -n 's@^ref: refs/heads/\(.*\)[[:space:]]HEAD$@\1@p')
 
 # The name is not always a usable ref here: `git clone --branch develop` creates
 # only the local `develop` while still fetching `origin/main`. Prefer the
@@ -77,12 +82,21 @@ done
 git diff --name-only HEAD
 git ls-files --others --exclude-standard          # untracked files, add to the set
 
-# …and if the working tree is clean, review the branch's committed work instead.
-# A branch that was never pushed has no `@{upstream}`: using it bare makes git
-# fail instead of reporting the commits, so resolve the base first.
-BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
-  || BASE="${DEFAULT_REF}"
-git diff --name-only "${BASE}...HEAD"
+# …and ONLY if the working tree is clean, review the branch's committed work
+# instead. A base is needed just for this path — an uncommitted-changes review
+# is scoped to HEAD and must still work in a repository that has no resolvable
+# default branch at all.
+if git diff --quiet HEAD && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+  # A branch that was never pushed has no `@{upstream}`: using it bare makes git
+  # fail instead of reporting the commits, so resolve the base first.
+  BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
+    || BASE="${DEFAULT_REF}"
+  # An empty base would leave git reading `...HEAD` as `HEAD...HEAD`: it exits 0
+  # and reports nothing, so an unreviewed branch would pass as clean. Refuse and
+  # ask for an explicit target rather than reporting a false all-clear.
+  [ -n "${BASE}" ] || { echo "cannot resolve a comparison base — pass an explicit target" >&2; exit 1; }
+  git diff --name-only "${BASE}...HEAD"
+fi
 ```
 
 For the mechanical gate, include untracked files by intent-to-add them first

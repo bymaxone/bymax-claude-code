@@ -111,17 +111,24 @@ fi
 # Keep stderr: it carries the reason a run failed (rate limit, expired plan,
 # blocked egress). Discarding it would leave the caller with a bare exit code,
 # which is exactly the "explain why it degraded" job this script exists to do.
+#
+# `set -m` puts the job in its own process group (pgid == pid). Codex spawns
+# child processes of its own, and signalling only the pid at budget expiry
+# leaves those children running — the budget would not actually be enforced.
+set -m
 codex exec review "${codex_args[@]}" --ephemeral >"${raw}" 2>"${err}" &
 codex_pid=$!
+set +m
 
 waited=0
 while kill -0 "${codex_pid}" 2>/dev/null; do
   if [ "${waited}" -ge "${BUDGET}" ]; then
-    # Grouped and redirected so bash's own job-termination notice
-    # ("Terminated: 15") stays out of the caller's stderr.
-    { kill -TERM "${codex_pid}"
+    # Signal the whole process group (note the `-` before the pid), so Codex's
+    # own children die with it. Grouped and redirected so bash's job-termination
+    # notice ("Terminated: 15") stays out of the caller's stderr.
+    { kill -TERM -- -"${codex_pid}"
       sleep 2
-      kill -KILL "${codex_pid}"
+      kill -KILL -- -"${codex_pid}"
       wait "${codex_pid}"
     } >/dev/null 2>&1
     status_only "timeout" "exceeded ${BUDGET}s"

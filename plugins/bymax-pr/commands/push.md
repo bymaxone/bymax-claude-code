@@ -43,8 +43,13 @@ Determine:
     | sed 's@^refs/remotes/origin/@@')
   # origin/HEAD is unset on many clones — ask the remote, the only way to learn a
   # default that is neither `main` nor `master` (e.g. `develop`).
-  [ -n "${DEFAULT_BRANCH}" ] || DEFAULT_BRANCH=$(git ls-remote --symref origin HEAD 2>/dev/null \
-    | sed -n 's@^ref: refs/heads/\(.*\)[[:space:]]HEAD$@\1@p')
+  # The probe is forced non-interactive: `2>/dev/null` hides a credential
+  # prompt's output but does not stop it from blocking, so disable both the
+  # HTTPS and the SSH prompt paths outright.
+  [ -n "${DEFAULT_BRANCH}" ] || DEFAULT_BRANCH=$(
+    GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -oBatchMode=yes' \
+    git ls-remote --symref origin HEAD 2>/dev/null \
+      | sed -n 's@^ref: refs/heads/\(.*\)[[:space:]]HEAD$@\1@p')
 
   # The name is not always a usable ref here: `git clone --branch develop` creates
   # only the local `develop` while still fetching `origin/main`. Prefer the
@@ -73,10 +78,20 @@ Determine:
   # branch when it does not (a branch that has never been pushed).
   BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
     || BASE="${DEFAULT_REF}"
-  git log "${BASE}..HEAD" --oneline
+  if [ -n "${BASE}" ]; then
+    git log "${BASE}..HEAD" --oneline
+  fi
   ```
 
   If there is nothing to commit **and** nothing ahead → stop (see below).
+
+  **When `BASE` is empty** the "ahead" question is unanswerable — a local-only
+  repository on an unconventional branch has nothing to compare against. Never
+  substitute an empty base: git reads `"..HEAD"` as `HEAD..HEAD`, exits 0 and
+  reports no commits, which looks identical to "nothing to push". So: if there
+  **is** something to commit, proceed normally — branching and committing need
+  no base. Only when there is also nothing to commit do you stop, and then say
+  the base could not be resolved rather than "nothing to push".
 - **Skip Steps 2–3 only when the working tree is clean AND there are commits ahead** —
   i.e. the sole thing to ship is already-committed work that never left the machine, so
   go straight to push (and PR if requested). Whenever there is *any* uncommitted change
