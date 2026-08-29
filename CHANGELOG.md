@@ -77,7 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   script can reach it. The cancel is itself bounded to 15 s: it talks to the broker over a socket,
   and a hung broker is precisely the case a timeout is handling, so an unbounded cancel would have
   blocked forever without ever reaching the group kill or emitting `timeout` — found by the
-  standard review on the following round. The scope measurement was likewise corrected to mirror the runtime's own
+  standard review on the following round. And the round after that found the signal path: on
+  `INT`/`TERM` the exit trap ran the same cancel, recorded its failure in a variable, and exited
+  without printing it — taking the session id and the recovery command with it. The signal path
+  now reports exactly what the timeout path reports, verified by sending `TERM` to a run whose
+  stubbed cancel refuses to confirm. The scope measurement was likewise corrected to mirror the runtime's own
   commands (staged and unstaged diffed separately, `--binary`), since `git diff HEAD` undercounts
   exactly the cases where the runtime has already switched to self-collection.
 

@@ -110,7 +110,10 @@ REF=""
 MODE="standard"
 
 emit() { printf '%s\n' "$*"; }
-status_only() { emit "CODEX_STATUS: $1"; [ "${2:-}" = "" ] || emit "$2"; exit 0; }
+# Tracks whether a status line has been written, so the exit trap can tell a
+# normal completion from a run torn down by a signal before it reported anything.
+status_emitted=0
+status_only() { status_emitted=1; emit "CODEX_STATUS: $1"; [ "${2:-}" = "" ] || emit "$2"; exit 0; }
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -449,7 +452,21 @@ stop_review() {
 # TERM from whoever backgrounded this script. Without it, killing this script
 # leaves the review running: the caller sees the shell end and has no way left
 # to reach what it started.
-trap 'stop_review; rm -rf "${workdir}"' EXIT
+#
+# When the teardown was caused by a signal, no status has been written yet —
+# and if the cancel then fails, the detached turn may still be billing with
+# the only recovery command known to this process. So the signal path reports
+# exactly what the timeout path reports, instead of taking that knowledge with
+# it. `cancel_failed` is checked after stop_review, which is what sets it.
+cleanup() {
+  stop_review
+  if [ "${status_emitted}" -eq 0 ] && [ "${cancel_failed}" -eq 1 ]; then
+    emit "CODEX_STATUS: failed"
+    emit "interrupted — and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=${review_session} node \"${companion}\" cancel"
+  fi
+  rm -rf "${workdir}"
+}
+trap 'cleanup' EXIT
 trap 'exit 143' TERM
 trap 'exit 130' INT
 
