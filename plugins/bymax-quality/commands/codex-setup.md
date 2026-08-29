@@ -99,6 +99,14 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
   --target commit --ref "$(git rev-parse --short HEAD)" --budget 300
 ```
 
+Then, if the openai-codex plugin is installed, exercise the adversarial path too — the
+run above cannot produce its statuses, so a green standard run says nothing about it:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
+  --mode adversarial --target uncommitted --budget 300
+```
+
 The first line is the contract:
 
 | First line | Meaning |
@@ -110,7 +118,8 @@ The first line is the contract:
 | `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or returned a review with no verdict — see troubleshooting |
 | `CODEX_STATUS: timeout` | exceeded the budget; retry with a larger `--budget` |
 | `CODEX_STATUS: unsupported-target` | the requested scope has no Codex equivalent (a file path, a ref range not ending at HEAD, or `--target commit` in adversarial mode) |
-| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the openai-codex plugin, or node, is missing — this command does not fix that one, see below |
+| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the openai-codex plugin or node is missing, **or the installed plugin version is not one the script has verified** — the second line says which; this command fixes neither, see below |
+| `CODEX_STATUS: bad-invocation` | the command line was wrong (a flag without its value, an unknown flag or `--mode`) — not a Codex problem |
 
 Expect roughly **40–60 seconds**, largely independent of diff size. A run that returns no
 findings is a normal, healthy result — it is not evidence the setup failed.
@@ -141,7 +150,14 @@ Note what is *not* being called there. The plugin's own `/codex:review` and
 invoke them and must not pretend to be the user in order to. The runtime underneath them
 carries no such gate.
 
-So: this command cannot fix `adversarial-absent`. Installing the openai-codex plugin can.
+So: this command cannot fix `adversarial-absent`, and its second line says what can:
+
+| Second line says | Remedy |
+| --- | --- |
+| plugin not found | install the openai-codex plugin |
+| version `X` is not a verified version | the script's contract with that runtime is undocumented and was read in the listed versions only. Either wait for the plugin to be re-verified, or run it anyway with `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` — the user's explicit decision |
+| a project-local or pinned install | point `BYMAX_CODEX_COMPANION` at its `codex-companion.mjs` |
+
 If the user only wants the standard second opinion, they need nothing beyond this command.
 
 ## Troubleshooting
@@ -152,7 +168,7 @@ If the user only wants the standard second opinion, they need nothing beyond thi
 | `unauthenticated` right after `codex login` | the browser flow never completed, or a different `CODEX_HOME` is in play | re-run `codex login`; check `codex doctor` → `CODEX_HOME` |
 | `failed` on every run | rate limit, expired plan, or network egress blocked | run `codex exec review --uncommitted` directly and read its stderr |
 | `failed` only in one repository | not a git repo, or the scope is empty | confirm with `git rev-parse --show-toplevel` and `git status` |
-| `timeout` on a large change | budget too small | the review command uses 180 s in `quick` and `full`, 600 s in `deep` |
+| `timeout` on a large change | budget too small | the review command uses 60 s in `quick`, 180 s in `full`, 600 s in `deep`; the script accepts 30–3600 and clamps anything outside, saying so on the timeout line |
 | two `codex` binaries on PATH | installed via both brew and npm | remove one; `codex doctor` names the active install |
 
 ## When you are done

@@ -60,9 +60,9 @@ claude plugin install bymax-pr@bymax-claude-code
 Before opening a PR, verify:
 
 - [ ] Each new `commands/*.md` has a YAML frontmatter `description` field with **clear English** triggers (PT/EN both welcome).
-- [ ] Each new `agents/*.md` has `name`, `description`, `tools`, `model` (≥ `sonnet` — no `haiku`).
+- [ ] Each new `agents/*.md` has `name`, `description`, `tools`, `model` (≥ `sonnet` — no `haiku`). The frontmatter gate enforces `name`, `description`, `tools` and rejects `model: haiku`.
 - [ ] Each new `skills/*/SKILL.md` follows the official Claude Code skill format, and its `name` matches its directory.
-- [ ] **Frontmatter is valid YAML in all three.** `./scripts/validate.sh` checks every `commands/*.md`, `skills/*/SKILL.md` and `agents/*.md`, and it needs PyYAML (`python3 -m pip install pyyaml`). Two rules cover almost every failure:
+- [ ] **Frontmatter is valid YAML in all three.** `./scripts/validate.sh` checks every `commands/*.md`, `skills/*/SKILL.md` and `agents/*.md`, and it needs PyYAML (`python3 -m pip install pyyaml`; on a PEP 668 system Python add `--break-system-packages`, as CI does, or use a venv). Two rules cover almost every failure:
   - A value containing `: ` must be quoted — `description: Modes: quick | full` parses as a nested mapping, not a string. Single-quote it and double any apostrophe: `'Claude''s review'`.
   - `argument-hint` must be a **quoted** string. Bare `argument-hint: [file-path]` is a one-element YAML list, not the hint text — that exact bug shipped once.
 - [ ] Each new `hooks/*.sh` is `chmod +x` and has an `exit 0` happy path. Plugin-level hooks are wired via `<plugin>/hooks/hooks.json`.

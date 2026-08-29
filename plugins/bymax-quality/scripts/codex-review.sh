@@ -59,11 +59,15 @@
 #
 # Statuses:
 #   ok                 review ran over exactly the requested scope; report follows
-#   ok-unpinned        adversarial only: review ran, but the change exceeded the
-#                      runtime's inline-diff limit, so the reviewer collected its
-#                      own scope. Findings are reportable; silence is not evidence.
+#   ok-unpinned        review ran, but not over exactly the requested scope —
+#                      adversarial past the runtime's inline-diff limit or on a
+#                      dirty tree with a branch target, standard on a branch
+#                      target with untracked files. Findings are reportable;
+#                      silence is not evidence. A CODEX_SCOPE line says why.
 #   absent             codex CLI is not installed
 #   unauthenticated    no active Codex session (logged out or expired)
+#   bad-invocation     a flag without its value, an unknown flag or --mode:
+#                      the caller's command line is wrong, not the scope
 #   unsupported-target the caller's scope cannot be expressed as a codex flag
 #   timeout            the run exceeded --budget
 #   failed             codex exited non-zero, or produced no usable output
@@ -115,27 +119,53 @@ emit() { printf '%s\n' "$*"; }
 status_emitted=0
 status_only() { status_emitted=1; emit "CODEX_STATUS: $1"; [ "${2:-}" = "" ] || emit "$2"; exit 0; }
 
+# Teardown is armed HERE, before a single gate runs — not next to the launch.
+# Measured: a TERM that arrived while the availability gates and the scope
+# measurement were still running hit a script with no trap yet, which died
+# 143 with no status line. Everything the trap touches is guarded for "not
+# set yet": `stop_review` and `workdir` only exist once the run is prepared,
+# and `cleanup` must be correct at every point of the script's life.
+workdir=""
+cancel_failed=0
+companion=""
+review_session=""
+cleanup() {
+  if declare -F stop_review >/dev/null 2>&1; then
+    stop_review
+  fi
+  if [ "${status_emitted}" -eq 0 ]; then
+    status_emitted=1
+    emit "CODEX_STATUS: failed"
+    if [ "${cancel_failed}" -eq 1 ]; then
+      emit "interrupted — and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=${review_session} node \"${companion}\" cancel"
+    else
+      emit "interrupted before the review completed"
+    fi
+  fi
+  [ -n "${workdir}" ] && rm -rf "${workdir}"
+  return 0
+}
+trap 'cleanup' EXIT
+trap 'exit 0' TERM INT
+
+# `--flag=value` is rewritten to `--flag value` up front, so a single `case`
+# handles both spellings. Two parallel copies of the flag list once let the
+# equals form fall through to a silent `shift` — and publish a standard review
+# under the adversarial label. Anything unrecognised is an invocation error,
+# reported as such: it is not a scope problem, and calling it one sends the
+# reader to the wrong table.
+args=()
+for arg in "$@"; do
+  case "${arg}" in
+    --target=*|--ref=*|--budget=*|--mode=*) args+=("${arg%%=*}" "${arg#*=}") ;;
+    *) args+=("${arg}") ;;
+  esac
+done
+set -- "${args[@]}"
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --target=*|--ref=*|--budget=*|--mode=*)
-      # `--mode=adversarial` is the form a reader naturally writes. Matching only
-      # the space-separated form let it fall through to the catch-all `*) shift`,
-      # so the flag was dropped in silence and a standard review was published
-      # under the adversarial label.
-      flag="${1%%=*}"
-      value="${1#*=}"
-      case "${flag}" in
-        --target) TARGET="${value}" ;;
-        --ref)    REF="${value}" ;;
-        --budget) BUDGET="${value}" ;;
-        --mode)   MODE="${value}" ;;
-      esac
-      shift
-      ;;
     --target|--ref|--budget|--mode)
-      # `shift 2` is a no-op when the flag is the last argument, which would spin
-      # this loop forever on the same token — refuse instead.
-      [ "$#" -ge 2 ] || status_only "unsupported-target" "$1 requires a value"
+      [ "$#" -ge 2 ] || status_only "bad-invocation" "$1 requires a value"
       case "$1" in
         --target) TARGET="$2" ;;
         --ref)    REF="$2" ;;
@@ -144,7 +174,7 @@ while [ "$#" -gt 0 ]; do
       esac
       shift 2
       ;;
-    *) shift ;;
+    *) status_only "bad-invocation" "unknown argument '$1'" ;;
   esac
 done
 
@@ -152,16 +182,26 @@ done
 # `/bin/bash` here is 3.2, whose `[` fails with status 2 above 64 bits — a
 # status `if` reads as false — so a range check ALONE lets a millisecond value
 # through and the timeout branch then never fires. `10#` strips leading zeros.
+budget_note=""
 if [[ "${BUDGET}" =~ ^[0-9]{1,4}$ ]]; then
-  BUDGET=$((10#${BUDGET}))
-  [ "${BUDGET}" -ge "${MIN_BUDGET}" ] && [ "${BUDGET}" -le "${MAX_BUDGET}" ] || BUDGET="${DEFAULT_BUDGET}"
+  requested_budget=$((10#${BUDGET}))
+  BUDGET="${requested_budget}"
+  [ "${BUDGET}" -ge "${MIN_BUDGET}" ] || BUDGET="${MIN_BUDGET}"
+  [ "${BUDGET}" -le "${MAX_BUDGET}" ] || BUDGET="${MAX_BUDGET}"
+  # Clamped, not reset: a user who asked for 5400 after a 3600 timeout should
+  # get the ceiling, not a third of it — and be told which.
+  [ "${BUDGET}" -eq "${requested_budget}" ] \
+    || budget_note=" (budget clamped from ${requested_budget} to ${BUDGET}; the range is ${MIN_BUDGET}-${MAX_BUDGET})"
 else
+  # A five-digit or non-numeric value is either milliseconds or a typo. Either
+  # way the default applies, and the reader is told on the line that matters.
+  [ -z "${BUDGET}" ] || budget_note=" (budget '${BUDGET}' is not 1-4 digits; using ${DEFAULT_BUDGET})"
   BUDGET="${DEFAULT_BUDGET}"
 fi
 
 case "${MODE}" in
   standard|adversarial) ;;
-  *) status_only "unsupported-target" "unknown --mode '${MODE}'" ;;
+  *) status_only "bad-invocation" "unknown --mode '${MODE}'" ;;
 esac
 
 # --- Build the scope flags for the chosen backend --------------------------
@@ -198,60 +238,77 @@ if [ -n "${REF}" ] && ! git rev-parse --verify -q "${REF}" >/dev/null 2>&1; then
   status_only "unsupported-target" "ref '${REF}' does not resolve in this repository"
 fi
 
-# --- Will the adversarial reviewer see exactly this scope? ------------------
-# Decided HERE, before launch, against the tree the runtime is about to read —
+# --- Will the reviewer see exactly this scope? -------------------------------
+# Decided HERE, before launch, against the tree the backend is about to read —
 # not after the review, against a tree that may have moved in the meantime.
 #
-# Three ways the answer is no. Past the runtime's inline limits it stops putting
-# the diff in the prompt and tells the agent to collect its own with git
-# commands, so the validated scope flags bind nothing. And on a branch target
-# it resolves mergeBase..HEAD, which drops uncommitted work the calling command
-# deliberately keeps in scope. Measurements mirror the runtime's own commands
-# (staged and unstaged diffed separately, `--binary`); untracked contents are
-# NOT in the byte count because they are not in the runtime's either. The file
-# count is checked first because it alone usually decides, and the byte diff
-# is the expensive one.
+# Adversarial: past the runtime's inline limits it stops putting the diff in
+# the prompt and tells the agent to collect its own with git commands, so the
+# validated scope flags bind nothing; and on a branch target it resolves
+# mergeBase..HEAD, dropping every uncommitted file. Standard: `codex exec
+# review --base` diffs the merge-base against the WORKING TREE, so tracked
+# uncommitted hunks are in, but untracked files are not — a smaller scope than
+# Step 1's, which includes them.
+#
+# Measurements mirror the runtime's own commands (staged and unstaged diffed
+# separately, `--binary`); untracked contents are not in the byte count
+# because they are not in the runtime's either. The file count is checked
+# first because it alone usually decides, and the byte diff is the expensive
+# one. A git command that fails makes the scope unpinned rather than pinned:
+# stderr is discarded and `grep -c` of nothing is 0, which would otherwise
+# read as "small change, inlined".
 scope_unpinned=0
 scope_reason=""
-if [ "${MODE}" = "adversarial" ]; then
-  diff_flags=(--binary --no-ext-diff --submodule=diff)
-  case "${TARGET}" in
-    uncommitted)
-      scope_files="$( { git diff --cached --name-only; git diff --name-only;
-                        git ls-files --others --exclude-standard; } 2>/dev/null \
-                      | sort -u | grep -c .)"
-      if [ "${scope_files:-0}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
-        scope_unpinned=1
-        scope_reason="${scope_files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"
-      else
-        scope_bytes="$(( $(git diff --cached "${diff_flags[@]}" 2>/dev/null | wc -c)
-                       + $(git diff "${diff_flags[@]}" 2>/dev/null | wc -c) ))"
-        if [ "${scope_bytes}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
-          scope_unpinned=1
-          scope_reason="${scope_bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"
-        fi
-      fi ;;
-    base)
-      dirty_files="$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null \
-                     | sort -u | grep -c .)"
-      if [ "${dirty_files:-0}" -gt 0 ]; then
-        scope_unpinned=1
-        scope_reason="${dirty_files} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
-      else
-        scope_files="$(git diff --name-only "${REF}...HEAD" 2>/dev/null | grep -c .)"
-        if [ "${scope_files:-0}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
-          scope_unpinned=1
-          scope_reason="${scope_files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"
-        else
-          scope_bytes="$(git diff "${diff_flags[@]}" "${REF}...HEAD" 2>/dev/null | wc -c | tr -d ' ')"
-          if [ "${scope_bytes:-0}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
-            scope_unpinned=1
-            scope_reason="${scope_bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"
-          fi
-        fi
-      fi ;;
-  esac
-fi
+diff_flags=(--binary --no-ext-diff --submodule=diff)
+
+# exceeds_inline_limits <file-list-command> <byte-count-command>
+# Each argument is an eval'd command whose stdout is the list / the diff.
+exceeds_inline_limits() {
+  local files bytes
+  files="$(eval "$1" 2>/dev/null | sort -u | grep -c .)" \
+    || { [ "${files:-0}" -eq 0 ] && [ "${PIPESTATUS[0]}" -ne 0 ] && { scope_reason="the scope could not be measured (git failed)"; return 0; }; }
+  if [ "${files}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
+    scope_reason="${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"
+    return 0
+  fi
+  bytes="$(eval "$2" 2>/dev/null | wc -c | tr -d ' ')" || bytes=""
+  if [ -z "${bytes}" ]; then
+    scope_reason="the scope could not be measured (git failed)"
+    return 0
+  fi
+  if [ "${bytes}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
+    scope_reason="${bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"
+    return 0
+  fi
+  return 1
+}
+
+count_untracked() { git ls-files --others --exclude-standard 2>/dev/null | grep -c .; }
+
+case "${MODE}:${TARGET}" in
+  adversarial:uncommitted)
+    if exceeds_inline_limits \
+        'git diff --cached --name-only; git diff --name-only; git ls-files --others --exclude-standard' \
+        'git diff --cached "${diff_flags[@]}"; git diff "${diff_flags[@]}"'; then
+      scope_unpinned=1
+    fi ;;
+  adversarial:base)
+    dirty="$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null | sort -u | grep -c .)"
+    if [ "${dirty:-0}" -gt 0 ]; then
+      scope_unpinned=1
+      scope_reason="${dirty} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
+    elif exceeds_inline_limits \
+        'git diff --name-only "${REF}...HEAD"' \
+        'git diff "${diff_flags[@]}" "${REF}...HEAD"'; then
+      scope_unpinned=1
+    fi ;;
+  standard:base)
+    untracked="$(count_untracked)"
+    if [ "${untracked:-0}" -gt 0 ]; then
+      scope_unpinned=1
+      scope_reason="${untracked} untracked files are outside the diff \`codex exec review --base\` builds"
+    fi ;;
+esac
 
 # --- Locate the plugin runtime (adversarial mode only) ---------------------
 # Resolved through `claude plugin list`, never by searching the filesystem. The
@@ -353,7 +410,6 @@ command -v codex >/dev/null 2>&1 || status_only "absent"
 # This is what makes an expired session cost nothing to detect.
 codex login status >/dev/null 2>&1 || status_only "unauthenticated"
 
-companion=""
 if [ "${MODE}" = "adversarial" ]; then
   command -v node >/dev/null 2>&1 \
     || status_only "adversarial-absent" "node is required by the openai-codex plugin runtime"
@@ -417,11 +473,17 @@ review_session="bymax-review-$$-$(date +%s)"
 #     can still reach the run: `/codex:status` cannot show it (it filters by the
 #     Claude session id, and this run carries its own), so the remedy is the
 #     ID-less cancel under this run's session id.
-cancel_failed=0
 stop_review() {
   [ "${run_active}" -eq 1 ] || return 0
   if [ "${MODE}" = "adversarial" ] && [ -n "${companion}" ]; then
-    local cancel_out="${workdir}/cancel.json" cancel_pid cancel_waited=0
+    local cancel_out="${workdir}/cancel.json" cancel_pid cancel_waited=0 was_alive=0
+    # Liveness is sampled BEFORE the cancel, never after: the runtime's cancel
+    # SIGTERMs the job's process tree unconditionally — and that tree is the
+    # very `node … adversarial-review` process held as codex_pid — so after the
+    # cancel the pid is gone whether or not the billed turn was interrupted.
+    # Reading liveness afterwards made the failure branch unreachable in the
+    # exact case it exists for.
+    kill -0 "${codex_pid}" 2>/dev/null && was_alive=1
     CODEX_COMPANION_SESSION_ID="${review_session}" \
       node "${companion}" cancel --json >"${cancel_out}" 2>/dev/null &
     cancel_pid=$!
@@ -435,40 +497,28 @@ stop_review() {
     done
     wait "${cancel_pid}" 2>/dev/null
     if ! grep -q '"turnInterrupted": *true' "${cancel_out}" 2>/dev/null; then
-      # Not a failure if the review simply finished while the cancel was being
-      # issued: the front-end process is gone, so there is no turn to reach.
-      kill -0 "${codex_pid}" 2>/dev/null && cancel_failed=1
+      # A review that had already finished before the cancel was issued had no
+      # turn to interrupt — that is not a failure. One that was alive and whose
+      # interrupt was not confirmed may still be billing, and that is.
+      [ "${was_alive}" -eq 1 ] && cancel_failed=1
     fi
   fi
-  { kill -TERM -- -"${codex_pid}"
-    sleep "${KILL_GRACE}"
-    kill -KILL -- -"${codex_pid}"
-    wait "${codex_pid}"
-  } >/dev/null 2>&1
+  # No grace sleep for a pid that is already gone.
+  if kill -0 "${codex_pid}" 2>/dev/null; then
+    { kill -TERM -- -"${codex_pid}"
+      sleep "${KILL_GRACE}"
+      kill -KILL -- -"${codex_pid}"
+    } >/dev/null 2>&1
+  fi
+  wait "${codex_pid}" >/dev/null 2>&1
   run_active=0
 }
 
-# The trap fires on every exit, including the `status_only` early returns and a
-# TERM from whoever backgrounded this script. Without it, killing this script
-# leaves the review running: the caller sees the shell end and has no way left
-# to reach what it started.
-#
-# When the teardown was caused by a signal, no status has been written yet —
-# and if the cancel then fails, the detached turn may still be billing with
-# the only recovery command known to this process. So the signal path reports
-# exactly what the timeout path reports, instead of taking that knowledge with
-# it. `cancel_failed` is checked after stop_review, which is what sets it.
-cleanup() {
-  stop_review
-  if [ "${status_emitted}" -eq 0 ] && [ "${cancel_failed}" -eq 1 ]; then
-    emit "CODEX_STATUS: failed"
-    emit "interrupted — and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=${review_session} node \"${companion}\" cancel"
-  fi
-  rm -rf "${workdir}"
-}
-trap 'cleanup' EXIT
-trap 'exit 143' TERM
-trap 'exit 130' INT
+# The EXIT/TERM/INT traps were armed at the top of the script. From here on
+# `stop_review` exists, so a teardown also stops the run. A signal is still an
+# exit of this script, and the header contract — always exit 0, first line
+# always CODEX_STATUS — holds for it too: the caller backgrounded this shell and
+# must never see a tool failure in place of the documented degradation.
 
 # Keep stderr: it carries the reason a run failed (rate limit, expired plan,
 # blocked egress). Discarding it would leave the caller with a bare exit code,
@@ -511,9 +561,9 @@ while kill -0 "${codex_pid}" 2>/dev/null; do
     kill -0 "${codex_pid}" 2>/dev/null || break
     stop_review
     if [ "${cancel_failed}" -eq 1 ]; then
-      status_only "timeout" "exceeded ${BUDGET}s — and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=${review_session} node \"${companion}\" cancel"
+      status_only "timeout" "exceeded ${BUDGET}s${budget_note} — and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=${review_session} node \"${companion}\" cancel"
     fi
-    status_only "timeout" "exceeded ${BUDGET}s"
+    status_only "timeout" "exceeded ${BUDGET}s${budget_note}"
   fi
   sleep "${POLL_INTERVAL}"
   waited=$((waited + POLL_INTERVAL))

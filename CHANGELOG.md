@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.9.0] — 2026-08-29
 
+Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1.5.0 ·
+`bymax-web-verify` 1.1.0 → 1.1.1 · `bymax-pr`, `bymax-bootstrap`, `bymax-mobile` unchanged.
+
 ### Added
 
 - **`/bymax-quality:code-review` now runs three reviews beside its own, not one.** The second
@@ -187,6 +190,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   strongest bucket — A and an outside review agreeing. And `codex exec review` hands back its
   final message through `--output-last-message`, which replaces two hand-written JSONL
   extractors. Every number the script reasons about is now a named constant.
+
+- **A further round of the built-in review, on the fixed tree.** The failed-cancel branch was
+  unreachable in the exact case it exists for: the runtime's `cancel` SIGTERMs the job's process
+  tree — which is the very process the script holds — so post-cancel liveness was always false.
+  Liveness is now sampled before the cancel. `quick` launched shells with a 180 s budget and waited
+  60 s, so two billed runs outlived the report; the budget is 60 s there now, and the command says
+  why the two must match. A wrong command line (`--mode adverserial`) was reported as
+  `unsupported-target`, which sent the reader to the scope table; it is `bad-invocation` now, and
+  the line after every status is reproduced verbatim in the report, since it is the script's one
+  sentence of remedy. An out-of-range `--budget` is clamped and said, not silently replaced. The
+  standard review on a branch target is `ok-unpinned` when untracked files exist, because
+  `codex exec review --base` never sees them. The scope decision is one helper for both modes, and
+  a git failure inside it makes the scope unpinned rather than "small". The frontmatter gate now
+  tolerates a BOM and a trailing space on a fence, requires `tools` on agents and rejects
+  `model: haiku`, as CONTRIBUTING.md already promised it did. `codex-setup` exercises the
+  adversarial path and documents `adversarial-absent`'s three causes and their remedies.
 
 - **The frontmatter gate could report success without having run, then twice more in miniature.**
   `check-frontmatter.py` first exited with a "skipped" status when PyYAML was missing while

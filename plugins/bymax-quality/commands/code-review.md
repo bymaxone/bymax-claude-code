@@ -188,12 +188,16 @@ questions of the same diff, so neither substitutes for the other:
 ```bash
 # Review B — standard: is this change correct?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
-  --target <target> [--ref <ref>] --budget <180 in quick and full | 600 in deep>
+  --target <target> [--ref <ref>] --budget <60 in quick | 180 in full | 600 in deep>
 
 # Review C — adversarial: is this the right approach at all?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" --mode adversarial \
-  --target <target> [--ref <ref>] --budget <180 in quick and full | 600 in deep>
+  --target <target> [--ref <ref>] --budget <60 in quick | 180 in full | 600 in deep>
 ```
+
+The `quick` budget is 60 s because that is how long Step 5.5 waits in `quick`: a shell
+given more than the harvest will wait for keeps billing after the report has shipped, and
+its findings land in a file nobody reads. The two must match.
 
 Two background shells, launched together, cost wall-clock once. Running them in
 sequence would double the time for no gain — nothing in the second depends on the
@@ -452,24 +456,32 @@ Only now, with your own findings frozen, read the background shells' output — 
 ### Reviews B and C — the shells
 
 Each shell's first line is `CODEX_STATUS: <status>`. Branch on it deterministically —
-never on the prose that follows:
+never on the prose that follows. **The line after it, when there is one, is reproduced
+verbatim under the status in Step 6**, whatever the status: it is the script's one
+sentence of detail — the remedy after a failed cancel, the version that was refused, the
+budget that was clamped, the reason a scope is unpinned — and it is written for the
+reader, not for you to summarise.
 
 | Status | Meaning | What to do |
 | --- | --- | --- |
 | `ok` | the review follows the status line, over exactly the requested scope | report it in Step 6 |
-| `ok-unpinned` | Review C only: the review follows, but the reviewer chose its own scope (see below) | report its findings in Step 6; **never count its silence** |
+| `ok-unpinned` | the review follows, but not over exactly the requested scope (see below) | report its findings in Step 6; **never count its silence** |
+| `bad-invocation` | the command line you launched was wrong — a flag without its value, an unknown flag or `--mode` | fix the launch and re-run that shell; do not report it as a scope limitation |
 | `absent` | Codex CLI not installed | report the status, change nothing else |
 | `unauthenticated` | logged out or session expired | idem |
 | `unsupported-target` | the scope has no Codex equivalent | idem |
 | `timeout` | exceeded the budget | report the status **and the line after it verbatim** — when the cancel failed it names the one command that still reaches a billing run |
 | `failed` | non-zero exit, no readable output, a parse-failure page, or a review with no verdict | report the status and the line after it verbatim |
-| `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing | report the status, change nothing else |
+| `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing, **or the installed version is not one the script has verified** — the second line says which | report the status and its line |
 
-`ok-unpinned` is followed by a `CODEX_SCOPE: self-collected — …` line. It means the
-change was too large for the runtime to inline in the prompt (more than two files or
-256 KiB — which is most real reviews), so the reviewer collected its own scope with git
-commands, minutes after launch, against a tree that may have moved, and on a branch
-target without the uncommitted work Step 1 includes. **Print the status and reproduce
+`ok-unpinned` is followed by a `CODEX_SCOPE:` line naming the cause. For Review C it
+usually means the change was too large for the runtime to inline in the prompt (more
+than two files or 256 KiB — which is most real reviews), so the reviewer collected its
+own scope with git commands, minutes after launch, against a tree that may have moved;
+on a branch target it can also mean uncommitted work was outside the reviewed range.
+Review B reports it on a branch target when untracked files exist: `codex exec review
+--base` diffs against the working tree, so tracked edits are in, but untracked files are
+not. **Print the status and reproduce
 the scope line verbatim in Review C's section.** Its findings are still about this
 change and still get a disposition; what changes is the cross-read: an `ok-unpinned`
 Review C that found nothing is not evidence the diff is clean, and must not be written
@@ -505,8 +517,11 @@ line is that a reader can tell "found nothing" from "has not answered".
 
 On `absent` or `unauthenticated`, add one line to the affected review offering
 `/bymax-quality:codex-setup`, which installs and authenticates the CLI. On
-`adversarial-absent`, name the openai-codex plugin instead — `codex-setup` installs the
-CLI and will not fix that one. Offer either once, and only in the report — never
+`adversarial-absent`, read the second line: a missing plugin is fixed by installing the
+openai-codex plugin, an unverified version by `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1`
+(the user's call — the script's contract with that runtime is unverified there), and a
+project-local install by `BYMAX_CODEX_COMPANION=<path>`. `codex-setup` installs the CLI
+and fixes none of those. Offer either once, and only in the report — never
 interrupt the review to ask, and never install anything on the user's behalf mid-review.
 
 ### The four independence rules

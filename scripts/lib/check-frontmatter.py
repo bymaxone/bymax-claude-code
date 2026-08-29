@@ -35,8 +35,12 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 REQUIRED_FIELDS = {
     "command": ("description",),
     "skill": ("name", "description"),
-    "agent": ("name", "description"),
+    "agent": ("name", "description", "tools"),
 }
+
+# CONTRIBUTING.md requires every agent to run on at least `sonnet`; a `haiku`
+# agent is a review that quietly reasons less than the checklist assumes.
+AGENT_FORBIDDEN_MODELS = ("haiku",)
 
 # Optional everywhere, but must be a string when present: a bare `[a|b]` parses as
 # a sequence, which is the bug that prompted this gate.
@@ -63,10 +67,12 @@ def split_frontmatter(text: str) -> str | None:
     file in the repo as missing its frontmatter.
     """
     lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    if not lines or lines[0] != "---":
+    # Trailing whitespace on a fence is invisible in an editor and irrelevant
+    # to YAML; treating it as "not a fence" would fail a valid file.
+    if not lines or lines[0].rstrip() != "---":
         return None
     for index, line in enumerate(lines[1:], 1):
-        if line == "---":
+        if line.rstrip() == "---":
             return "\n".join(lines[1:index])
     return None
 
@@ -74,7 +80,9 @@ def split_frontmatter(text: str) -> str | None:
 def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
     """Return a list of human-readable problems with one file's frontmatter."""
     relative = path.relative_to(REPO_ROOT)
-    block = split_frontmatter(path.read_text(encoding="utf-8"))
+    # `utf-8-sig` drops a BOM, which Notepad adds and which would otherwise make
+    # the first line `\ufeff---` and the whole file "missing frontmatter".
+    block = split_frontmatter(path.read_text(encoding="utf-8-sig"))
 
     if block is None:
         return [f"{relative}: missing or unclosed YAML frontmatter"]
@@ -95,8 +103,12 @@ def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
     problems = []
     for field in REQUIRED_FIELDS[kind]:
         value = data.get(field)
-        if value is None or value == "":
+        if value is None or value == "" or value == []:
             problems.append(f"{relative}: {kind} is missing required '{field}'")
+        elif field == "tools":
+            # A list of tool names, or a comma-separated string — both load.
+            if not isinstance(value, (list, str)):
+                problems.append(f"{relative}: 'tools' must be a list or string, got {type(value).__name__}")
         elif not isinstance(value, str):
             problems.append(
                 f"{relative}: '{field}' must be a string, got {type(value).__name__}"
@@ -109,6 +121,11 @@ def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
                 f"{relative}: '{field}' must be a string, got {type(data[field]).__name__}"
                 " — wrap it in quotes"
             )
+
+    if kind == "agent" and str(data.get("model", "")).lower() in AGENT_FORBIDDEN_MODELS:
+        problems.append(
+            f"{relative}: agent model '{data['model']}' is below the minimum (sonnet) CONTRIBUTING.md requires"
+        )
 
     # A skill is addressed by its `name`, and Claude Code resolves it from the
     # directory. A mismatch loads nothing while every other check passes.
