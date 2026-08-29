@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/bymax-quality:code-review` now runs three reviews beside its own, not one.** The second
   opinion was a single unsteered `codex exec review`. It gains an adversarial sibling that asks a
   different question — is this the right approach, rather than is this code correct — and, in
-  `full` and `deep`, Claude's own `/code-review max`. The two Codex runs launch as concurrent
+  `full` and `deep`, Claude's own built-in review — `/code-review high` in `full`, `max` in `deep`. The two Codex runs launch as concurrent
   background shells before this command forms any opinion, so the pair costs wall-clock once and
   neither can anchor the other. They run in **every** mode, `quick` included: they cost background
   wall-clock rather than session time, and a second opinion is worth as much before a quick push as
@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there would put the Codex process outside the group this script signals at budget expiry, leaving
   an orphan run billing after the review was already reported as `timeout`.
 
-  `/code-review max` is reported as Review D and labelled for what it is — the same model family as
+  The built-in review is reported as Review D and labelled for what it is — the same model family as
   the Bymax review running a different method, not a third independent voice. Two agreeing runs of
   one model is weak evidence, and a reader who mistakes it for corroboration will over-trust it. It
   forks to a background agent like the Codex shells do, so all three reviewers run in parallel and
