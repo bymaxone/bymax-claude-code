@@ -128,10 +128,20 @@ Map the scope resolved in Step 1 onto the one flag Codex understands:
 | --- | --- |
 | uncommitted work (dirty tree) | `--target uncommitted` |
 | branch vs upstream (clean tree) | `--target base --ref "$BASE"` |
-| branch target | `--target base --ref "$DEFAULT_REF"` |
-| PR target (after `gh pr checkout`) | `--target base --ref <pr base branch>` |
+| branch target **that is the current HEAD** | `--target base --ref "$DEFAULT_REF"` |
+| PR target, **after `gh pr checkout` made it HEAD** | `--target base --ref <pr base branch>` |
 | a single commit | `--target commit --ref <sha>` |
+| a branch target that is **not** checked out | **skip Codex** (see below) |
 | a file path, or a ref range not ending at HEAD | **no equivalent — skip Codex** |
+
+> **Codex always reviews the current checkout.** `codex exec review` takes a base
+> (`--base`) but has no head-ref argument, so passing a base while HEAD is some other
+> branch makes it review *your checkout* against that base — a different diff from the
+> one Review A examined, quite possibly an empty one, presented in the report as a
+> second opinion on the requested branch. That is the same false-clean failure the
+> empty-base guard exists to prevent. So: only send Codex a base when the head it will
+> compare **is** the scope you resolved in Step 1. Never switch branches to make it fit —
+> a review command must not mutate the working tree. Skip Codex and say so in Review B.
 
 Launch it with `run_in_background: true` so it runs while you do Steps 2–4, and note
 the shell id for Step 5.5:
