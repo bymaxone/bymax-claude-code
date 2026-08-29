@@ -104,6 +104,7 @@ The first line is the contract:
 | First line | Meaning |
 | --- | --- |
 | `CODEX_STATUS: ok` | working — the review follows; setup is done |
+| `CODEX_STATUS: ok-unpinned` | adversarial mode only: working, but the change was too large for the runtime to inline, so the reviewer chose its own scope — the report treats its findings as real and its silence as nothing |
 | `CODEX_STATUS: absent` | the binary is still not on this shell's PATH → back to Step 1 |
 | `CODEX_STATUS: unauthenticated` | login did not persist → back to Step 2 |
 | `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or returned a review with no verdict — see troubleshooting |

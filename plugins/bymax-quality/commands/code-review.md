@@ -455,7 +455,8 @@ never on the prose that follows:
 
 | Status | Meaning | What to do |
 | --- | --- | --- |
-| `ok` | the review follows the status line | report it in Step 6 |
+| `ok` | the review follows the status line, over exactly the requested scope | report it in Step 6 |
+| `ok-unpinned` | Review C only: the review follows, but the reviewer chose its own scope (see below) | report its findings in Step 6; **never count its silence** |
 | `absent` | Codex CLI not installed | report the status, change nothing else |
 | `unauthenticated` | logged out or session expired | idem |
 | `unsupported-target` | the scope has no Codex equivalent | idem |
@@ -463,12 +464,15 @@ never on the prose that follows:
 | `failed` | non-zero exit, no readable output, or a review with no verdict | idem |
 | `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing | report the status, change nothing else |
 
-A second line `CODEX_SCOPE: self-collected — …` may follow `ok` on Review C. It means
-the diff was too large for the runtime to inline in the prompt, so the reviewer went and
-collected its own scope with git commands, minutes after launch, against a tree that may
-have moved. **Reproduce that line verbatim in Review C's section when it appears**, and
-do not let the cross-read treat that review as having examined the same pinned diff as
-A and B. It is a review of roughly this change, not demonstrably of exactly it.
+`ok-unpinned` is followed by a `CODEX_SCOPE: self-collected — …` line. It means the
+change was too large for the runtime to inline in the prompt (more than two files or
+256 KiB — which is most real reviews), so the reviewer collected its own scope with git
+commands, minutes after launch, against a tree that may have moved, and on a branch
+target without the uncommitted work Step 1 includes. **Print the status and reproduce
+the scope line verbatim in Review C's section.** Its findings are still about this
+change and still get a disposition; what changes is the cross-read: an `ok-unpinned`
+Review C that found nothing is not evidence the diff is clean, and must not be written
+up as "B and C silent". It examined roughly this change, not demonstrably exactly it.
 
 The two shells are read independently. One of them degrading says nothing about the
 other: Review B needs only the `codex` binary, Review C needs the plugin on top of it,
@@ -578,6 +582,7 @@ Same model family as Review A, different method — not an independent voice.
 
 - **Both outside reviews found it (B + C):** <issue> — highest confidence, fix first.
 - **A and D agree, B and C silent:** <issue> — one model's opinion twice; state that.
+  (An `ok-unpinned` Review C does not count as silent — it may simply not have looked.)
 - **Only A:** <issue> — the convention and mechanical axes no bug hunter covers.
 - **Only C:** <issue> — a design objection, not a defect. Answer it on the merits.
 - **Only D:** <issue> — the deepest bug hunt in the set found it alone. Same model

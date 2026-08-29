@@ -92,9 +92,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the runtime stops inlining the diff and tells the agent to collect its own with git commands, so
   the validated scope flags bound nothing — and on a branch target it resolves `mergeBase..HEAD`,
   dropping the uncommitted work the calling command deliberately includes. Practically every real
-  review exceeds two files, so this was the normal case, not the edge. The script now emits a
-  `CODEX_SCOPE: self-collected` line when the change exceeds those thresholds, and the report must
-  reproduce it rather than presenting Review C as a review of the same pinned diff as A and B.
+  review exceeds two files, so this was the normal case, not the edge. The script now returns a
+  distinct `ok-unpinned` status in that case — not a note under `ok`, because the report branches on
+  the status line and never on prose — followed by a `CODEX_SCOPE: self-collected` line. The
+  review is still published and its findings still get a disposition; what changes is that its
+  silence no longer counts as evidence in the cross-read. The alternative the adversarial review
+  proposed, handing the backend a frozen exact diff, is not available: the runtime accepts a scope,
+  not a patch.
 
 - **`--mode=adversarial` was silently ignored.** The argument loop matched only the
   space-separated form; the equals form fell through to a catch-all `shift` and left the default

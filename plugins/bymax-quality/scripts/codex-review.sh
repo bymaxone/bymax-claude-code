@@ -58,7 +58,10 @@
 #     branch deterministically without interpreting prose.
 #
 # Statuses:
-#   ok                 review ran; the report follows the status line
+#   ok                 review ran over exactly the requested scope; report follows
+#   ok-unpinned        adversarial only: review ran, but the change exceeded the
+#                      runtime's inline-diff limit, so the reviewer collected its
+#                      own scope. Findings are reportable; silence is not evidence.
 #   absent             codex CLI is not installed
 #   unauthenticated    no active Codex session (logged out or expired)
 #   unsupported-target the caller's scope cannot be expressed as a codex flag
@@ -518,8 +521,6 @@ if [ -n "${repo_root}" ]; then
   review="${review//${escaped_root}\//}"
 fi
 
-emit "CODEX_STATUS: ok"
-
 # --- Is the reported scope the scope that was actually reviewed? ------------
 # Only the adversarial path can diverge. The plugin runtime inlines the diff in
 # the prompt only while the change stays under its thresholds; past them it sets
@@ -561,9 +562,18 @@ if [ "${MODE}" = "adversarial" ]; then
   scope_files="${scope_files//[[:space:]]/}"
   scope_bytes="${scope_bytes//[[:space:]]/}"
   if [ "${scope_files:-0}" -gt 2 ] || [ "${scope_bytes:-0}" -gt 262144 ]; then
+    # A distinct status, not a note under `ok`: the caller branches on the
+    # status line and never on prose, so the one fact that changes how the
+    # review may be used has to live in the status. The review is still
+    # published — its findings are about this change — but its silence is not
+    # evidence, and the caller is told so where it will actually look.
+    emit "CODEX_STATUS: ok-unpinned"
     emit "CODEX_SCOPE: self-collected — ${scope_files} files exceeded the runtime's inline-diff limit; the reviewer chose its own scope"
+    emit "${review}"
+    exit 0
   fi
 fi
 
+emit "CODEX_STATUS: ok"
 emit "${review}"
 exit 0
