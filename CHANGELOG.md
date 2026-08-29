@@ -110,11 +110,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to install a plugin when what they lacked was the CLI, which is precisely what the remediation
   text says that install will not fix. The fundamental gates run first now.
 
-- **The runtime lookup preferred the marketplace checkout over the installed version**, because
-  the sort compared whole paths and the first wildcard is the marketplace name — so `marketplaces`
-  beat `cache` on the letter m, and a second marketplace shipping a `codex` plugin would win on
-  its name whatever version it carried. Ordering is now on the version segment alone, within the
-  installed location first.
+- **The runtime lookup would execute code the user never installed.** It globbed
+  `*/codex/*/scripts/codex-companion.mjs` under the plugin cache, fell back to marketplace
+  checkouts, and ran whatever matched with `node` under the user's own permissions — the
+  read-only sandbox covers the Codex thread that runtime starts, not the Node process itself. Any
+  marketplace shipping a plugin named `codex`, installed or not, enabled or not, would have run
+  with full access to the repository and the user's credentials merely because a code review was
+  requested. (Before that, the sort had also preferred the marketplace checkout over the installed
+  version, and BSD `sort` has no `-V`, so `1.9.0` would have beaten `1.10.0` on macOS.) Discovery
+  now goes through `claude plugin list --json` and accepts exactly one answer: the plugin with id
+  `codex@openai-codex`, installed **and enabled**, at its recorded `installPath`. No glob, no
+  fallback, no ordering to get wrong; `BYMAX_CODEX_COMPANION` remains as an explicit override that
+  is trusted as the user's own decision. Found by the adversarial review of the previous fix.
 
 - **`/bymax-workflow:verify quick` contradicted itself.** The mode was defined in a new table while
   the section below it still read "Walk these in order. Do not skip.", and the output template still

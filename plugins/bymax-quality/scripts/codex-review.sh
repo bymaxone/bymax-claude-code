@@ -55,8 +55,11 @@
 #   codex-review.sh [--mode standard|adversarial] --target base --ref <branch> [--budget <sec>]
 #   codex-review.sh --target commit --ref <sha> [--budget <sec>]   # standard only
 #
-# Set BYMAX_CODEX_COMPANION to an explicit codex-companion.mjs path to override
-# discovery (a project-local plugin install, or a pinned version).
+# The adversarial runtime is resolved through `claude plugin list --json` — the
+# installed, enabled plugin with id `codex@openai-codex`, and nothing else. Set
+# BYMAX_CODEX_COMPANION to an explicit codex-companion.mjs path to override that
+# (a project-local install, or a pinned version); the override is trusted as the
+# user's own decision.
 #
 # Notes for the caller:
 #   - `codex exec review` rejects custom instructions whenever a scope flag is
@@ -172,65 +175,59 @@ if [ -n "${REF}" ] && ! git rev-parse --verify -q "${REF}" >/dev/null 2>&1; then
 fi
 
 # --- Locate the plugin runtime (adversarial mode only) ---------------------
-# Resolved by absolute path because `CLAUDE_PLUGIN_ROOT` points at THIS plugin,
-# not at openai-codex. The runtime finds its own prompts relative to itself, so
-# an absolute path is all it needs.
+# Resolved through `claude plugin list`, never by searching the filesystem. The
+# runtime is executed with `node` under the user's own permissions — the
+# read-only sandbox applies to the Codex thread it starts, not to the Node
+# process itself — so whatever this function returns runs with full access to
+# the repository and the user's credentials. That makes the selection a trust
+# decision, and the only trustworthy answer is "the plugin the user installed
+# and enabled", by its exact id. An earlier version globbed
+# `*/codex/*/scripts/codex-companion.mjs` and fell back to marketplace
+# checkouts: any marketplace shipping a plugin named `codex`, installed or not,
+# would have been executed merely by running a code review.
+#
+# `CLAUDE_PLUGIN_ROOT` cannot help here — it points at THIS plugin.
+COMPANION_PLUGIN_ID="codex@openai-codex"
+
 find_companion() {
+  # An explicit override is the user's own decision, made in their environment,
+  # and is honoured as such. It is the one path that bypasses the identity check.
   if [ -n "${BYMAX_CODEX_COMPANION:-}" ]; then
     [ -f "${BYMAX_CODEX_COMPANION}" ] || return 1
     printf '%s' "${BYMAX_CODEX_COMPANION}"
     return 0
   fi
 
-  # Globbed rather than listed: `ls | sort` would split on paths containing
-  # spaces, and nullglob makes a miss expand to nothing instead of to the
-  # literal pattern.
-  #
-  # The two locations are searched in order, not merged into one sorted list.
-  # `cache/` holds the version the user actually has installed and enabled;
-  # `marketplaces/` is the marketplace checkout, which can sit at a different
-  # revision entirely. Sorting them together compares unrelated path prefixes
-  # and lets "marketplaces" win on the letter m — measured, not hypothetical.
-  local family matches=() sorted
-  for family in installed checkout; do
-    # Each glob is expanded where it is written, rather than stored in a
-    # variable and re-split — holding a pattern in a string would need word
-    # splitting to expand, and that means a `shellcheck disable` comment for a
-    # style choice, which is the kind of suppression this toolkit's own review
-    # blocks. (validate.sh does pass `-e SC1091,SC2059`; those are two documented
-    # project-wide exclusions, not a per-line silence bolted on to keep a
-    # particular construct.)
-    shopt -s nullglob
-    case "${family}" in
-      installed) matches=( "${HOME}"/.claude/plugins/cache/*/codex/*/scripts/codex-companion.mjs ) ;;
-      checkout)  matches=( "${HOME}"/.claude/plugins/marketplaces/*/plugins/codex/scripts/codex-companion.mjs ) ;;
-    esac
-    shopt -u nullglob
-    [ "${#matches[@]}" -gt 0 ] || continue
+  command -v claude >/dev/null 2>&1 || return 1
+  local listing install_path
+  listing="$(claude plugin list --json 2>/dev/null)" || return 1
+  [ -n "${listing}" ] || return 1
 
-    # Several versions can be cached side by side. Sorting the whole path is
-    # wrong: the FIRST wildcard is the marketplace name, so `sort -V` compares
-    # that segment and a second marketplace shipping a `codex` plugin would win
-    # on its name whatever version it carries. Sort on the version segment
-    # alone, and carry the path alongside it.
-    local entry version
-    sorted=""
-    for entry in "${matches[@]}"; do
-      # .../<marketplace>/codex/<version>/scripts/codex-companion.mjs
-      version="${entry%/scripts/codex-companion.mjs}"
-      version="${version##*/}"
-      sorted="${sorted}${version}	${entry}"$'\n'
-    done
-    if printf '%s\n' 1 | sort -V >/dev/null 2>&1; then
-      sorted="$(printf '%s' "${sorted}" | sort -V)"
-    else
-      sorted="$(printf '%s' "${sorted}" | sort)"
-    fi
-    sorted="${sorted##*$'\n'}"
-    printf '%s' "${sorted#*	}"
-    return 0
-  done
-  return 1
+  # Exact id AND enabled. A disabled plugin is one the user turned off; running
+  # its code anyway would override that choice.
+  if command -v jq >/dev/null 2>&1; then
+    install_path="$(printf '%s' "${listing}" | jq -r --arg id "${COMPANION_PLUGIN_ID}" '
+      map(select(.id == $id and .enabled == true)) | .[0].installPath // empty' 2>/dev/null)"
+  elif command -v python3 >/dev/null 2>&1; then
+    install_path="$(printf '%s' "${listing}" | python3 -c '
+import json, sys
+wanted = sys.argv[1]
+try:
+    plugins = json.load(sys.stdin)
+except ValueError:
+    sys.exit(0)
+for plugin in plugins if isinstance(plugins, list) else []:
+    if plugin.get("id") == wanted and plugin.get("enabled") is True:
+        print(plugin.get("installPath", ""))
+        break
+' "${COMPANION_PLUGIN_ID}" 2>/dev/null)"
+  else
+    return 1
+  fi
+
+  [ -n "${install_path}" ] || return 1
+  [ -f "${install_path}/scripts/codex-companion.mjs" ] || return 1
+  printf '%s' "${install_path}/scripts/codex-companion.mjs"
 }
 
 # --- Availability gates (both free: no network, no tokens) -----------------
