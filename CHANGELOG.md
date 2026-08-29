@@ -123,6 +123,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fallback, no ordering to get wrong; `BYMAX_CODEX_COMPANION` remains as an explicit override that
   is trusted as the user's own decision. Found by the adversarial review of the previous fix.
 
+  The next round then asked the right follow-up: the runtime contract this script relies on —
+  read-only sandbox pinned per thread, the detached broker and its `cancel`, session-ID scoping,
+  the scope flags, a `Verdict:` line in the output — is undocumented and was verified by reading
+  1.0.6 only. A routine plugin update could change any of it, and the failure modes are the bad
+  kind: a run still billing past its budget, or a Node process with the user's permissions whose
+  read-only guarantee no longer holds. So an installed version outside `1.0.*` is now refused with
+  `adversarial-absent` and a message saying why; `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` runs it
+  anyway as the user's explicit decision. Widening the range means re-reading four upstream files,
+  and the comment names them.
+
+  The same review argued the direct runtime call bypasses upstream's `disable-model-invocation`
+  boundary. Refused, with the reasoning recorded in the script header: that flag gates the
+  slash-command wrapper, not the runtime — upstream's own `codex-rescue` agent calls the same
+  runtime — and the consent it protects (no model-started billed run) is met, because the billed
+  run starts only when the user invokes `/bymax-quality:code-review`, exactly as Review B's
+  `codex exec review` does on the same authority. If upstream publishes a supported surface for the
+  adversarial review, the direct call should go.
+
 - **`/bymax-workflow:verify quick` contradicted itself.** The mode was defined in a new table while
   the section below it still read "Walk these in order. Do not skip.", and the output template still
   prescribed all five gates and terminated in `Verdict: READY` — so a `quick` run either paid for

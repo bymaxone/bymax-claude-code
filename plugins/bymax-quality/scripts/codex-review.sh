@@ -20,6 +20,23 @@
 # runs fine when invoked by absolute path. Reusing it means the adversarial
 # prompt keeps tracking upstream instead of drifting in a copy here.
 #
+# On whether that is a bypass of upstream's boundary — it was raised in review
+# and is answered here rather than left to be re-argued each time:
+#   - `disable-model-invocation` gates the slash-command WRAPPER: the piece
+#     that asks the user "wait or background?" and echoes output verbatim. The
+#     runtime carries no such flag, and upstream's own `codex-rescue` subagent
+#     invokes that same runtime (`task`) from an agent.
+#   - The consent the flag protects is "a model must not start a billed Codex
+#     run on its own". Here the billed run is started because the USER invoked
+#     `/bymax-quality:code-review` — a user-only command in this toolkit — and
+#     opted into this integration by installing the plugin. Review B starts an
+#     equally billed `codex exec review` on the same authority.
+#   - What the flag cannot express is "this runtime is internal": that is
+#     addressed by the version pin below, not by pretending the wrapper was
+#     the boundary.
+# If upstream ever publishes a supported invocation surface for the
+# adversarial review, prefer it and delete this mode's direct call.
+#
 # The two modes are meant to be launched as two concurrent background shells by
 # the caller, so they cost wall-clock only once.
 #
@@ -189,12 +206,29 @@ fi
 # `CLAUDE_PLUGIN_ROOT` cannot help here — it points at THIS plugin.
 COMPANION_PLUGIN_ID="codex@openai-codex"
 
+# The runtime contract this script depends on — read-only sandbox pinned per
+# thread, `approvalPolicy: never`, the detached broker and its `cancel`,
+# CODEX_COMPANION_SESSION_ID scoping, the `--scope`/`--base` flags, and a
+# `Verdict:` line in the output — is UNDOCUMENTED. It was verified by reading
+# openai-codex 1.0.6. A routine plugin update can change any of it, and the
+# failure modes are the bad kind: a run that keeps billing past its budget, or
+# a Node process with the user's permissions whose read-only guarantee no
+# longer holds. So a version outside the verified range is refused, not
+# assumed. Widen this range only after re-reading lib/codex.mjs,
+# lib/broker-lifecycle.mjs, lib/job-control.mjs and lib/render.mjs in the new
+# version; BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1 runs it anyway, as the
+# user's own explicit decision.
+COMPANION_VERIFIED_PATTERN='1.0.*'
+companion_version=""
+companion_record=""
+
 find_companion() {
   # An explicit override is the user's own decision, made in their environment,
   # and is honoured as such. It is the one path that bypasses the identity check.
   if [ -n "${BYMAX_CODEX_COMPANION:-}" ]; then
     [ -f "${BYMAX_CODEX_COMPANION}" ] || return 1
-    printf '%s' "${BYMAX_CODEX_COMPANION}"
+    # No version to report for an override: it is trusted as-is.
+    printf '%s\t%s' "override" "${BYMAX_CODEX_COMPANION}"
     return 0
   fi
 
@@ -204,12 +238,15 @@ find_companion() {
   [ -n "${listing}" ] || return 1
 
   # Exact id AND enabled. A disabled plugin is one the user turned off; running
-  # its code anyway would override that choice.
+  # its code anyway would override that choice. Version and path come out as
+  # one tab-separated line so the two cannot disagree.
+  local record
   if command -v jq >/dev/null 2>&1; then
-    install_path="$(printf '%s' "${listing}" | jq -r --arg id "${COMPANION_PLUGIN_ID}" '
-      map(select(.id == $id and .enabled == true)) | .[0].installPath // empty' 2>/dev/null)"
+    record="$(printf '%s' "${listing}" | jq -r --arg id "${COMPANION_PLUGIN_ID}" '
+      map(select(.id == $id and .enabled == true)) | .[0]
+      | select(. != null) | "\(.version // "")\t\(.installPath // "")"' 2>/dev/null)"
   elif command -v python3 >/dev/null 2>&1; then
-    install_path="$(printf '%s' "${listing}" | python3 -c '
+    record="$(printf '%s' "${listing}" | python3 -c '
 import json, sys
 wanted = sys.argv[1]
 try:
@@ -218,16 +255,20 @@ except ValueError:
     sys.exit(0)
 for plugin in plugins if isinstance(plugins, list) else []:
     if plugin.get("id") == wanted and plugin.get("enabled") is True:
-        print(plugin.get("installPath", ""))
+        print(str(plugin.get("version", "")) + "\t" + str(plugin.get("installPath", "")))
         break
 ' "${COMPANION_PLUGIN_ID}" 2>/dev/null)"
   else
     return 1
   fi
 
+  [ -n "${record}" ] || return 1
+  install_path="${record#*	}"
   [ -n "${install_path}" ] || return 1
   [ -f "${install_path}/scripts/codex-companion.mjs" ] || return 1
-  printf '%s' "${install_path}/scripts/codex-companion.mjs"
+  # Printed as "<version><TAB><path>": this runs in a command substitution, so
+  # a variable set here would not survive — the caller splits the one line.
+  printf '%s\t%s' "${record%%	*}" "${install_path}/scripts/codex-companion.mjs"
 }
 
 # --- Availability gates (both free: no network, no tokens) -----------------
@@ -252,8 +293,17 @@ companion=""
 if [ "${MODE}" = "adversarial" ]; then
   command -v node >/dev/null 2>&1 \
     || status_only "adversarial-absent" "node is required by the openai-codex plugin runtime"
-  companion="$(find_companion)" \
+  companion_record="$(find_companion)" \
     || status_only "adversarial-absent" "openai-codex plugin not found — install it to enable the adversarial review"
+  companion_version="${companion_record%%	*}"
+  companion="${companion_record#*	}"
+  # The pattern is left unquoted on purpose: a quoted case pattern matches
+  # literally, and this one is a glob.
+  case "${companion_version}" in
+    override|${COMPANION_VERIFIED_PATTERN}) ;;
+    *) [ "${BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED:-0}" = "1" ] || status_only "adversarial-absent" \
+         "openai-codex ${companion_version:-?} is outside the verified range (${COMPANION_VERIFIED_PATTERN}) — the runtime contract this script relies on is undocumented and was checked against 1.0.6 only; set BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1 to run it anyway" ;;
+  esac
 fi
 
 # --- Run under a budget -----------------------------------------------------
@@ -469,6 +519,10 @@ emit "CODEX_STATUS: ok"
 # payloads the runtime includes via `--binary` — so a naive measure could stay
 # under the byte limit while the runtime had already crossed it and switched to
 # self-collection, and this note would then fail to fire exactly when it mattered.
+# Untracked files count toward `scope_files` but their contents are NOT in
+# `scope_bytes`, on purpose: the runtime's own byte measurement is exactly the
+# two `git diff` commands below, which ignore untracked content, and this must
+# track what the runtime decides on — not what a more complete measure would.
 diff_flags=(--binary --no-ext-diff --submodule=diff)
 if [ "${MODE}" = "adversarial" ]; then
   case "${TARGET}" in
