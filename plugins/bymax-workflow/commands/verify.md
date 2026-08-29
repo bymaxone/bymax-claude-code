@@ -1,6 +1,6 @@
 ---
 description: 'Prove a change actually works before declaring it done. Runs the project''s verification gates, exercises the affected paths, and checks the root cause was fixed — not just the symptom. Use after implementation, before /bymax-quality:code-review or commit. Modes: quick (Gate 1 only — the static gates) | full (default, all five gates).'
-argument-hint: "[quick] [what changed]"
+argument-hint: "[quick|full] [what changed]"
 ---
 
 # Verify Command
@@ -26,13 +26,13 @@ Use it especially when:
 ## Modes
 
 ```
-/bymax-workflow:verify [quick] [what changed]
+/bymax-workflow:verify [quick|full] [what changed]
 ```
 
 | Mode | Gates | When |
 | --- | --- | --- |
 | `quick` | Gate 1 only — the static gates plus the suppression scan. | A cheap "is the tree clean right now?" check with no specific change to exercise. This is what `/bymax-workflow:checkpoint` runs before snapshotting. |
-| *(default)* | All five gates. | After finishing an implementation, before reporting done. |
+| `full` *(default)* | All five gates. | After finishing an implementation, before reporting done. Naming it is optional; it exists so `verify full` is read as a mode, not as a change description. |
 
 `quick` is a smaller scope, never a lower bar: Gate 1 still fails on a single type
 error, lint error, failing test, or new suppression comment. What it drops is the

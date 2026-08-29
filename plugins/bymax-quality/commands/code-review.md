@@ -167,7 +167,7 @@ Map the scope resolved in Step 1 onto the one flag Codex understands:
 | branch vs upstream (clean tree) | `--target base --ref "$BASE"` |
 | branch target **that is the current HEAD** | `--target base --ref "$DEFAULT_REF"` |
 | PR target, **after `gh pr checkout` made it HEAD** | `--target base --ref <pr base branch>` |
-| a single commit | `--target commit --ref <sha>` |
+| a single commit | `--target commit --ref <sha>` — Review B only; Review C reports `unsupported-target`, the runtime has no per-commit scope |
 | a branch target that is **not** checked out | **skip Codex** (see below) |
 | a file path, or a ref range not ending at HEAD | **no equivalent — skip Codex** |
 
@@ -178,7 +178,8 @@ Map the scope resolved in Step 1 onto the one flag Codex understands:
 > second opinion on the requested branch. That is the same false-clean failure the
 > empty-base guard exists to prevent. So: only send Codex a base when the head it will
 > compare **is** the scope you resolved in Step 1. Never switch branches to make it fit —
-> a review command must not mutate the working tree. Skip Codex and say so in Review B.
+> a review command must not mutate the working tree. Skip both Codex reviews and say so
+> in Review B and in Review C.
 
 Launch **both** Codex reviews with `run_in_background: true`, in the same message so
 they run concurrently, and note each shell id for Step 5.5. They ask different
@@ -460,8 +461,8 @@ never on the prose that follows:
 | `absent` | Codex CLI not installed | report the status, change nothing else |
 | `unauthenticated` | logged out or session expired | idem |
 | `unsupported-target` | the scope has no Codex equivalent | idem |
-| `timeout` | exceeded the budget | idem |
-| `failed` | non-zero exit, no readable output, or a review with no verdict | idem |
+| `timeout` | exceeded the budget | report the status **and the line after it verbatim** — when the cancel failed it names the one command that still reaches a billing run |
+| `failed` | non-zero exit, no readable output, a parse-failure page, or a review with no verdict | report the status and the line after it verbatim |
 | `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing | report the status, change nothing else |
 
 `ok-unpinned` is followed by a `CODEX_SCOPE: self-collected — …` line. It means the
@@ -479,8 +480,12 @@ other: Review B needs only the `codex` binary, Review C needs the plugin on top 
 so `adversarial-absent` next to a healthy `ok` is the expected shape on a machine
 without the plugin — not a symptom.
 
-If a shell has not finished, wait up to the remaining budget, then treat it as
-`timeout`. Never hold the report for either.
+If a shell has not finished: in `full` and `deep`, wait until the **later** of the two
+budgets has elapsed — once, for both shells together, never one after the other — then
+treat whatever is still running as `timeout`. In `quick`, wait at most 60 s: it is the
+pre-push sanity check and must not stall on a background reviewer. Report an unfinished
+shell as `Status: still running — output at <path>` so the user can read it when it
+lands; never as absent, and never as clean.
 
 ### Review D — the agent
 
@@ -574,13 +579,16 @@ Status: ok
 
 ### Review D — Claude, /code-review <high in full | max in deep>
 
-Status: <returned | still running | no report | skipped: reason>
+Status: <returned | still running | no report>   (a skipped Review D has no section at all)
 Same model family as Review A, different method — not an independent voice.
 - <file>:<line> — <finding>
 
 ### Cross-read
 
-- **Both outside reviews found it (B + C):** <issue> — highest confidence, fix first.
+- **A and an outside review agree (A + B, or A + C):** <issue> — highest confidence: a
+  convention reviewer and an independent model converged. Fix first.
+- **Both outside reviews found it (B + C):** <issue> — two independent models converged on
+  a defect A missed. Fix first.
 - **A and D agree, B and C silent:** <issue> — one model's opinion twice; state that.
   (An `ok-unpinned` Review C does not count as silent — it may simply not have looked.)
 - **Only A:** <issue> — the convention and mechanical axes no bug hunter covers.

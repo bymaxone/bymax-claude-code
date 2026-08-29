@@ -167,6 +167,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   guard Step 1.5 already had — without it, the common clean-tree case had it reviewing an empty
   diff and reporting no findings, beside three reviews that had read the real one.
 
+- **The built-in review at `high` then found ten more, all verified, all fixed.** The `cancel`
+  exit status is not its verdict — the runtime exits 0 once it has *resolved* the job even when
+  the interrupt RPC failed, so the `--json` payload's `turnInterrupted` is read instead, and a
+  failed cancel now prints the one command that still reaches the run (`/codex:status` cannot
+  show it: it filters by the Claude session id, and this run carries its own). The `Verdict:`
+  guard was satisfied by the runtime's own parse-failure page, which quotes the raw model output
+  in a text fence — the page is now rejected by its markers first, then `Target:` and `Verdict:`
+  are both required. A review finishing in the last poll interval was discarded as a timeout and
+  falsely reported as a failed cancel; liveness is re-checked before either. The scope was
+  measured after the review against a tree that may have moved, and always blamed the file
+  count; it is now measured once at launch, names the limit that tripped, and also covers the
+  branch-target case where uncommitted work is silently outside the reviewed range. `quick` no
+  longer stalls up to a full budget on background shells. The cross-read had lost its
+  strongest bucket — A and an outside review agreeing. And `codex exec review` hands back its
+  final message through `--output-last-message`, which replaces two hand-written JSONL
+  extractors. Every number the script reasons about is now a named constant.
+
 - **The frontmatter gate could report success without having run, then twice more in miniature.**
   `check-frontmatter.py` first exited with a "skipped" status when PyYAML was missing while
   `validate.sh` treated that as a warning, so a machine without PyYAML got `✓ All validations

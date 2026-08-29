@@ -90,11 +90,24 @@
 
 set -u
 
-BUDGET=300
+# Every number this script reasons about, named once.
+DEFAULT_BUDGET=300          # seconds, when --budget is absent or unusable
+MIN_BUDGET=30               # below this a run is killed before it can say anything
+MAX_BUDGET=3600             # above this bash 3.2's `[` can no longer compare reliably
+POLL_INTERVAL=2             # seconds between liveness checks of the review process
+KILL_GRACE=2                # seconds between TERM and KILL at budget expiry
+CANCEL_DEADLINE=15          # seconds the runtime's `cancel` may take before it is abandoned
+REASON_MAX_CHARS=300        # tail of stderr quoted in a `failed` status line
+# The plugin runtime inlines the diff in its prompt only under these limits
+# (DEFAULT_INLINE_DIFF_MAX_FILES / _BYTES in its lib/git.mjs, openai-codex 1.0.6);
+# past them the reviewer collects its own scope.
+RUNTIME_INLINE_MAX_FILES=2
+RUNTIME_INLINE_MAX_BYTES=262144
+
+BUDGET="${DEFAULT_BUDGET}"
 TARGET=""
 REF=""
 MODE="standard"
-POLL_INTERVAL=2
 
 emit() { printf '%s\n' "$*"; }
 status_only() { emit "CODEX_STATUS: $1"; [ "${2:-}" = "" ] || emit "$2"; exit 0; }
@@ -132,27 +145,15 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-# Digits alone are not enough. `/bin/bash` here is 3.2, whose `[` cannot compare
-# beyond 64 bits: a caller passing milliseconds makes `[ "${waited}" -ge "${BUDGET}" ]`
-# return 2 forever, so the timeout branch never fires and the poll loop spins while
-# codex runs unbounded. `--budget 0` has the opposite failure — it kills a run that
-# started milliseconds earlier and calls it a timeout.
-case "${BUDGET}" in
-  ''|*[!0-9]*) BUDGET=300 ;;
-esac
-# Strip leading zeros so the digit-count test below measures magnitude, not
-# padding ("0000600" is 600, not an out-of-range seven-digit value).
-BUDGET="${BUDGET#"${BUDGET%%[!0]*}"}"
-[ -n "${BUDGET}" ] || BUDGET=0
-# Five or more digits is at least 10000: over the cap, and — more importantly —
-# past the point where bash 3.2's `[` can compare at all. It fails with status 2,
-# which `if` reads as false, so a numeric range check ALONE silently lets the
-# value through and the timeout branch then never fires. Bound the length first.
-case "${BUDGET}" in
-  ?????*) BUDGET=300 ;;
-esac
-if [ "${BUDGET}" -lt 30 ] || [ "${BUDGET}" -gt 3600 ]; then
-  BUDGET=300
+# One to four digits, then a range check. The digit cap is not cosmetic:
+# `/bin/bash` here is 3.2, whose `[` fails with status 2 above 64 bits — a
+# status `if` reads as false — so a range check ALONE lets a millisecond value
+# through and the timeout branch then never fires. `10#` strips leading zeros.
+if [[ "${BUDGET}" =~ ^[0-9]{1,4}$ ]]; then
+  BUDGET=$((10#${BUDGET}))
+  [ "${BUDGET}" -ge "${MIN_BUDGET}" ] && [ "${BUDGET}" -le "${MAX_BUDGET}" ] || BUDGET="${DEFAULT_BUDGET}"
+else
+  BUDGET="${DEFAULT_BUDGET}"
 fi
 
 case "${MODE}" in
@@ -192,6 +193,61 @@ fi
 # message — which would otherwise be reported as a successful review.
 if [ -n "${REF}" ] && ! git rev-parse --verify -q "${REF}" >/dev/null 2>&1; then
   status_only "unsupported-target" "ref '${REF}' does not resolve in this repository"
+fi
+
+# --- Will the adversarial reviewer see exactly this scope? ------------------
+# Decided HERE, before launch, against the tree the runtime is about to read —
+# not after the review, against a tree that may have moved in the meantime.
+#
+# Three ways the answer is no. Past the runtime's inline limits it stops putting
+# the diff in the prompt and tells the agent to collect its own with git
+# commands, so the validated scope flags bind nothing. And on a branch target
+# it resolves mergeBase..HEAD, which drops uncommitted work the calling command
+# deliberately keeps in scope. Measurements mirror the runtime's own commands
+# (staged and unstaged diffed separately, `--binary`); untracked contents are
+# NOT in the byte count because they are not in the runtime's either. The file
+# count is checked first because it alone usually decides, and the byte diff
+# is the expensive one.
+scope_unpinned=0
+scope_reason=""
+if [ "${MODE}" = "adversarial" ]; then
+  diff_flags=(--binary --no-ext-diff --submodule=diff)
+  case "${TARGET}" in
+    uncommitted)
+      scope_files="$( { git diff --cached --name-only; git diff --name-only;
+                        git ls-files --others --exclude-standard; } 2>/dev/null \
+                      | sort -u | grep -c .)"
+      if [ "${scope_files:-0}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
+        scope_unpinned=1
+        scope_reason="${scope_files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"
+      else
+        scope_bytes="$(( $(git diff --cached "${diff_flags[@]}" 2>/dev/null | wc -c)
+                       + $(git diff "${diff_flags[@]}" 2>/dev/null | wc -c) ))"
+        if [ "${scope_bytes}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
+          scope_unpinned=1
+          scope_reason="${scope_bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"
+        fi
+      fi ;;
+    base)
+      dirty_files="$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null \
+                     | sort -u | grep -c .)"
+      if [ "${dirty_files:-0}" -gt 0 ]; then
+        scope_unpinned=1
+        scope_reason="${dirty_files} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
+      else
+        scope_files="$(git diff --name-only "${REF}...HEAD" 2>/dev/null | grep -c .)"
+        if [ "${scope_files:-0}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
+          scope_unpinned=1
+          scope_reason="${scope_files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"
+        else
+          scope_bytes="$(git diff "${diff_flags[@]}" "${REF}...HEAD" 2>/dev/null | wc -c | tr -d ' ')"
+          if [ "${scope_bytes:-0}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
+            scope_unpinned=1
+            scope_reason="${scope_bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"
+          fi
+        fi
+      fi ;;
+  esac
 fi
 
 # --- Locate the plugin runtime (adversarial mode only) ---------------------
@@ -317,6 +373,8 @@ fi
 # macOS ships neither `timeout` nor `gtimeout`, so the budget is enforced with
 # a poll-and-kill loop in pure bash.
 workdir="$(mktemp -d 2>/dev/null)" || status_only "failed" "cannot create a temp dir"
+raw="${workdir}/codex.out"
+err="${workdir}/codex.err"
 
 # Set once the review process is launched, cleared once it has been reaped. The
 # cleanup below uses it to tell "nothing started yet / already finished" from
@@ -344,34 +402,43 @@ review_session="bymax-review-$$-$(date +%s)"
 # process tree, without killing the broker daemon, which is shared per workspace
 # and may be serving another session's review.
 #
-# A cancel that fails is reported, not swallowed: the caller must know a run may
-# still be billing, because nothing else in this script can reach it.
-# The cancel itself is bounded. It talks to the broker over a socket, and a
-# broker that has hung is exactly the case in which a timeout is being handled
-# — an unbounded cancel would then block here forever, never reaching the
-# group kill below and never emitting `timeout`. macOS ships no `timeout`, so
-# the deadline is the same poll-and-kill loop the main budget uses.
-CANCEL_DEADLINE=15
+# Three things about that cancel, each learned from a review of the previous
+# version:
+#   - It is bounded. It talks to the broker over a socket, and a hung broker is
+#     exactly the case a timeout is handling; unbounded, it would block here
+#     forever and `timeout` would never be emitted.
+#   - Its exit status is not its verdict. The runtime exits 0 once it has
+#     RESOLVED the job, even when the interrupt RPC failed and the turn is still
+#     running. The `--json` payload's `turnInterrupted` is the fact that matters.
+#   - A cancel that fails is reported, not swallowed, with the one command that
+#     can still reach the run: `/codex:status` cannot show it (it filters by the
+#     Claude session id, and this run carries its own), so the remedy is the
+#     ID-less cancel under this run's session id.
 cancel_failed=0
 stop_review() {
   [ "${run_active}" -eq 1 ] || return 0
   if [ "${MODE}" = "adversarial" ] && [ -n "${companion}" ]; then
+    local cancel_out="${workdir}/cancel.json" cancel_pid cancel_waited=0
     CODEX_COMPANION_SESSION_ID="${review_session}" \
-      node "${companion}" cancel >/dev/null 2>&1 &
-    local cancel_pid=$! cancel_waited=0
+      node "${companion}" cancel --json >"${cancel_out}" 2>/dev/null &
+    cancel_pid=$!
     while kill -0 "${cancel_pid}" 2>/dev/null; do
       if [ "${cancel_waited}" -ge "${CANCEL_DEADLINE}" ]; then
         kill -KILL "${cancel_pid}" 2>/dev/null
-        cancel_failed=1
         break
       fi
       sleep 1
       cancel_waited=$((cancel_waited + 1))
     done
-    wait "${cancel_pid}" 2>/dev/null || cancel_failed=1
+    wait "${cancel_pid}" 2>/dev/null
+    if ! grep -q '"turnInterrupted": *true' "${cancel_out}" 2>/dev/null; then
+      # Not a failure if the review simply finished while the cancel was being
+      # issued: the front-end process is gone, so there is no turn to reach.
+      kill -0 "${codex_pid}" 2>/dev/null && cancel_failed=1
+    fi
   fi
   { kill -TERM -- -"${codex_pid}"
-    sleep 2
+    sleep "${KILL_GRACE}"
     kill -KILL -- -"${codex_pid}"
     wait "${codex_pid}"
   } >/dev/null 2>&1
@@ -385,18 +452,6 @@ stop_review() {
 trap 'stop_review; rm -rf "${workdir}"' EXIT
 trap 'exit 143' TERM
 trap 'exit 130' INT
-raw="${workdir}/codex.jsonl"
-err="${workdir}/codex.err"
-
-# Only `codex exec review` emits the JSONL stream this script knows how to
-# parse. The plugin runtime prints the review as plain text, which needs no
-# extraction at all.
-use_json=0
-if [ "${MODE}" = "standard" ] \
-  && { command -v jq >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; }; then
-  use_json=1
-  codex_args+=(--json)
-fi
 
 # Keep stderr: it carries the reason a run failed (rate limit, expired plan,
 # blocked egress). Discarding it would leave the caller with a bare exit code,
@@ -406,24 +461,21 @@ fi
 # child processes of its own, and signalling only the pid at budget expiry
 # leaves those children running — the budget would not actually be enforced.
 #
-# The sandbox and approval policy are pinned rather than inherited. A user whose
-# `~/.codex/config.toml` sets `workspace-write` or `danger-full-access` would
-# otherwise hand the reviewer write access to their tree, breaking this script's
-# "never writes to the repo" contract; an interactive approval policy would stall
-# the run until the budget expired. Both are overridden per invocation, so the
-# user's own Codex configuration is left untouched.
+# Standard mode: the sandbox and approval policy are pinned rather than
+# inherited, so a `~/.codex/config.toml` set to `workspace-write` or
+# `danger-full-access` does not hand the reviewer write access; the review text
+# is written by `--output-last-message`, the CLI's own way to hand back the
+# final message, so no JSONL stream needs parsing.
 #
-# The plugin runtime is invoked WITHOUT its `--background` flag on purpose. That
+# Adversarial mode: the runtime is invoked WITHOUT its `--background` flag. That
 # flag is inert there anyway — `adversarial-review` always runs in the
-# foreground, and the openai-codex command backgrounds it from the Claude side
-# instead. Detaching it here would put the Codex process outside the group this
-# script signals at budget expiry, leaving an orphan run billing against the
-# user's account after the review has already been reported as `timeout`.
+# foreground and the openai-codex command backgrounds it from the Claude side.
 set -m
 if [ "${MODE}" = "standard" ]; then
   codex exec review "${codex_args[@]}" --ephemeral \
     -c sandbox_mode="read-only" -c approval_policy="never" \
-    >"${raw}" 2>"${err}" &
+    --output-last-message "${raw}" \
+    >/dev/null 2>"${err}" &
 else
   CODEX_COMPANION_SESSION_ID="${review_session}" \
     node "${companion}" adversarial-review "${codex_args[@]}" \
@@ -436,13 +488,13 @@ run_active=1
 waited=0
 while kill -0 "${codex_pid}" 2>/dev/null; do
   if [ "${waited}" -ge "${BUDGET}" ]; then
-    # stop_review signals the whole process group (note the `-` before the pid)
-    # so Codex's own children die with it, and additionally cancels the run
-    # through the plugin runtime in adversarial mode, where the billed process
-    # is deliberately outside this group.
+    # Re-check liveness before declaring a timeout: a review that finished in
+    # the last poll interval is a finished review, not a timed-out one, and
+    # its output must not be thrown away.
+    kill -0 "${codex_pid}" 2>/dev/null || break
     stop_review
     if [ "${cancel_failed}" -eq 1 ]; then
-      status_only "timeout" "exceeded ${BUDGET}s — and the cancel FAILED: the Codex run may still be billing, check /codex:status"
+      status_only "timeout" "exceeded ${BUDGET}s — and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=${review_session} node \"${companion}\" cancel"
     fi
     status_only "timeout" "exceeded ${BUDGET}s"
   fi
@@ -455,60 +507,31 @@ codex_rc=$?
 run_active=0
 if [ "${codex_rc}" -ne 0 ]; then
   # Codex writes a long agent trace to stderr; only the tail carries the error.
-  reason="$(tail -n 3 "${err}" 2>/dev/null | tr '\n' ' ' | cut -c1-300)"
+  reason="$(tail -n 3 "${err}" 2>/dev/null | tr '\n' ' ' | cut -c1-"${REASON_MAX_CHARS}")"
   status_only "failed" "${MODE} review exited ${codex_rc}${reason:+ — ${reason}}"
 fi
 
-# --- Extract the review -----------------------------------------------------
-# With --json the review is the `agent_message` item; without it, stdout is
-# already the review text and needs no parsing. Both paths are verified.
-extract() {
-  if [ "${use_json}" -eq 0 ]; then
-    cat "${raw}"
-  elif command -v jq >/dev/null 2>&1; then
-    jq -r 'select(.type == "item.completed")
-           | select(.item.type == "agent_message")
-           | .item.text' "${raw}" 2>/dev/null
-  else
-    python3 -c '
-import json, sys
-out = []
-with open(sys.argv[1], encoding="utf-8", errors="replace") as fh:
-    for line in fh:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            event = json.loads(line)
-        except ValueError:
-            continue
-        item = event.get("item") or {}
-        if event.get("type") == "item.completed" and item.get("type") == "agent_message":
-            out.append(item.get("text", ""))
-print("\n".join(out))
-' "${raw}" 2>/dev/null
-  fi
-}
-
-review="$(extract)"
+# --- Accept the review ------------------------------------------------------
+review="$(cat "${raw}" 2>/dev/null)"
 [ -n "${review}" ] || status_only "failed" "${MODE} review produced no readable output"
 
 # Non-empty stdout is not a review. The plugin runtime exits 0 when the *turn*
-# completed even if Codex returned unparseable JSON — it renders a human-readable
-# failure page ("Codex did not return valid structured JSON") to stdout instead.
-# Without this check that page is published verbatim under `CODEX_STATUS: ok`,
-# and the cross-read counts Review C as an outside voice that examined the diff
-# and found nothing.
-#
-# The test is positive rather than a match on upstream's error prose: every real
-# adversarial review ends in a `Verdict:` line. If upstream changes the format,
-# this fails closed — `failed` — instead of silently going back to publishing
-# failure pages as clean reviews.
-if [ "${MODE}" = "adversarial" ] \
-  && ! printf '%s\n' "${review}" | grep -qE '^[[:space:]]*Verdict:'; then
-  reason="$(printf '%s\n' "${review}" | grep -vE '^[[:space:]]*$' | head -n 2 \
-    | tr '\n' ' ' | cut -c1-200)"
-  status_only "failed" "adversarial review returned no verdict — ${reason}"
+# completed even if Codex returned unparseable JSON — it renders a failure page
+# to stdout instead, and that page quotes the raw model output in a text fence,
+# which for a review typically contains a `Verdict:` line of its own. So the
+# page is rejected by its own markers first, and only then is the structure a
+# real review has required: the renderer's `Target:` line, then `Verdict:`.
+# Positive tests fail closed if upstream changes its format.
+if [ "${MODE}" = "adversarial" ]; then
+  if printf '%s\n' "${review}" | grep -qE 'did not return valid structured JSON|unexpected review shape'; then
+    reason="$(printf '%s\n' "${review}" | grep -E 'Parse error|unexpected review shape' | head -n 1 | cut -c1-"${REASON_MAX_CHARS}")"
+    status_only "failed" "adversarial review returned unparseable output — ${reason:-see the runtime failure page}"
+  fi
+  if ! printf '%s\n' "${review}" | grep -qE '^[[:space:]]*Target:' \
+    || ! printf '%s\n' "${review}" | grep -qE '^[[:space:]]*Verdict:'; then
+    reason="$(printf '%s\n' "${review}" | grep -vE '^[[:space:]]*$' | head -n 2 | tr '\n' ' ' | cut -c1-"${REASON_MAX_CHARS}")"
+    status_only "failed" "adversarial review has no Target/Verdict lines — ${reason}"
+  fi
 fi
 
 # Codex reports absolute paths; make them repo-relative so the findings line up
@@ -521,59 +544,15 @@ if [ -n "${repo_root}" ]; then
   review="${review//${escaped_root}\//}"
 fi
 
-# --- Is the reported scope the scope that was actually reviewed? ------------
-# Only the adversarial path can diverge. The plugin runtime inlines the diff in
-# the prompt only while the change stays under its thresholds; past them it sets
-# `inputMode: "self-collect"` and instructs the agent to run its own read-only
-# git commands instead. The scope flags this script validated then bound nothing:
-# the model chooses what to look at, minutes later, against a tree that may have
-# moved. On a branch target the runtime also resolves `mergeBase..HEAD`, which
-# drops uncommitted work that Step 1 of the calling command deliberately includes.
-#
-# Thresholds mirror DEFAULT_INLINE_DIFF_MAX_FILES / _BYTES in the runtime's
-# lib/git.mjs (openai-codex 1.0.6). They are upstream's numbers, not ours — if
-# they drift, this note becomes wrong in the conservative direction (claiming a
-# self-collected scope that was in fact inlined), never the dangerous one.
-#
-# The measurements mirror the runtime's own commands rather than approximating
-# them. `git diff HEAD` undercounts a file with both staged and unstaged edits
-# (it shows one combined hunk where the runtime sends two), and omits binary
-# payloads the runtime includes via `--binary` — so a naive measure could stay
-# under the byte limit while the runtime had already crossed it and switched to
-# self-collection, and this note would then fail to fire exactly when it mattered.
-# Untracked files count toward `scope_files` but their contents are NOT in
-# `scope_bytes`, on purpose: the runtime's own byte measurement is exactly the
-# two `git diff` commands below, which ignore untracked content, and this must
-# track what the runtime decides on — not what a more complete measure would.
-diff_flags=(--binary --no-ext-diff --submodule=diff)
-if [ "${MODE}" = "adversarial" ]; then
-  case "${TARGET}" in
-    uncommitted)
-      # Unique files across staged, unstaged and untracked, as the runtime counts.
-      scope_files="$( { git diff --cached --name-only; git diff --name-only;
-                        git ls-files --others --exclude-standard; } 2>/dev/null \
-                      | sort -u | grep -c .)"
-      scope_bytes="$(( $(git diff --cached "${diff_flags[@]}" 2>/dev/null | wc -c)
-                     + $(git diff "${diff_flags[@]}" 2>/dev/null | wc -c) ))" ;;
-    *)
-      scope_files="$(git diff --name-only "${REF}...HEAD" 2>/dev/null | grep -c .)"
-      scope_bytes="$(git diff "${diff_flags[@]}" "${REF}...HEAD" 2>/dev/null | wc -c)" ;;
-  esac
-  scope_files="${scope_files//[[:space:]]/}"
-  scope_bytes="${scope_bytes//[[:space:]]/}"
-  if [ "${scope_files:-0}" -gt 2 ] || [ "${scope_bytes:-0}" -gt 262144 ]; then
-    # A distinct status, not a note under `ok`: the caller branches on the
-    # status line and never on prose, so the one fact that changes how the
-    # review may be used has to live in the status. The review is still
-    # published — its findings are about this change — but its silence is not
-    # evidence, and the caller is told so where it will actually look.
-    emit "CODEX_STATUS: ok-unpinned"
-    emit "CODEX_SCOPE: self-collected — ${scope_files} files exceeded the runtime's inline-diff limit; the reviewer chose its own scope"
-    emit "${review}"
-    exit 0
-  fi
+# A distinct status, not a note under `ok`: the caller branches on the status
+# line and never on prose, so the one fact that changes how the review may be
+# used has to live in the status. The review is still published — its findings
+# are about this change — but its silence is not evidence.
+if [ "${scope_unpinned}" -eq 1 ]; then
+  emit "CODEX_STATUS: ok-unpinned"
+  emit "CODEX_SCOPE: self-collected — ${scope_reason}; the reviewer chose its own scope"
+else
+  emit "CODEX_STATUS: ok"
 fi
-
-emit "CODEX_STATUS: ok"
 emit "${review}"
 exit 0

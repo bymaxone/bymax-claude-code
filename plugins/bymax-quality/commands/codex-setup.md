@@ -4,8 +4,8 @@ description: 'Get the Codex CLI ready so /bymax-quality:code-review can run its 
 
 # Codex setup
 
-`/bymax-quality:code-review` runs a **second, independent review** through the Codex CLI in
-its `full` and `deep` modes. This command makes that reviewer available.
+`/bymax-quality:code-review` runs **two independent reviews** through the Codex CLI in
+every mode. This command makes the first of them available, and explains the second.
 
 Everything here is optional. Without Codex the review command works exactly as it always
 did — it reports `Status: absent` in one line and computes the same verdict. Nothing in
@@ -119,7 +119,7 @@ findings is a normal, healthy result — it is not evidence the setup failed.
 
 Codex needs no `~/.codex/config.toml` entry for this integration. The review runs on
 defaults. In standard mode the script passes only a scope flag, `--ephemeral` (so review
-runs do not accumulate in the user's session history), `--json`, and explicit
+runs do not accumulate in the user's session history), `--output-last-message`, and explicit
 `sandbox_mode=read-only` / `approval_policy=never` overrides; in adversarial mode the
 plugin runtime pins the equivalents itself over the app-server protocol. If the user already keeps a config
 for their own Codex use, leave it alone — do not add settings on their behalf.
