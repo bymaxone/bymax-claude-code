@@ -194,16 +194,19 @@ questions of the same diff, so neither substitutes for the other:
 ```bash
 # Review B — standard: is this change correct?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
-  --target <target> [--ref <ref>] --budget <60 in quick | 180 in full | 600 in deep>
+  --target <target> [--ref <ref>] --budget <180 in quick and full | 600 in deep>
 
 # Review C — adversarial: is this the right approach at all?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" --mode adversarial \
-  --target <target> [--ref <ref>] --budget <60 in quick | 180 in full | 600 in deep>
+  --target <target> [--ref <ref>] --budget <180 in quick and full | 600 in deep>
 ```
 
-The `quick` budget is 60 s because that is how long Step 5.5 waits in `quick`: a shell
-given more than the harvest will wait for keeps billing after the report has shipped, and
-its findings land in a file nobody reads. The two must match.
+The budget is the shell's own deadline, measured from launch; Step 5.5's wait is measured
+from the moment the harvest starts, after Steps 2–4. They are not the same clock and do not
+need to match. A typical review takes 40–60 s, so a 60 s budget would kill most adversarial
+runs at the finish line; 180 s lets them complete, and in `quick` a shell still running at
+harvest time is reported as such with its output path — it finishes on its own and is not
+killed for being late.
 
 Two background shells, launched together, cost wall-clock once. Running them in
 sequence would double the time for no gain — nothing in the second depends on the
@@ -264,9 +267,11 @@ and C as a peer bug hunt of the same diff. That is the same false-clean shape th
 empty-base guard and the Step 1.5 checkout guard exist to prevent. Pass the branch or PR
 explicitly when one applies; otherwise skip Review D and say so in its status line.
 
-Either way it forks to a background agent and returns only the agent's name. The
-findings arrive later as a task notification, so do not wait on it here, and never
-invent its results.
+It forks to a background agent and returns only the agent's name; the findings arrive
+later as a task notification, so do not wait on it here, and never invent its results.
+Nothing in this plugin controls that behaviour. **If the skill instead returns its findings
+inline, set them aside unread until Step 5.5 and say so in the report** — reading them
+before Review A is frozen breaks independence rule 1.
 
 Unlike Steps 1.5, this one is **not** a second opinion — it is the same model family as
 Review A, running a different method: a multi-agent bug hunt with its own finder and

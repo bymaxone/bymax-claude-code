@@ -191,6 +191,22 @@ Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1
   final message through `--output-last-message`, which replaces two hand-written JSONL
   extractors. Every number the script reasons about is now a named constant.
 
+- **A third round of the built-in review, on the tree after the second.** A second `TERM` during
+  cleanup ran `exit 0` inside the `EXIT` handler, which bash never re-enters — no status, no kill;
+  the handler now ignores further signals. A review finishing in the instant between the liveness
+  check and the cancel was discarded as "cancel FAILED"; a completed process with a report is
+  harvested instead — and the fix for that reaped the child twice (`wait` on a reaped pid returns
+  127), which the standard review caught before it was committed. A `--ref` that resolves but
+  shares no history with `HEAD` is refused: `codex exec review --base` on an orphan falls back to a
+  prompt that picks its own scope and reports `ok`. A clean working tree is refused for
+  `--target uncommitted`: both backends bill a full turn over "(none)" and return a verdict on
+  nothing — which is exactly what `codex-setup`'s documented verification step used to do. The
+  `quick` budget goes back to 180 s: the 60 s reasoning confused the shell's deadline with the
+  harvest's wait, which run on different clocks, and 60 s sits at the typical review duration.
+  The dirty-tree and untracked counts treat a failing git as unmeasured rather than as zero. The
+  `haiku` ban matches full model ids. The scope measurement moved below the free availability
+  gates so an absent Codex costs no diff. The cancel remedy is one function instead of two copies.
+
 - **A further round of the built-in review, on the fixed tree.** The failed-cancel branch was
   unreachable in the exact case it exists for: the runtime's `cancel` SIGTERMs the job's process
   tree — which is the very process the script holds — so post-cancel liveness was always false.

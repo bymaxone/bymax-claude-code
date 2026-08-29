@@ -39,7 +39,8 @@ REQUIRED_FIELDS = {
 }
 
 # CONTRIBUTING.md requires every agent to run on at least `sonnet`; a `haiku`
-# agent is a review that quietly reasons less than the checklist assumes.
+# agent is a review that quietly reasons less than the checklist assumes. Matched
+# as a substring: the field accepts full model ids like `claude-haiku-4-5-…`.
 AGENT_FORBIDDEN_MODELS = ("haiku",)
 
 # Optional everywhere, but must be a string when present: a bare `[a|b]` parses as
@@ -123,7 +124,7 @@ def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
             )
 
     # `model` is required above; this rejects the one value CONTRIBUTING.md forbids.
-    if kind == "agent" and str(data.get("model", "")).lower() in AGENT_FORBIDDEN_MODELS:
+    if kind == "agent" and any(m in str(data.get("model", "")).lower() for m in AGENT_FORBIDDEN_MODELS):
         problems.append(
             f"{relative}: agent model '{data['model']}' is below the minimum (sonnet) CONTRIBUTING.md requires"
         )

@@ -100,11 +100,14 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
 ```
 
 Then, if the openai-codex plugin is installed, exercise the adversarial path too — the
-run above cannot produce its statuses, so a green standard run says nothing about it:
+run above cannot produce its statuses, so a green standard run says nothing about it. Give
+it a scope that exists: on a clean tree the script now refuses `--target uncommitted`
+(`unsupported-target`), because a review of nothing bills a full turn and returns a verdict
+on nothing. From a feature branch:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
-  --mode adversarial --target uncommitted --budget 300
+  --mode adversarial --target base --ref "$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's@^origin/@@')" --budget 300
 ```
 
 The first line is the contract:
@@ -112,7 +115,7 @@ The first line is the contract:
 | First line | Meaning |
 | --- | --- |
 | `CODEX_STATUS: ok` | working — the review follows; setup is done |
-| `CODEX_STATUS: ok-unpinned` | adversarial mode only: working, but the change was too large for the runtime to inline, so the reviewer chose its own scope — the report treats its findings as real and its silence as nothing |
+| `CODEX_STATUS: ok-unpinned` | working, but not over exactly the requested scope — the `CODEX_SCOPE:` line on the next line says why (either mode; the script header lists every cause). The report treats its findings as real and its silence as nothing |
 | `CODEX_STATUS: absent` | the binary is still not on this shell's PATH → back to Step 1 |
 | `CODEX_STATUS: unauthenticated` | login did not persist → back to Step 2 |
 | `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or returned a review with no verdict — see troubleshooting |
@@ -168,7 +171,7 @@ If the user only wants the standard second opinion, they need nothing beyond thi
 | `unauthenticated` right after `codex login` | the browser flow never completed, or a different `CODEX_HOME` is in play | re-run `codex login`; check `codex doctor` → `CODEX_HOME` |
 | `failed` on every run | rate limit, expired plan, or network egress blocked | run `codex exec review --uncommitted` directly and read its stderr |
 | `failed` only in one repository | not a git repo, or the scope is empty | confirm with `git rev-parse --show-toplevel` and `git status` |
-| `timeout` on a large change | budget too small | the review command uses 60 s in `quick`, 180 s in `full`, 600 s in `deep`; the script accepts 30–3600 and clamps anything outside, saying so on the timeout line |
+| `timeout` on a large change | budget too small | the review command uses 180 s in `quick` and `full`, 600 s in `deep`; the script accepts 30–3600 and clamps anything outside, saying so on the timeout line |
 | two `codex` binaries on PATH | installed via both brew and npm | remove one; `codex doctor` names the active install |
 
 ## When you are done

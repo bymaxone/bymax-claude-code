@@ -129,7 +129,15 @@ workdir=""
 cancel_failed=0
 companion=""
 review_session=""
+review_rc=1
+cancel_remedy() {
+  printf 'and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=%s node "%s" cancel' "${review_session}" "${companion}"
+}
 cleanup() {
+  # A second TERM/INT while this handler waits on the cancel deadline would
+  # run `exit 0` INSIDE the EXIT trap, which bash does not re-enter: no status
+  # line, no group kill, no workdir removal. Ignore further signals from here.
+  trap '' TERM INT
   if declare -F stop_review >/dev/null 2>&1; then
     stop_review
   fi
@@ -137,7 +145,7 @@ cleanup() {
     status_emitted=1
     emit "CODEX_STATUS: failed"
     if [ "${cancel_failed}" -eq 1 ]; then
-      emit "interrupted — and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=${review_session} node \"${companion}\" cancel"
+      emit "interrupted — $(cancel_remedy)"
     else
       emit "interrupted before the review completed"
     fi
@@ -237,88 +245,20 @@ fi
 if [ -n "${REF}" ] && ! git rev-parse --verify -q "${REF}" >/dev/null 2>&1; then
   status_only "unsupported-target" "ref '${REF}' does not resolve in this repository"
 fi
-
-# --- Will the reviewer see exactly this scope? -------------------------------
-# Decided HERE, before launch, against the tree the backend is about to read —
-# not after the review, against a tree that may have moved in the meantime.
-#
-# Adversarial: past the runtime's inline limits it stops putting the diff in
-# the prompt and tells the agent to collect its own with git commands, so the
-# validated scope flags bind nothing; and on a branch target it resolves
-# mergeBase..HEAD, dropping every uncommitted file. Standard: `codex exec
-# review --base` diffs the merge-base against the WORKING TREE, so tracked
-# uncommitted hunks are in, but untracked files are not — a smaller scope than
-# Step 1's, which includes them.
-#
-# Measurements mirror the runtime's own commands (staged and unstaged diffed
-# separately, `--binary`); untracked contents are not in the byte count
-# because they are not in the runtime's either. The file count is checked
-# first because it alone usually decides, and the byte diff is the expensive
-# one. A git command that fails makes the scope unpinned rather than pinned:
-# stderr is discarded and `grep -c` of nothing is 0, which would otherwise
-# read as "small change, inlined".
-scope_unpinned=0
-scope_reason=""
-diff_flags=(--binary --no-ext-diff --submodule=diff)
-
-# exceeds_inline_limits <kind> — <kind> is `uncommitted` or `base`.
-# Each measurement is a named function that receives the ref as a quoted
-# argument. Never `eval` a string that carries the ref: git accepts a branch
-# named `$(printf pwn)`, `rev-parse` only proves it resolves, and an eval'd
-# measurement would run that payload with the user's permissions — before any
-# Codex gate, so without Codex even installed.
-list_changed_uncommitted() {
-  git diff --cached --name-only && git diff --name-only && git ls-files --others --exclude-standard
-}
-diff_uncommitted() { git diff --cached "${diff_flags[@]}" && git diff "${diff_flags[@]}"; }
-list_changed_base()  { git diff --name-only "$1...HEAD"; }
-diff_base()          { git diff "${diff_flags[@]}" "$1...HEAD"; }
-
-exceeds_inline_limits() {
-  local kind="$1" files bytes list_fn diff_fn
-  case "${kind}" in
-    uncommitted) list_fn=list_changed_uncommitted; diff_fn=diff_uncommitted ;;
-    base)        list_fn=list_changed_base;        diff_fn=diff_base ;;
-  esac
-  # A git failure is an unmeasured scope, and an unmeasured scope is unpinned:
-  # stderr is discarded and `grep -c` of nothing is 0, which would otherwise
-  # read as "small change, inlined".
-  if ! files="$("${list_fn}" "${REF}" 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
-    scope_reason="the scope could not be measured (git failed)"; return 0
-  fi
-  if [ "${files}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
-    scope_reason="${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"; return 0
-  fi
-  if ! bytes="$("${diff_fn}" "${REF}" 2>/dev/null | wc -c; exit "${PIPESTATUS[0]}")"; then
-    scope_reason="the scope could not be measured (git failed)"; return 0
-  fi
-  bytes="${bytes//[[:space:]]/}"
-  if [ "${bytes}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
-    scope_reason="${bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"; return 0
-  fi
-  return 1
-}
-
-count_untracked() { git ls-files --others --exclude-standard 2>/dev/null | grep -c .; }
-
-case "${MODE}:${TARGET}" in
-  adversarial:uncommitted)
-    exceeds_inline_limits uncommitted && scope_unpinned=1 ;;
-  adversarial:base)
-    dirty="$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null | sort -u | grep -c .)"
-    if [ "${dirty:-0}" -gt 0 ]; then
-      scope_unpinned=1
-      scope_reason="${dirty} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
-    elif exceeds_inline_limits base; then
-      scope_unpinned=1
-    fi ;;
-  standard:base)
-    untracked="$(count_untracked)"
-    if [ "${untracked:-0}" -gt 0 ]; then
-      scope_unpinned=1
-      scope_reason="${untracked} untracked files are outside the diff \`codex exec review --base\` builds"
-    fi ;;
-esac
+# Resolving is not enough for a base: an orphan branch has no merge base with
+# HEAD. The adversarial runtime fails cleanly on that; `codex exec review
+# --base` falls back to a prompt that finds a scope by itself and reports `ok`
+# over whatever it chose.
+if [ "${TARGET}" = "base" ] && ! git merge-base -q "${REF}" HEAD 2>/dev/null; then
+  status_only "unsupported-target" "ref '${REF}' shares no history with HEAD — no diff to review"
+fi
+# A clean tree is not a review either: both backends will bill a full turn over
+# "(none)" sections and return a verdict on nothing.
+if [ "${TARGET}" = "uncommitted" ] \
+  && git diff --quiet HEAD 2>/dev/null \
+  && [ -z "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then
+  status_only "unsupported-target" "the working tree is clean — nothing to review; use --target base"
+fi
 
 # --- Locate the plugin runtime (adversarial mode only) ---------------------
 # Resolved through `claude plugin list`, never by searching the filesystem. The
@@ -386,7 +326,7 @@ except ValueError:
     sys.exit(0)
 for plugin in plugins if isinstance(plugins, list) else []:
     if plugin.get("id") == wanted and plugin.get("enabled") is True:
-        print(str(plugin.get("version", "")) + "\t" + str(plugin.get("installPath", "")))
+        print(str(plugin.get("version") or "") + "\t" + str(plugin.get("installPath") or ""))
         break
 ' "${COMPANION_PLUGIN_ID}" 2>/dev/null)"
   else
@@ -437,6 +377,94 @@ if [ "${MODE}" = "adversarial" ]; then
       "openai-codex ${companion_version:-?} is not a verified version (verified: ${COMPANION_VERIFIED_VERSIONS}) — the runtime contract this script relies on is undocumented and was read in those versions only; set BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1 to run it anyway"
   fi
 fi
+
+# --- Will the reviewer see exactly this scope? -------------------------------
+# Decided HERE, before launch, against the tree the backend is about to read —
+# not after the review, against a tree that may have moved in the meantime.
+#
+# Adversarial: past the runtime's inline limits it stops putting the diff in
+# the prompt and tells the agent to collect its own with git commands, so the
+# validated scope flags bind nothing; and on a branch target it resolves
+# mergeBase..HEAD, dropping every uncommitted file. Standard: `codex exec
+# review --base` diffs the merge-base against the WORKING TREE, so tracked
+# uncommitted hunks are in, but untracked files are not — a smaller scope than
+# Step 1's, which includes them.
+#
+# Measurements mirror the runtime's own commands (staged and unstaged diffed
+# separately, `--binary`); untracked contents are not in the byte count
+# because they are not in the runtime's either. The file count is checked
+# first because it alone usually decides, and the byte diff is the expensive
+# one. A git command that fails makes the scope unpinned rather than pinned:
+# stderr is discarded and `grep -c` of nothing is 0, which would otherwise
+# read as "small change, inlined".
+scope_unpinned=0
+scope_reason=""
+diff_flags=(--binary --no-ext-diff --submodule=diff)
+
+# exceeds_inline_limits <kind> — <kind> is `uncommitted` or `base`.
+# Each measurement is a named function that receives the ref as a quoted
+# argument. Never `eval` a string that carries the ref: git accepts a branch
+# named `$(printf pwn)`, `rev-parse` only proves it resolves, and an eval'd
+# measurement would run that payload with the user's permissions — before any
+# Codex gate, so without Codex even installed.
+list_changed_uncommitted() {
+  git diff --cached --name-only && git diff --name-only && git ls-files --others --exclude-standard
+}
+diff_uncommitted() { git diff --cached "${diff_flags[@]}" && git diff "${diff_flags[@]}"; }
+list_changed_base()  { git diff --name-only "$1...HEAD"; }
+diff_base()          { git diff "${diff_flags[@]}" "$1...HEAD"; }
+
+exceeds_inline_limits() {
+  local kind="$1" files bytes list_fn diff_fn
+  case "${kind}" in
+    uncommitted) list_fn=list_changed_uncommitted; diff_fn=diff_uncommitted ;;
+    base)        list_fn=list_changed_base;        diff_fn=diff_base ;;
+  esac
+  # A git failure is an unmeasured scope, and an unmeasured scope is unpinned:
+  # stderr is discarded and `grep -c` of nothing is 0, which would otherwise
+  # read as "small change, inlined".
+  if ! files="$("${list_fn}" "${REF}" 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
+    scope_reason="the scope could not be measured (git failed)"; return 0
+  fi
+  if [ "${files}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
+    scope_reason="${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"; return 0
+  fi
+  if ! bytes="$("${diff_fn}" "${REF}" 2>/dev/null | wc -c; exit "${PIPESTATUS[0]}")"; then
+    scope_reason="the scope could not be measured (git failed)"; return 0
+  fi
+  bytes="${bytes//[[:space:]]/}"
+  if [ "${bytes}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
+    scope_reason="${bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"; return 0
+  fi
+  return 1
+}
+
+# Prints the count; exits non-zero when git itself failed (grep's "no match"
+# status is discarded on purpose — zero untracked files is a valid answer).
+count_untracked() { git ls-files --others --exclude-standard 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
+
+case "${MODE}:${TARGET}" in
+  adversarial:uncommitted)
+    exceeds_inline_limits uncommitted && scope_unpinned=1 ;;
+  adversarial:base)
+    if ! dirty="$( { git diff --name-only HEAD && git ls-files --others --exclude-standard; } 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
+      scope_unpinned=1
+      scope_reason="the scope could not be measured (git failed)"
+    elif [ "${dirty:-0}" -gt 0 ]; then
+      scope_unpinned=1
+      scope_reason="${dirty} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
+    elif exceeds_inline_limits base; then
+      scope_unpinned=1
+    fi ;;
+  standard:base)
+    if ! untracked="$(count_untracked)"; then
+      scope_unpinned=1
+      scope_reason="the scope could not be measured (git failed)"
+    elif [ "${untracked:-0}" -gt 0 ]; then
+      scope_unpinned=1
+      scope_reason="${untracked} untracked files are outside the diff \`codex exec review --base\` builds"
+    fi ;;
+esac
 
 # --- Run under a budget -----------------------------------------------------
 # macOS ships neither `timeout` nor `gtimeout`, so the budget is enforced with
@@ -521,6 +549,7 @@ stop_review() {
     } >/dev/null 2>&1
   fi
   wait "${codex_pid}" >/dev/null 2>&1
+  review_rc=$?
   run_active=0
 }
 
@@ -570,8 +599,16 @@ while kill -0 "${codex_pid}" 2>/dev/null; do
     # its output must not be thrown away.
     kill -0 "${codex_pid}" 2>/dev/null || break
     stop_review
+    # The review can finish in the instant between the liveness check and the
+    # cancel: the runtime then reports "no active job" (read here as a failed
+    # cancel) while a complete report sits in the output file. A completed
+    # process with a report is a completed review, whatever the cancel said.
+    if [ "${review_rc}" -eq 0 ] && [ -s "${raw}" ]; then
+      cancel_failed=0
+      break
+    fi
     if [ "${cancel_failed}" -eq 1 ]; then
-      status_only "timeout" "exceeded ${BUDGET}s${budget_note} — and the cancel FAILED, so the Codex run may still be billing. Stop it with: CODEX_COMPANION_SESSION_ID=${review_session} node \"${companion}\" cancel"
+      status_only "timeout" "exceeded ${BUDGET}s${budget_note} — $(cancel_remedy)"
     fi
     status_only "timeout" "exceeded ${BUDGET}s${budget_note}"
   fi
@@ -579,9 +616,16 @@ while kill -0 "${codex_pid}" 2>/dev/null; do
   waited=$((waited + POLL_INTERVAL))
 done
 
-wait "${codex_pid}" 2>/dev/null
-codex_rc=$?
-run_active=0
+# `stop_review` reaps the child itself and records its status; reaping a pid
+# twice returns 127 ("no such child"), which turned a review harvested at the
+# budget into `failed — exited 127`. Reap here only if nobody has yet.
+if [ "${run_active}" -eq 1 ]; then
+  wait "${codex_pid}" 2>/dev/null
+  codex_rc=$?
+  run_active=0
+else
+  codex_rc="${review_rc}"
+fi
 if [ "${codex_rc}" -ne 0 ]; then
   # Codex writes a long agent trace to stderr; only the tail carries the error.
   reason="$(tail -n 3 "${err}" 2>/dev/null | tr '\n' ' ' | cut -c1-"${REASON_MAX_CHARS}")"
