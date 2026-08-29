@@ -106,8 +106,10 @@ The first line is the contract:
 | `CODEX_STATUS: ok` | working — the review follows; setup is done |
 | `CODEX_STATUS: absent` | the binary is still not on this shell's PATH → back to Step 1 |
 | `CODEX_STATUS: unauthenticated` | login did not persist → back to Step 2 |
-| `CODEX_STATUS: failed` | the CLI ran and exited non-zero — see troubleshooting |
+| `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or returned a review with no verdict — see troubleshooting |
 | `CODEX_STATUS: timeout` | exceeded the budget; retry with a larger `--budget` |
+| `CODEX_STATUS: unsupported-target` | the requested scope has no Codex equivalent (a file path, a ref range not ending at HEAD, or `--target commit` in adversarial mode) |
+| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the openai-codex plugin, or node, is missing — this command does not fix that one, see below |
 
 Expect roughly **40–60 seconds**, largely independent of diff size. A run that returns no
 findings is a normal, healthy result — it is not evidence the setup failed.
@@ -115,14 +117,31 @@ findings is a normal, healthy result — it is not evidence the setup failed.
 ## No configuration is required
 
 Codex needs no `~/.codex/config.toml` entry for this integration. The review runs on
-defaults, and the script passes only a scope flag, `--ephemeral` (so review runs do not
-accumulate in the user's session history) and `--json`. If the user already keeps a config
+defaults. In standard mode the script passes only a scope flag, `--ephemeral` (so review
+runs do not accumulate in the user's session history), `--json`, and explicit
+`sandbox_mode=read-only` / `approval_policy=never` overrides; in adversarial mode the
+plugin runtime pins the equivalents itself over the app-server protocol. If the user already keeps a config
 for their own Codex use, leave it alone — do not add settings on their behalf.
 
-The OpenAI **Codex plugin** for Claude Code is also not required, and installing it does
-not help here: its `/codex:review` and `/codex:adversarial-review` are marked
-`disable-model-invocation`, so a skill cannot call them. This integration deliberately
-depends on the `codex` binary alone.
+## The Codex plugin — needed for one of the two reviews
+
+`/bymax-quality:code-review` runs **two** Codex reviews. This command sets up the binary
+and session that both need; only the standard one is complete at that point.
+
+- **Review B, standard** — `codex exec review`. Needs the binary and an active session,
+  nothing else. That is what this command delivers.
+- **Review C, adversarial** — the adversarial stance lives in the OpenAI **Codex plugin**
+  for Claude Code, and Review C drives that plugin's `codex-companion.mjs` runtime
+  directly. Without the plugin installed it reports `adversarial-absent` and nothing else
+  changes.
+
+Note what is *not* being called there. The plugin's own `/codex:review` and
+`/codex:adversarial-review` are marked `disable-model-invocation`, so a skill cannot
+invoke them and must not pretend to be the user in order to. The runtime underneath them
+carries no such gate.
+
+So: this command cannot fix `adversarial-absent`. Installing the openai-codex plugin can.
+If the user only wants the standard second opinion, they need nothing beyond this command.
 
 ## Troubleshooting
 
@@ -132,7 +151,7 @@ depends on the `codex` binary alone.
 | `unauthenticated` right after `codex login` | the browser flow never completed, or a different `CODEX_HOME` is in play | re-run `codex login`; check `codex doctor` → `CODEX_HOME` |
 | `failed` on every run | rate limit, expired plan, or network egress blocked | run `codex exec review --uncommitted` directly and read its stderr |
 | `failed` only in one repository | not a git repo, or the scope is empty | confirm with `git rev-parse --show-toplevel` and `git status` |
-| `timeout` on a large change | budget too small | the review command uses 180 s in `full`, 600 s in `deep` |
+| `timeout` on a large change | budget too small | the review command uses 180 s in `quick` and `full`, 600 s in `deep` |
 | two `codex` binaries on PATH | installed via both brew and npm | remove one; `codex doctor` names the active install |
 
 ## When you are done

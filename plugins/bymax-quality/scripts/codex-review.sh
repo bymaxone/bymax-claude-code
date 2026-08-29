@@ -27,10 +27,16 @@
 #   - ALWAYS exits 0. A missing CLI, an expired session, a rate limit, a
 #     timeout or a parse failure are all reported as status lines, never as
 #     failures that could stall /bymax-quality:code-review.
-#   - NEVER prompts, NEVER installs anything, NEVER writes to the repo. The
-#     sandbox and approval policy are pinned per invocation rather than
-#     inherited from the user's Codex config, so this holds regardless of how
-#     they have configured Codex for their own use.
+#   - NEVER prompts, NEVER installs anything, NEVER writes to the repo. In
+#     standard mode this script pins the sandbox and approval policy per
+#     invocation (`-c sandbox_mode=read-only -c approval_policy=never`), so it
+#     holds regardless of the user's Codex config. In adversarial mode the
+#     guarantee is upstream's, not this script's: the plugin runtime starts its
+#     review thread with a hardcoded `sandbox: "read-only"` and an
+#     `approvalPolicy` defaulting to `"never"` (lib/codex.mjs), and the app-server
+#     protocol takes no `-c` overrides for this script to add. Verified against
+#     openai-codex 1.0.6 — a reader auditing this contract must re-check it
+#     against the version `find_companion` actually resolves.
 #   - First stdout line is always `CODEX_STATUS: <status>`, so the caller can
 #     branch deterministically without interpreting prose.
 #
@@ -72,6 +78,21 @@ status_only() { emit "CODEX_STATUS: $1"; [ "${2:-}" = "" ] || emit "$2"; exit 0;
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --target=*|--ref=*|--budget=*|--mode=*)
+      # `--mode=adversarial` is the form a reader naturally writes. Matching only
+      # the space-separated form let it fall through to the catch-all `*) shift`,
+      # so the flag was dropped in silence and a standard review was published
+      # under the adversarial label.
+      flag="${1%%=*}"
+      value="${1#*=}"
+      case "${flag}" in
+        --target) TARGET="${value}" ;;
+        --ref)    REF="${value}" ;;
+        --budget) BUDGET="${value}" ;;
+        --mode)   MODE="${value}" ;;
+      esac
+      shift
+      ;;
     --target|--ref|--budget|--mode)
       # `shift 2` is a no-op when the flag is the last argument, which would spin
       # this loop forever on the same token — refuse instead.
@@ -88,9 +109,28 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+# Digits alone are not enough. `/bin/bash` here is 3.2, whose `[` cannot compare
+# beyond 64 bits: a caller passing milliseconds makes `[ "${waited}" -ge "${BUDGET}" ]`
+# return 2 forever, so the timeout branch never fires and the poll loop spins while
+# codex runs unbounded. `--budget 0` has the opposite failure — it kills a run that
+# started milliseconds earlier and calls it a timeout.
 case "${BUDGET}" in
   ''|*[!0-9]*) BUDGET=300 ;;
 esac
+# Strip leading zeros so the digit-count test below measures magnitude, not
+# padding ("0000600" is 600, not an out-of-range seven-digit value).
+BUDGET="${BUDGET#"${BUDGET%%[!0]*}"}"
+[ -n "${BUDGET}" ] || BUDGET=0
+# Five or more digits is at least 10000: over the cap, and — more importantly —
+# past the point where bash 3.2's `[` can compare at all. It fails with status 2,
+# which `if` reads as false, so a numeric range check ALONE silently lets the
+# value through and the timeout branch then never fires. Bound the length first.
+case "${BUDGET}" in
+  ?????*) BUDGET=300 ;;
+esac
+if [ "${BUDGET}" -lt 30 ] || [ "${BUDGET}" -gt 3600 ]; then
+  BUDGET=300
+fi
 
 case "${MODE}" in
   standard|adversarial) ;;
@@ -155,8 +195,11 @@ find_companion() {
   for family in installed checkout; do
     # Each glob is expanded where it is written, rather than stored in a
     # variable and re-split — holding a pattern in a string would need word
-    # splitting to expand, which means silencing a shellcheck warning, and this
-    # toolkit does not silence linters.
+    # splitting to expand, and that means a `shellcheck disable` comment for a
+    # style choice, which is the kind of suppression this toolkit's own review
+    # blocks. (validate.sh does pass `-e SC1091,SC2059`; those are two documented
+    # project-wide exclusions, not a per-line silence bolted on to keep a
+    # particular construct.)
     shopt -s nullglob
     case "${family}" in
       installed) matches=( "${HOME}"/.claude/plugins/cache/*/codex/*/scripts/codex-companion.mjs ) ;;
@@ -165,18 +208,48 @@ find_companion() {
     shopt -u nullglob
     [ "${#matches[@]}" -gt 0 ] || continue
 
-    # Several versions can be cached side by side. Prefer the highest, using
-    # version sort where it exists so 1.0.10 beats 1.0.9 rather than losing to it.
+    # Several versions can be cached side by side. Sorting the whole path is
+    # wrong: the FIRST wildcard is the marketplace name, so `sort -V` compares
+    # that segment and a second marketplace shipping a `codex` plugin would win
+    # on its name whatever version it carries. Sort on the version segment
+    # alone, and carry the path alongside it.
+    local entry version
+    sorted=""
+    for entry in "${matches[@]}"; do
+      # .../<marketplace>/codex/<version>/scripts/codex-companion.mjs
+      version="${entry%/scripts/codex-companion.mjs}"
+      version="${version##*/}"
+      sorted="${sorted}${version}	${entry}"$'\n'
+    done
     if printf '%s\n' 1 | sort -V >/dev/null 2>&1; then
-      sorted="$(printf '%s\n' "${matches[@]}" | sort -V)"
+      sorted="$(printf '%s' "${sorted}" | sort -V)"
     else
-      sorted="$(printf '%s\n' "${matches[@]}" | sort)"
+      sorted="$(printf '%s' "${sorted}" | sort)"
     fi
-    printf '%s' "${sorted##*$'\n'}"
+    sorted="${sorted##*$'\n'}"
+    printf '%s' "${sorted#*	}"
     return 0
   done
   return 1
 }
+
+# --- Availability gates (both free: no network, no tokens) -----------------
+# Both modes need the same binary and the same credential store, so these gates
+# apply to the plugin runtime as they do to a direct call. They do NOT reach the
+# same execution path: standard runs `codex exec`, adversarial drives the
+# app-server protocol through the runtime's broker.
+#
+# They run BEFORE the adversarial-only plugin check on purpose. The plugin is
+# the shallower prerequisite: checking it first would report `adversarial-absent`
+# on a machine that has neither, sending the user to install a plugin when what
+# they actually lack is the CLI or a session — the remediation Step 5.5 prints
+# for that status explicitly says `codex-setup` will not help.
+command -v codex >/dev/null 2>&1 || status_only "absent"
+
+# `codex login status` is a local read of the credential store: exit 0 when a
+# session is active, exit 1 ("Not logged in") otherwise. Measured at ~13 ms.
+# This is what makes an expired session cost nothing to detect.
+codex login status >/dev/null 2>&1 || status_only "unauthenticated"
 
 companion=""
 if [ "${MODE}" = "adversarial" ]; then
@@ -186,21 +259,46 @@ if [ "${MODE}" = "adversarial" ]; then
     || status_only "adversarial-absent" "openai-codex plugin not found — install it to enable the adversarial review"
 fi
 
-# --- Availability gates (both free: no network, no tokens) -----------------
-# Both modes end up shelling out to the same binary and the same session, so
-# these gates apply to the plugin runtime exactly as they do to a direct call.
-command -v codex >/dev/null 2>&1 || status_only "absent"
-
-# `codex login status` is a local read of the credential store: exit 0 when a
-# session is active, exit 1 ("Not logged in") otherwise. Measured at ~13 ms.
-# This is what makes an expired session cost nothing to detect.
-codex login status >/dev/null 2>&1 || status_only "unauthenticated"
-
 # --- Run under a budget -----------------------------------------------------
 # macOS ships neither `timeout` nor `gtimeout`, so the budget is enforced with
 # a poll-and-kill loop in pure bash.
 workdir="$(mktemp -d 2>/dev/null)" || status_only "failed" "cannot create a temp dir"
-trap 'rm -rf "${workdir}"' EXIT
+
+# Set once the review process is launched, cleared once it has been reaped. The
+# cleanup below uses it to tell "nothing started yet / already finished" from
+# "a billed run is still in flight and this script is going away".
+run_active=0
+
+# Stop the Codex work this script started, by the most specific means available.
+#
+# In adversarial mode the plugin runtime does NOT keep Codex inside this
+# script's process group: it spawns an app-server broker with `detached: true`
+# and `unref()`, so the group signal below cannot reach it. Measured — a review
+# abandoned at the budget left `app-server-broker.mjs` and `codex app-server`
+# alive and billing for 41 minutes. `cancel` is the runtime's own public remedy:
+# it interrupts the Codex turn (which is what bills) and terminates that job's
+# process tree, without killing the broker daemon, which is shared per workspace
+# and may be serving another session's review.
+stop_review() {
+  [ "${run_active}" -eq 1 ] || return 0
+  if [ "${MODE}" = "adversarial" ] && [ -n "${companion}" ]; then
+    node "${companion}" cancel >/dev/null 2>&1 || true
+  fi
+  { kill -TERM -- -"${codex_pid}"
+    sleep 2
+    kill -KILL -- -"${codex_pid}"
+    wait "${codex_pid}"
+  } >/dev/null 2>&1
+  run_active=0
+}
+
+# The trap fires on every exit, including the `status_only` early returns and a
+# TERM from whoever backgrounded this script. Without it, killing this script
+# leaves the review running: the caller sees the shell end and has no way left
+# to reach what it started.
+trap 'stop_review; rm -rf "${workdir}"' EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
 raw="${workdir}/codex.jsonl"
 err="${workdir}/codex.err"
 
@@ -246,18 +344,16 @@ else
 fi
 codex_pid=$!
 set +m
+run_active=1
 
 waited=0
 while kill -0 "${codex_pid}" 2>/dev/null; do
   if [ "${waited}" -ge "${BUDGET}" ]; then
-    # Signal the whole process group (note the `-` before the pid), so Codex's
-    # own children die with it. Grouped and redirected so bash's job-termination
-    # notice ("Terminated: 15") stays out of the caller's stderr.
-    { kill -TERM -- -"${codex_pid}"
-      sleep 2
-      kill -KILL -- -"${codex_pid}"
-      wait "${codex_pid}"
-    } >/dev/null 2>&1
+    # stop_review signals the whole process group (note the `-` before the pid)
+    # so Codex's own children die with it, and additionally cancels the run
+    # through the plugin runtime in adversarial mode, where the billed process
+    # is deliberately outside this group.
+    stop_review
     status_only "timeout" "exceeded ${BUDGET}s"
   fi
   sleep "${POLL_INTERVAL}"
@@ -266,6 +362,7 @@ done
 
 wait "${codex_pid}" 2>/dev/null
 codex_rc=$?
+run_active=0
 if [ "${codex_rc}" -ne 0 ]; then
   # Codex writes a long agent trace to stderr; only the tail carries the error.
   reason="$(tail -n 3 "${err}" 2>/dev/null | tr '\n' ' ' | cut -c1-300)"
@@ -306,6 +403,24 @@ print("\n".join(out))
 review="$(extract)"
 [ -n "${review}" ] || status_only "failed" "${MODE} review produced no readable output"
 
+# Non-empty stdout is not a review. The plugin runtime exits 0 when the *turn*
+# completed even if Codex returned unparseable JSON — it renders a human-readable
+# failure page ("Codex did not return valid structured JSON") to stdout instead.
+# Without this check that page is published verbatim under `CODEX_STATUS: ok`,
+# and the cross-read counts Review C as an outside voice that examined the diff
+# and found nothing.
+#
+# The test is positive rather than a match on upstream's error prose: every real
+# adversarial review ends in a `Verdict:` line. If upstream changes the format,
+# this fails closed — `failed` — instead of silently going back to publishing
+# failure pages as clean reviews.
+if [ "${MODE}" = "adversarial" ] \
+  && ! printf '%s\n' "${review}" | grep -qE '^[[:space:]]*Verdict:'; then
+  reason="$(printf '%s\n' "${review}" | grep -vE '^[[:space:]]*$' | head -n 2 \
+    | tr '\n' ' ' | cut -c1-200)"
+  status_only "failed" "adversarial review returned no verdict — ${reason}"
+fi
+
 # Codex reports absolute paths; make them repo-relative so the findings line up
 # with the rest of the report.
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
@@ -317,5 +432,33 @@ if [ -n "${repo_root}" ]; then
 fi
 
 emit "CODEX_STATUS: ok"
+
+# --- Is the reported scope the scope that was actually reviewed? ------------
+# Only the adversarial path can diverge. The plugin runtime inlines the diff in
+# the prompt only while the change stays under its thresholds; past them it sets
+# `inputMode: "self-collect"` and instructs the agent to run its own read-only
+# git commands instead. The scope flags this script validated then bound nothing:
+# the model chooses what to look at, minutes later, against a tree that may have
+# moved. On a branch target the runtime also resolves `mergeBase..HEAD`, which
+# drops uncommitted work that Step 1 of the calling command deliberately includes.
+#
+# Thresholds mirror DEFAULT_INLINE_DIFF_MAX_FILES / _BYTES in the runtime's
+# lib/git.mjs (openai-codex 1.0.6). They are upstream's numbers, not ours — if
+# they drift, this note becomes wrong in the conservative direction (claiming a
+# self-collected scope that was in fact inlined), never the dangerous one.
+if [ "${MODE}" = "adversarial" ]; then
+  case "${TARGET}" in
+    uncommitted) scope_files="$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l)"
+                 scope_bytes="$(git diff HEAD 2>/dev/null | wc -c)" ;;
+    *)           scope_files="$(git diff --name-only "${REF}...HEAD" 2>/dev/null | wc -l)"
+                 scope_bytes="$(git diff "${REF}...HEAD" 2>/dev/null | wc -c)" ;;
+  esac
+  scope_files="${scope_files//[[:space:]]/}"
+  scope_bytes="${scope_bytes//[[:space:]]/}"
+  if [ "${scope_files:-0}" -gt 2 ] || [ "${scope_bytes:-0}" -gt 262144 ]; then
+    emit "CODEX_SCOPE: self-collected — ${scope_files} files exceeded the runtime's inline-diff limit; the reviewer chose its own scope"
+  fi
+fi
+
 emit "${review}"
 exit 0

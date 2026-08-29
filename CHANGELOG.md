@@ -40,8 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time — which is the honest reason, unlike the speed argument an earlier draft of this entry made.
 
 - **`argument-hint` on every command that takes arguments** — typing a slash command showed no
-  hint of what it accepts, because only `/bymax-pr:push` and `/bymax-web-verify:test` declared the
-  field. Eleven commands now do: `/bymax-quality:code-review`, `/bymax-quality:tdd`,
+  hint of what it accepts. Five files declared the field — `/bymax-pr:push`,
+  `/bymax-web-verify:test`, and the three user-invocable skills (`babysit-pr`, `autopilot`,
+  `tester`) — and no command beyond the first two. Eleven commands now do: `/bymax-quality:code-review`, `/bymax-quality:tdd`,
   `/bymax-web-verify:verify`, and all of `/bymax-workflow:brainstorm`, `:checkpoint`, `:phase-tasks`,
   `:plan`, `:roadmap`, `:spec`, `:task`, `:verify`. Each hint was derived from the command's own
   documented invocation, not invented. Commands that genuinely take no argument
@@ -58,32 +59,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **The reduced frontmatter parser accepted invalid YAML escapes.** A double-quoted value such as
-  `description: "bad\qescape"` passed the dependency-free path while PyYAML rejects it outright, so
-  the gate could still go green on frontmatter Claude cannot load — the same fail-open shape, one
-  layer down. Double-quoted scalars are now scanned character by character against YAML's escape
-  set (including the `\x`/`\u`/`\U` hex widths), which also closes the case where the closing quote
-  is itself escaped and the scalar never actually terminates. The self-test grew to 18 cases, and
-  every expectation was cross-checked against real PyYAML. Found by the independent standard review.
+- **The adversarial review's budget did not bind it.** The plugin runtime runs the turn inside an
+  app-server broker spawned `detached` and `unref()`ed, so `kill -TERM -- -$pid` reached only the
+  short-lived front-end. Measured: a review abandoned at its budget left `app-server-broker.mjs`
+  and `codex app-server` alive and billing for 41 minutes while the report said `timeout`. The
+  script's own comment asserted the opposite as a deliberate safety measure, which is how it would
+  have survived the next reading. It now cancels through the runtime's public `cancel` — which
+  interrupts the billed turn and terminates that job's process tree without killing the broker
+  daemon, shared per workspace — and the cleanup runs on `INT`/`TERM` too, not only `EXIT`.
 
-- **The frontmatter gate could report success without having run.** `check-frontmatter.py` exited
-  with a "skipped" status when PyYAML was missing and `validate.sh` treated that as a warning, so a
-  machine without PyYAML got `✓ All validations passed` over a check that never executed — the exact
-  fail-open shape the gate was added to prevent, and the opposite of what its own changelog entry
-  claimed. Found by the new adversarial review on its first real run. The checker now degrades to a
-  dependency-free reduced mode that still catches the failure classes it exists for (an unclosed
-  block, an unquoted scalar carrying a colon-space, a bracketed value YAML reads as a list) and says
-  which mode ran; a missing `python3` is now a failure rather than a warning.
+- **A failed adversarial review was published as a healthy one.** When Codex returns unparseable
+  JSON the runtime still exits 0 and renders a human-readable failure page to stdout; the only
+  check on that path was "is stdout non-empty", so the page shipped under `CODEX_STATUS: ok` and
+  the cross-read counted Review C as an outside voice that examined the diff and found nothing.
+  The output must now carry a `Verdict:` line — a positive structural test, so a change in
+  upstream's format fails closed rather than silently reopening the hole.
 
-  The reduced parser then refuses everything it cannot prove rather than skipping it: an
-  unterminated or mismatched quote, an unescaped apostrophe inside a single-quoted scalar, and any
-  indented line that is not a `- item` under a key (the one nested shape this repo uses, in
-  `allowed-tools`). The first cut silently ignored indented lines and stripped quotes without
-  checking they closed, so malformed YAML passed the reduced check and failed only where a real
-  parser ran — a gate whose verdict depended on which machine ran it. `--self-test` locks the
-  behaviour down with nine cases and runs on every `validate.sh`, because the reduced path is the
-  one least likely to be exercised by hand. Both independent reviews found the quote bug; the
-  indentation half came from the adversarial one.
+- **Review C's scope was not the scope it was launched with.** Past two changed files or 256 KiB
+  the runtime stops inlining the diff and tells the agent to collect its own with git commands, so
+  the validated scope flags bound nothing — and on a branch target it resolves `mergeBase..HEAD`,
+  dropping the uncommitted work the calling command deliberately includes. Practically every real
+  review exceeds two files, so this was the normal case, not the edge. The script now emits a
+  `CODEX_SCOPE: self-collected` line when the change exceeds those thresholds, and the report must
+  reproduce it rather than presenting Review C as a review of the same pinned diff as A and B.
+
+- **`--mode=adversarial` was silently ignored.** The argument loop matched only the
+  space-separated form; the equals form fell through to a catch-all `shift` and left the default
+  `standard` in place. With `--target uncommitted` that launched a *second standard review*,
+  indistinguishable in the output, which the cross-read's "both outside reviews found it" line
+  would then report as the strongest evidence in the report. Both forms are handled now.
+
+- **An out-of-range `--budget` disabled the timeout entirely.** The value was validated as digits
+  only. `/bin/bash` here is 3.2, whose `[` fails with status 2 above 64 bits — a status `if` reads
+  as false — so a caller passing milliseconds made the timeout branch unreachable while the poll
+  loop spun and Codex ran unbounded. `--budget 0` failed the other way, killing a run milliseconds
+  after it started. The budget is now bounded by digit count first, then by range, to [30, 3600].
+
+- **`adversarial-absent` masked the real blocker.** The plugin check ran before the `codex` binary
+  and session checks, so a machine with neither reported the shallower problem — sending the user
+  to install a plugin when what they lacked was the CLI, which is precisely what the remediation
+  text says that install will not fix. The fundamental gates run first now.
+
+- **The runtime lookup preferred the marketplace checkout over the installed version**, because
+  the sort compared whole paths and the first wildcard is the marketplace name — so `marketplaces`
+  beat `cache` on the letter m, and a second marketplace shipping a `codex` plugin would win on
+  its name whatever version it carried. Ordering is now on the version segment alone, within the
+  installed location first.
+
+- **`/bymax-workflow:verify quick` contradicted itself.** The mode was defined in a new table while
+  the section below it still read "Walk these in order. Do not skip.", and the output template still
+  prescribed all five gates and terminated in `Verdict: READY` — so a `quick` run either paid for
+  everything anyway or claimed READY off a type-check and a test pass, the exact "'compiles' is not
+  'works'" error the file's opening rule forbids. Both now state the `quick` shape explicitly, and
+  `/bymax-workflow:checkpoint` no longer promises a pass rate and coverage that Gate 1 never produces.
+
+- **Stale prose corrected across the review docs.** The command's opening paragraph still described
+  a single Codex review gated to `full`/`deep`; `codex-setup.md` still said installing the
+  openai-codex plugin "does not help here", listed neither `adversarial-absent` nor
+  `unsupported-target`, and quoted budgets that omitted `quick`; the CI comment justified the
+  PyYAML install by a skip path that no longer exists; the report template assumed Review C emits
+  `P0`–`P3` when its runtime emits `critical`/`high`/`medium`/`low`; and Step 5.5 told the model to
+  branch Review D on a `CODEX_STATUS` line an agent never produces. Review D also gained the scope
+  guard Step 1.5 already had — without it, the common clean-tree case had it reviewing an empty
+  diff and reporting no findings, beside three reviews that had read the real one.
+
+- **The frontmatter gate could report success without having run, then twice more in miniature.**
+  `check-frontmatter.py` first exited with a "skipped" status when PyYAML was missing while
+  `validate.sh` treated that as a warning, so a machine without PyYAML got `✓ All validations
+  passed` over a check that never executed. Replacing the skip with a hand-written fallback parser
+  moved the problem rather than fixing it: that parser accepted `description: "bad\qescape"`, which
+  PyYAML rejects, and was then measured to disagree with PyYAML in **both** directions — accepting
+  `description: 12345`, `description: null` and `argument-hint: yes`, while rejecting folded
+  scalars, literal scalars and trailing comments that YAML accepts.
+
+  So the second parser is gone. PyYAML is now required, and a missing PyYAML or `python3` fails the
+  gate instead of degrading it. A gate whose verdict depends on which machine ran it is worse than
+  one that says plainly what it needs, and this repo does not need its own YAML implementation. The
+  three rounds were found by, in order, the adversarial review, the standard review, and the
+  built-in review — each on its first run against this branch.
+
+- **The gate skipped the seven `agents/*.md` files while claiming to cover everything the loader
+  reads.** 31 files under `plugins/` carry frontmatter; the check looked at 24. The missing seven
+  are the specialist sub-agents, each with long unquoted `description:` prose of exactly the shape
+  that attracts a colon-space — and a malformed one means `deep` mode fans out to a
+  `security-reviewer` that silently never loaded, while this command reports a clean security pass.
+  Agents are now checked, `name` is required on skills and agents (not merely type-checked when
+  present), and a skill whose `name` does not match its directory is reported.
+
+- **`validate.sh`'s first two gates could never fail.** `if ! claude plugin validate … | sed` tests
+  `sed`'s exit status, not the validator's, so a broken `marketplace.json` or `plugin.json` printed
+  its error and still finished `✓ All validations passed`. Pre-existing, and directly under the new
+  section whose own comment argues that printing success over a check that did not run is the
+  failure mode the gate exists to prevent. Both now read `PIPESTATUS[0]`.
 
 - **`argument-hint` in the `tester` skill parsed as a list, not a string** — it was written
   unquoted (`argument-hint: [file-path]`), which YAML reads as a one-element sequence. Found by

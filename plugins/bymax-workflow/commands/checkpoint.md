@@ -15,7 +15,10 @@ Create or verify a checkpoint in your workflow.
 
 When creating a checkpoint:
 
-1. Run `/bymax-workflow:verify quick` to ensure current state is clean
+1. Run `/bymax-workflow:verify quick` to ensure the current state is clean. That is
+   Gate 1 only — static checks plus the suppression scan — so it tells you the tree
+   builds, lints and passes its tests. It does **not** produce a pass-rate figure or a
+   coverage number; read those from the test run itself if the checkpoint needs them.
 2. Create a git stash or commit with checkpoint name
 3. Log checkpoint to `.claude/checkpoints.log`:
 

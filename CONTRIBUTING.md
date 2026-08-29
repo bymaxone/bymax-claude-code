@@ -59,13 +59,16 @@ claude plugin install bymax-pr@bymax-claude-code
 
 Before opening a PR, verify:
 
-- [ ] Each new `commands/*.md` has a YAML frontmatter `description` field with **clear English** triggers (PT/EN both welcome). If the description contains inline `Word: ` patterns, wrap it in single quotes.
+- [ ] Each new `commands/*.md` has a YAML frontmatter `description` field with **clear English** triggers (PT/EN both welcome).
 - [ ] Each new `agents/*.md` has `name`, `description`, `tools`, `model` (≥ `sonnet` — no `haiku`).
-- [ ] Each new `skills/*/SKILL.md` follows the official Claude Code skill format.
+- [ ] Each new `skills/*/SKILL.md` follows the official Claude Code skill format, and its `name` matches its directory.
+- [ ] **Frontmatter is valid YAML in all three.** `./scripts/validate.sh` checks every `commands/*.md`, `skills/*/SKILL.md` and `agents/*.md`, and it needs PyYAML (`python3 -m pip install pyyaml`). Two rules cover almost every failure:
+  - A value containing `: ` must be quoted — `description: Modes: quick | full` parses as a nested mapping, not a string. Single-quote it and double any apostrophe: `'Claude''s review'`.
+  - `argument-hint` must be a **quoted** string. Bare `argument-hint: [file-path]` is a one-element YAML list, not the hint text — that exact bug shipped once.
 - [ ] Each new `hooks/*.sh` is `chmod +x` and has an `exit 0` happy path. Plugin-level hooks are wired via `<plugin>/hooks/hooks.json`.
 - [ ] Every test `it()` in any included test has a block comment (scenario + rule it protects).
 - [ ] No new `// @ts-ignore`, `// eslint-disable*`, `as any`, or other suppression comments.
-- [ ] `marketplace.json` and every touched `plugin.json` (under `<plugin>/.claude-plugin/plugin.json`) validate via `./scripts/validate.sh`.
+- [ ] `marketplace.json` and every touched `plugin.json` (under `<plugin>/.claude-plugin/plugin.json`) validate via `./scripts/validate.sh` — which also runs the frontmatter check above.
 - [ ] If you bumped a plugin version, you also bumped the marketplace version (semver appropriately — see [Versioning](#versioning)).
 - [ ] You updated [`CHANGELOG.md`](./CHANGELOG.md) with a one-liner under the appropriate section.
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat(workflow): add /release command`).

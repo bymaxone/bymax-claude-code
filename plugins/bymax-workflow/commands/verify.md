@@ -43,7 +43,13 @@ all five gates.
 
 ## The verification gates
 
-Walk these in order. Do not skip. If a gate fails, fix the underlying cause — never bypass.
+Walk these in order. If a gate fails, fix the underlying cause — never bypass.
+
+**In the default mode, do not skip any of them. In `quick`, run Gate 1 and stop** — that
+is the whole of `quick`, and it is a smaller scope, not a lower bar: Gate 1 still fails on
+one type error, one failing test, or one new suppression comment. Gates 2–5 are dropped
+there because they only mean something against a specific change, and `quick`'s caller
+(`/bymax-workflow:checkpoint`) is snapshotting a tree, not verifying an implementation.
 
 ### Gate 1 — Static checks
 
@@ -122,7 +128,13 @@ Don't be generous. "Probably works" = ❌.
 
 ## Output
 
-End with a short report — example shape:
+**In `quick`, report Gate 1 and nothing else** — the static block below, then
+`Verdict: GATES PASS / GATES FAIL`. Never print the full template's `Verdict: READY`
+off a `quick` run: four of its five sections would be empty, and "READY" claimed from a
+type-check and a test pass alone is exactly the "'compiles' is not 'works'" error this
+command's opening rule forbids.
+
+In the default mode, end with the short report below:
 
 ```
 ## Verification report

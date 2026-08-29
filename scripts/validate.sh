@@ -12,7 +12,7 @@
 #   2. Every plugin under plugins/ validates via `claude plugin validate`.
 #   3. Every shell hook is executable (chmod +x).
 #   4. Every shell script passes shellcheck (if installed).
-#   5. Every command / skill Markdown file has parseable YAML frontmatter.
+#   5. Every command / skill / agent Markdown file has valid YAML frontmatter.
 #   6. Every required project-level file is present.
 #
 # Exit codes:
@@ -51,9 +51,11 @@ cd "${REPO_ROOT}" || { printf "Cannot cd into repo root: %s\n" "${REPO_ROOT}" >&
 
 section "Validating marketplace manifest"
 
-if ! claude plugin validate "${REPO_ROOT}" 2>&1 | sed 's/^/  /'; then
-  fail "marketplace.json failed validation"
-fi
+# `if ! cmd | sed` tests sed's status, not cmd's — so this gate could never
+# fail, however broken the manifest was. PIPESTATUS keeps the indentation and
+# still reads the validator's own exit code.
+claude plugin validate "${REPO_ROOT}" 2>&1 | sed 's/^/  /'
+[[ "${PIPESTATUS[0]}" -eq 0 ]] || fail "marketplace.json failed validation"
 
 # ---------------------------------------------------------------------------
 # 2. Validate every plugin
@@ -65,9 +67,8 @@ for plugin_dir in "${REPO_ROOT}"/plugins/*/; do
 
   section "Validating plugin: ${plugin_name}"
 
-  if ! claude plugin validate "${plugin_dir}" 2>&1 | sed 's/^/  /'; then
-    fail "${plugin_name} failed validation"
-  fi
+  claude plugin validate "${plugin_dir}" 2>&1 | sed 's/^/  /'
+  [[ "${PIPESTATUS[0]}" -eq 0 ]] || fail "${plugin_name} failed validation"
 done
 
 # ---------------------------------------------------------------------------
@@ -112,34 +113,32 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Verify command / skill frontmatter parses as YAML
+# 5. Verify command / skill / agent frontmatter is valid YAML
 # ---------------------------------------------------------------------------
 #
 # `claude plugin validate` checks the JSON manifests, not the Markdown that
-# actually defines the commands. That gap is not theoretical: an unquoted
-# `description:` scalar breaks the moment someone adds a colon-space to it
-# (`Modes: quick | full`), and the manifests keep validating while the command
-# itself silently stops parsing. Catch it here instead.
+# defines the commands, skills and agents. That gap is not theoretical: an
+# unquoted `description:` stops being a string the moment someone adds a
+# colon-space to it (`Modes: quick | full`), and the manifests keep validating
+# while the loader reads whatever survived. Catch it here instead.
 
-section "Verifying command / skill frontmatter"
+section "Verifying command / skill / agent frontmatter"
 
-# This gate fails closed. A missing interpreter is an environment problem, not a
-# clean repository, and printing "all validations passed" over a check that never
-# ran is the failure mode the gate exists to prevent — the same reasoning that
-# makes the checker degrade to a reduced mode instead of skipping when PyYAML is
-# absent. shellcheck above is genuinely optional; frontmatter validity is not.
+# This gate fails closed. A missing interpreter or a missing PyYAML is an
+# environment problem, not a clean repository, and printing "all validations
+# passed" over a check that never ran is the failure mode the gate exists to
+# prevent. shellcheck above is genuinely optional; frontmatter validity is not.
 if command -v python3 >/dev/null 2>&1; then
   # Capture the status via `||` rather than reading $? in a conditional, which
   # shellcheck flags (SC2181) and which any command in between would clobber.
-  # Self-test first: the reduced parser is the path that runs when PyYAML is
-  # missing, which is exactly the path least likely to be exercised by hand.
   frontmatter_status=0
-  frontmatter_output="$(python3 "${SCRIPT_DIR}/lib/check-frontmatter.py" --self-test 2>&1 \
-    && python3 "${SCRIPT_DIR}/lib/check-frontmatter.py" 2>&1)" \
+  frontmatter_output="$(python3 "${SCRIPT_DIR}/lib/check-frontmatter.py" 2>&1)" \
     || frontmatter_status=$?
   if [[ "${frontmatter_status}" -eq 0 ]]; then
     ok "${frontmatter_output}"
   else
+    # Printed unadorned: `ok`/`fail` format a single line, so a multi-line
+    # payload would lose the marker and the indentation on every line but one.
     printf '%s\n' "${frontmatter_output}" >&2
     fail "frontmatter validation failed"
   fi

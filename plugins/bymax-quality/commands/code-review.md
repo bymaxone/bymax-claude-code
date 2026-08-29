@@ -1,6 +1,6 @@
 ---
-description: 'Comprehensive security and quality review with selectable depth: mechanical gate (deterministic greps for secrets/suppressions/Tailwind/console), bug hunt (single-pass or parallel finder agents with adversarial verification), and the Bymax convention checklist across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic, speculative generality), and LOW (nits). Every candidate finding is re-verified against the file before it is reported. In every mode, quick included, two independent Codex reviews run in parallel background shells — a standard one (is this correct?) and an adversarial one (is this the right approach?) — and full and deep additionally run Claude''s own built-in review (high in full, max in deep); the report carries every review side by side with a cross-read. All of it is optional: absent, logged-out or slow Codex degrades to a one-line status and changes nothing, and the adversarial review additionally needs the openai-codex plugin. Blocks the commit on any CRITICAL or HIGH from the Bymax review. Modes: quick | full (default) | deep. Optional target (branch, ref range, PR#, file), --fix and --no-codex. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
-argument-hint: "[quick|full|deep] [target] [--fix] [--no-codex]"
+description: 'Comprehensive security and quality review with selectable depth: mechanical gate (deterministic greps for secrets/suppressions/Tailwind/console), bug hunt (single-pass or parallel finder agents with adversarial verification), and the Bymax convention checklist across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic, speculative generality), and LOW (nits). Every candidate finding is re-verified against the file before it is reported. In every mode, quick included, two independent Codex reviews run in parallel background shells — a standard one (is this correct?) and an adversarial one (is this the right approach?) — and full and deep additionally run Claude''s own built-in review (high in full, max in deep); the report carries every review side by side with a cross-read. All of it is optional: absent, logged-out or slow Codex degrades to a one-line status and changes nothing, and the adversarial review additionally needs the openai-codex plugin. Blocks the commit on any CRITICAL or HIGH from the Bymax review. Modes: quick | full (default) | deep. Optional target (branch, ref range, PR#, file), --fix, --no-codex and --no-builtin. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
+argument-hint: "[quick|full|deep] [target] [--fix] [--no-codex] [--no-builtin]"
 ---
 
 # Code Review
@@ -9,16 +9,18 @@ Comprehensive security and quality review, structured as a pipeline: a determini
 mechanical gate, a bug hunt at the requested depth, the Bymax convention checklist,
 and a verification pass that filters false positives before anything is reported.
 
-In `full` and `deep`, a **second, independent review runs in parallel** through the Codex
-CLI, and the report carries both side by side. The two are kept apart on purpose: Codex
-is launched before this command forms any opinion, and its output is not read until this
-command's own findings are frozen. When Codex is absent, logged out, rate-limited or slow,
-the report says so in one line and nothing else changes.
+In **every** mode, **two independent Codex reviews run in parallel** background shells —
+a standard one (is this correct?) and an adversarial one (is this the right approach?) —
+and in `full` and `deep` Claude's own built-in review runs alongside them as Review D.
+Every review is reported side by side with a cross-read. The Codex pair is kept apart from
+this command's own judgment on purpose: both are launched before it forms any opinion, and
+neither output is read until its own findings are frozen. When a review is absent, logged
+out, rate-limited or slow, the report says so in one line and nothing else changes.
 
 ## Usage
 
 ```
-/bymax-quality:code-review [quick|full|deep] [target] [--fix] [--no-codex]
+/bymax-quality:code-review [quick|full|deep] [target] [--fix] [--no-codex] [--no-builtin]
 ```
 
 | Argument | Meaning |
@@ -28,7 +30,8 @@ the report says so in one line and nothing else changes.
 | `deep` | `full`, but the bug hunt additionally fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified, and Review D runs at `max` instead of `high`. Use before merging a feature branch. |
 | `target` | Optional. A branch name (`feature-x` → reviews `<default-branch>...feature-x`), a ref range (`main...feature-x`), a PR number (`#123`, checked out locally so `$RANGE` works with `git diff` — see Step 1), or a file path. Without a target: uncommitted changes, plus the branch's commits ahead of upstream when the working tree is clean. |
 | `--fix` | After the report, apply the confirmed mechanical MEDIUM fixes (Tailwind renames, canonical tokens) and any finding the user approves. Never commits. |
-| `--no-codex` | Skip **both** Codex reviews (Steps 1.5). They run in **every** mode otherwise, `quick` included — they cost background wall-clock, not session time, and a second opinion is worth as much before a quick push as before a merge. Does not affect Review D, which is `full`/`deep` only. |
+| `--no-codex` | Skip **both** Codex reviews (Steps 1.5). They run in **every** mode otherwise, `quick` included — they cost background wall-clock, not session time, and a second opinion is worth as much before a quick push as before a merge. |
+| `--no-builtin` | Skip Review D (Step 1.6). Its cost is tokens, and a three-line diff does not need a multi-agent bug hunt; without this flag there is no way to decline the most expensive reviewer in the set. |
 
 > **Stack-adaptive.** Detect the stack first. On a **Rust** project (`Cargo.toml`), apply the
 > **Rust checks** flagged in each section below and **skip** the TypeScript/Tailwind-specific ones
@@ -226,9 +229,29 @@ Invoke the built-in review skill over the same scope, at the effort the mode cal
 | `full` | `/code-review high` |
 | `deep` | `/code-review max` |
 
-Add the resolved target when it is not the working tree. The split matches what each
-mode is for: `high` keeps `full` proportionate to a pre-push check, and `max` widens
-coverage — including lower-confidence findings — for the pass that runs before a merge.
+The split matches what each mode is for: `high` keeps `full` proportionate to a pre-push
+check, and `max` widens coverage — including lower-confidence findings — for the pass that
+runs before a merge.
+
+**Map the scope the same way Step 1.5 does, and skip on the same terms.** The built-in
+review accepts a PR number, a branch, or a path; it does not accept an arbitrary ref
+range, and with no target it reviews *the current diff*:
+
+| Resolved scope | What to pass |
+| --- | --- |
+| uncommitted work (dirty tree) | no target — the current diff is the scope |
+| PR target, after `gh pr checkout` | the PR number |
+| branch target **that is the current HEAD** | no target |
+| a single file | that path |
+| branch target that is **not** checked out | **skip Review D** |
+| a ref range not ending at HEAD, or `<base>...FETCH_HEAD` | **skip Review D** |
+| clean tree, reviewing commits ahead of upstream | **skip Review D** — see below |
+
+That last row is the one that bites. On a clean tree the default scope is *empty*: the
+built-in would review nothing, return no findings, and Step 6 would print it beside A, B
+and C as a peer bug hunt of the same diff. That is the same false-clean shape the
+empty-base guard and the Step 1.5 checkout guard exist to prevent. Pass the branch or PR
+explicitly when one applies; otherwise skip Review D and say so in its status line.
 
 Either way it forks to a background agent and returns only the agent's name. The
 findings arrive later as a task notification, so do not wait on it here, and never
@@ -425,7 +448,9 @@ Step 2 (mechanical) findings skip verification — they are already exact.
 Only now, with your own findings frozen, read the background shells' output — and, in
 `full` and `deep`, Review D's agent report.
 
-Each one's first line is `CODEX_STATUS: <status>`. Branch on it deterministically —
+### Reviews B and C — the shells
+
+Each shell's first line is `CODEX_STATUS: <status>`. Branch on it deterministically —
 never on the prose that follows:
 
 | Status | Meaning | What to do |
@@ -435,8 +460,15 @@ never on the prose that follows:
 | `unauthenticated` | logged out or session expired | idem |
 | `unsupported-target` | the scope has no Codex equivalent | idem |
 | `timeout` | exceeded the budget | idem |
-| `failed` | non-zero exit, or no readable output | idem |
+| `failed` | non-zero exit, no readable output, or a review with no verdict | idem |
 | `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing | report the status, change nothing else |
+
+A second line `CODEX_SCOPE: self-collected — …` may follow `ok` on Review C. It means
+the diff was too large for the runtime to inline in the prompt, so the reviewer went and
+collected its own scope with git commands, minutes after launch, against a tree that may
+have moved. **Reproduce that line verbatim in Review C's section when it appears**, and
+do not let the cross-read treat that review as having examined the same pinned diff as
+A and B. It is a review of roughly this change, not demonstrably of exactly it.
 
 The two shells are read independently. One of them degrading says nothing about the
 other: Review B needs only the `codex` binary, Review C needs the plugin on top of it,
@@ -445,6 +477,22 @@ without the plugin — not a symptom.
 
 If a shell has not finished, wait up to the remaining budget, then treat it as
 `timeout`. Never hold the report for either.
+
+### Review D — the agent
+
+Review D has no `CODEX_STATUS` line: it is a forked agent, not a shell, and the table
+above does not apply to it. Its states are:
+
+| State | What to do |
+| --- | --- |
+| returned a report | report it in Step 6 as Review D |
+| skipped (`quick`, `--no-builtin`, or an unmappable scope per Step 1.6) | omit the heading entirely; name the reason in one line only if the user asked for it |
+| still running when the rest of the report is ready | print `Status: still running` and say the findings are not in this report |
+| returned nothing usable | print `Status: no report` |
+
+**Never predict what a pending agent would have said.** A Review D that has not returned
+is reported as pending, not as clean and not as absent — the whole point of the status
+line is that a reader can tell "found nothing" from "has not answered".
 
 On `absent` or `unauthenticated`, add one line to the affected review offering
 `/bymax-quality:codex-setup`, which installs and authenticates the CLI. On
@@ -465,9 +513,12 @@ model and its findings will feel familiar and therefore right.
    — "checked `foo.ts:41`, the guard is three lines up" — and that annotation is itself
    auditable. Silently dropping it is not. Your Step 5 verification applies to *your*
    candidates, not to Codex's.
-3. **Never rewrite its severity.** Report Codex's own `P0`–`P3` labels. Show the reader
-   the mapping (`P0`→CRITICAL, `P1`→HIGH, `P2`→MEDIUM, `P3`→LOW) but keep the original
-   label visible next to it.
+3. **Never rewrite its severity.** Report whichever label the review actually used, and
+   keep it visible next to your mapping. The two backends do not share a vocabulary:
+   Review B emits `P0`–`P3` (`P0`→CRITICAL, `P1`→HIGH, `P2`→MEDIUM, `P3`→LOW), while
+   Review C's runtime emits `critical`/`high`/`medium`/`low` and defaults a missing
+   severity to `low`. Never invent a `P`-label for a Review C finding to make it match
+   the template — that is a rewrite wearing the costume of a format fix.
 4. **Never let it move the verdict.** BLOCK/APPROVE comes from your findings alone.
    Codex-only findings go to the disposition list in Step 6, which is what gives them
    teeth without making the gate depend on a network call.
@@ -514,11 +565,12 @@ Status: ok
 ### Review C — Codex, adversarial (independent)
 
 Status: ok
-- [P1 → HIGH] <the approach or assumption being challenged>
+- [high → HIGH] <the approach or assumption being challenged>
   <body, verbatim>
 
 ### Review D — Claude, /code-review <high in full | max in deep>
 
+Status: <returned | still running | no report | skipped: reason>
 Same model family as Review A, different method — not an independent voice.
 - <file>:<line> — <finding>
 
@@ -528,7 +580,10 @@ Same model family as Review A, different method — not an independent voice.
 - **A and D agree, B and C silent:** <issue> — one model's opinion twice; state that.
 - **Only A:** <issue> — the convention and mechanical axes no bug hunter covers.
 - **Only C:** <issue> — a design objection, not a defect. Answer it on the merits.
-- **Only B or C — needs your disposition:** <issue>
+- **Only D:** <issue> — the deepest bug hunt in the set found it alone. Same model
+  family as A, so it is not corroboration, but a unique finding from the most expensive
+  reviewer is the last one to drop for being unconfirmed.
+- **Only B, C or D — needs your disposition:** <issue>
 ```
 
 Each review that did not run collapses to a single line, and nothing else changes:
@@ -551,8 +606,9 @@ expected.
 **Never approve code with security vulnerabilities or new suppression comments.**
 Any CRITICAL or HIGH in Review A ⇒ verdict is BLOCK.
 
-**Every Codex-only P0/P1 needs an explicit disposition** — fixed, or refused with a
-stated reason — before this review counts as done. This is the same rule the project
+**Every outside-only finding at the top two severities needs an explicit disposition** —
+Codex `P0`/`P1`, Review C `critical`/`high`, and any Review D finding no other review
+raised — fixed, or refused with a stated reason — before this review counts as done. This is the same rule the project
 already applies to a reviewer's comment on a PR: a finding you choose not to fix needs
 a justification on the record, not silence. It is what gives Reviews B and C teeth while
 keeping the automated verdict independent of whether Codex was reachable.

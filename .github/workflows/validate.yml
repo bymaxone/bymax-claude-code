@@ -36,12 +36,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
       - name: Install PyYAML
-        # validate.sh skips the frontmatter check when PyYAML is missing, so install
-        # it explicitly — a silently skipped gate is worse than no gate at all.
+        # Required, not optional: check-frontmatter.py parses YAML with it and
+        # fails closed without it, rather than shipping a second hand-written
+        # parser whose verdict differed from PyYAML's in both directions.
         run: python3 -m pip install --break-system-packages pyyaml
 
       - name: Run validate.sh
         # Delegates to `claude plugin validate` for marketplace/plugin manifests, then
-        # checks shell-script executable bits, shellcheck, command/skill frontmatter,
-        # and required project files.
+        # checks shell-script executable bits, shellcheck, command/skill/agent
+        # frontmatter, and required project files.
         run: ./scripts/validate.sh
