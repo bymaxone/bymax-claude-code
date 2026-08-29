@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "bymax-claude-code",
-  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec → roadmap → phase-tasks → task), loop-engineering autopilot (autonomous roadmap execution, one merge-gated PR per phase), quality gates (TDD + code-review + security-review) for TypeScript and Rust, specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, autonomous PR babysitting, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
-  "version": "1.7.0",
+  "description": "A complete, production-ready toolkit for Claude Code: planning workflow (spec \u2192 roadmap \u2192 phase-tasks \u2192 task), loop-engineering autopilot (autonomous roadmap execution, one merge-gated PR per phase), quality gates (TDD + code-review + security-review) for TypeScript and Rust, specialized review agents, project bootstrap with strict ESLint/Prettier/TypeScript, autonomous PR babysitting, and battle-tested templates. Stack templates for Next.js, Expo / React Native, Vite + React, and Node backends.",
+  "version": "1.8.0",
   "owner": {
     "name": "Bymax One",
     "email": "support@bymax.one",
@@ -11,14 +11,14 @@
   "plugins": [
     {
       "name": "bymax-workflow",
-      "description": "Spec → Roadmap → Phase-Tasks → Task — a phased planning + execution workflow with explicit user-approval gates and JIRA-style task dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, the universal /bymax-workflow:standards reference (with the §0 reuse-first simplicity ladder), and /bymax-workflow:autopilot — the loop-engineering executor that autonomously drives an approved roadmap to done, one merge-gated PR per phase.",
+      "description": "Spec \u2192 Roadmap \u2192 Phase-Tasks \u2192 Task \u2014 a phased planning + execution workflow with explicit user-approval gates and JIRA-style task dashboards. Includes /bymax-workflow:brainstorm, /bymax-workflow:plan, /bymax-workflow:verify, /bymax-workflow:checkpoint, the universal /bymax-workflow:standards reference (with the \u00a70 reuse-first simplicity ladder), and /bymax-workflow:autopilot \u2014 the loop-engineering executor that autonomously drives an approved roadmap to done, one merge-gated PR per phase.",
       "category": "workflow",
       "source": "./plugins/bymax-workflow",
       "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-workflow"
     },
     {
       "name": "bymax-quality",
-      "description": "Quality gates: /bymax-quality:code-review (mechanical gate + verified bug hunt, modes quick/full/deep, CRITICAL → LOW severity, blocks suppression comments), /bymax-quality:review-md (REVIEW.md generator for Anthropic's cloud Code Review), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, seven specialist sub-agents (incl. a Rust reviewer), and two pre/post hooks (secret-scanner, console-log-scan).",
+      "description": "Quality gates: /bymax-quality:code-review (mechanical gate + verified bug hunt, plus an optional independent second review via the Codex CLI reported side by side with a cross-read; modes quick/full/deep, CRITICAL \u2192 LOW severity, blocks suppression comments), /bymax-quality:review-md (REVIEW.md generator for Anthropic's cloud Code Review), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, seven specialist sub-agents (incl. a Rust reviewer), and two pre/post hooks (secret-scanner, console-log-scan). /bymax-quality:codex-setup installs and authenticates the Codex CLI when the user wants the second opinion \u2014 Codex is optional and never bundled.",
       "category": "quality",
       "source": "./plugins/bymax-quality",
       "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-quality"
@@ -46,14 +46,14 @@
     },
     {
       "name": "bymax-pr",
-      "description": "The PR lifecycle, powered by the gh CLI. /bymax-pr:push ships work safely (feature branch — never the default branch — staged set respected, complete Conventional-Commits message, push with upstream; `pr` token opens a fully-described PR). /bymax-pr:babysit-pr shepherds the open PR to merge-readiness: resolves conflicts, polls CI at a cadence matched to the CI's real duration (270 s floor), classifies real vs flaky failures, fixes real ones locally, triages bot review comments, and notifies you when green. Never merges, never pushes to the base branch. Depends on gh + git; never bundles them.",
+      "description": "The PR lifecycle, powered by the gh CLI. /bymax-pr:push ships work safely (feature branch \u2014 never the default branch \u2014 staged set respected, complete Conventional-Commits message, push with upstream; `pr` token opens a fully-described PR). /bymax-pr:babysit-pr shepherds the open PR to merge-readiness: resolves conflicts, polls CI at a cadence matched to the CI's real duration (270 s floor), classifies real vs flaky failures, fixes real ones locally, triages bot review comments, and notifies you when green. Never merges, never pushes to the base branch. Depends on gh + git; never bundles them.",
       "category": "workflow",
       "source": "./plugins/bymax-pr",
       "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-pr"
     },
     {
       "name": "bymax-all",
-      "description": "Meta-plugin reference. Claude Code does not auto-install dependencies — install bymax-workflow, bymax-quality, bymax-bootstrap, bymax-mobile, bymax-web-verify, and bymax-pr individually for the full toolkit.",
+      "description": "Meta-plugin reference. Claude Code does not auto-install dependencies \u2014 install bymax-workflow, bymax-quality, bymax-bootstrap, bymax-mobile, bymax-web-verify, and bymax-pr individually for the full toolkit.",
       "category": "meta",
       "source": "./plugins/bymax-all",
       "homepage": "https://github.com/bymaxone/bymax-claude-code"

@@ -36,13 +36,47 @@ git diff --cached --stat ; git diff --stat           # what changed
 
 Determine:
 
-- **Default branch**: `git symbolic-ref --quiet refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'`
-  (fallback: `main`, then `master`).
+- **Default branch** — resolve it once and reuse it as `$DEFAULT_BRANCH` below:
+
+  ```bash
+  DEFAULT_BRANCH=$(git symbolic-ref --quiet refs/remotes/origin/HEAD \
+    | sed 's@^refs/remotes/origin/@@')
+  # origin/HEAD is unset on many clones — ask the remote, the only way to learn a
+  # default that is neither `main` nor `master` (e.g. `develop`).
+  [ -n "${DEFAULT_BRANCH}" ] || DEFAULT_BRANCH=$(git ls-remote --symref origin HEAD 2>/dev/null \
+    | sed -n 's@^ref: refs/heads/\(.*\)[[:space:]]HEAD$@\1@p')
+
+  # The name is not always a usable ref here: `git clone --branch develop` creates
+  # only the local `develop` while still fetching `origin/main`. Prefer the
+  # remote-tracking ref, and never settle on one that does not resolve.
+  DEFAULT_REF=""
+  for candidate in "origin/${DEFAULT_BRANCH}" "${DEFAULT_BRANCH}" \
+                   origin/main main origin/master master \
+                   origin/develop develop origin/trunk trunk; do
+    case "${candidate}" in ""|origin/) continue ;; esac
+    git rev-parse --verify -q "${candidate}" >/dev/null 2>&1 \
+      && DEFAULT_REF="${candidate}" && break
+  done
+  # When only the ref could be resolved, take the name from it.
+  [ -n "${DEFAULT_BRANCH}" ] || DEFAULT_BRANCH="${DEFAULT_REF#origin/}"
+  ```
+
 - **Is anything staged?** `git diff --cached --quiet` → exit 1 means yes.
 - **Anything to ship at all?** There must be either something to commit (staged OR
-  unstaged OR untracked) **or** commits already ahead of upstream
-  (`git log @{upstream}..HEAD --oneline` non-empty). If there is nothing to commit
-  **and** nothing ahead → stop (see below).
+  unstaged OR untracked) **or** commits already ahead. Resolve the comparison base
+  before asking — a branch that was never pushed has no `@{upstream}`, and using it
+  bare makes git fail rather than report the commits, which is exactly the
+  never-pushed-feature-branch case this command exists for:
+
+  ```bash
+  # Commits ahead: against the upstream when one exists, against the default
+  # branch when it does not (a branch that has never been pushed).
+  BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
+    || BASE="${DEFAULT_REF}"
+  git log "${BASE}..HEAD" --oneline
+  ```
+
+  If there is nothing to commit **and** nothing ahead → stop (see below).
 - **Skip Steps 2–3 only when the working tree is clean AND there are commits ahead** —
   i.e. the sole thing to ship is already-committed work that never left the machine, so
   go straight to push (and PR if requested). Whenever there is *any* uncommitted change

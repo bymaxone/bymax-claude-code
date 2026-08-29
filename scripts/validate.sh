@@ -76,7 +76,7 @@ done
 section "Verifying shell scripts are executable"
 
 shell_scripts=()
-for f in plugins/*/hooks/*.sh personal/*.sh scripts/*.sh; do
+for f in plugins/*/hooks/*.sh plugins/*/scripts/*.sh personal/*.sh scripts/*.sh; do
   [[ -f "${f}" ]] || continue
   shell_scripts+=("${f}")
   if [[ ! -x "${f}" ]]; then
