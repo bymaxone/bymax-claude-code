@@ -37,20 +37,71 @@ class ReducedYAMLError(Exception):
     """A frontmatter problem the dependency-free parser can prove without PyYAML."""
 
 
+# Every single-character escape a YAML double-quoted scalar allows. Anything else
+# is a scanner error: `"bad\qescape"` does not parse, however reasonable it looks.
+# \x, \u and \U additionally take 2, 4 and 8 hex digits.
+YAML_SIMPLE_ESCAPES = set('0abtnvfre"/\\N_LP \t')
+YAML_HEX_ESCAPES = {"x": 2, "u": 4, "U": 8}
+HEX_DIGITS = set("0123456789abcdefABCDEF")
+
+
+def read_double_quoted(value: str, key: str, lineno: int) -> str:
+    """Scan a double-quoted scalar, honouring escapes, rejecting what YAML rejects.
+
+    Walking it is not optional. Checking only that the last character is a quote
+    accepts `"ends in an escaped quote \\"` — where the closing quote belongs to
+    the escape and the scalar never actually closes.
+    """
+    index = 1
+    while index < len(value):
+        char = value[index]
+        if char == '"':
+            if index != len(value) - 1:
+                raise ReducedYAMLError(
+                    f"line {lineno}: '{key}' has content after its closing quote"
+                )
+            return value[1:index]
+        if char != "\\":
+            index += 1
+            continue
+        escape = value[index + 1 : index + 2]
+        if escape in YAML_HEX_ESCAPES:
+            width = YAML_HEX_ESCAPES[escape]
+            digits = value[index + 2 : index + 2 + width]
+            if len(digits) != width or any(digit not in HEX_DIGITS for digit in digits):
+                raise ReducedYAMLError(
+                    f"line {lineno}: '{key}' has a malformed \\{escape} escape"
+                )
+            index += 2 + width
+            continue
+        if escape not in YAML_SIMPLE_ESCAPES:
+            raise ReducedYAMLError(
+                f"line {lineno}: '{key}' uses the invalid escape "
+                f"\\{escape or '<end of line>'} — YAML rejects unknown escapes in a"
+                " double-quoted scalar"
+            )
+        index += 2
+    raise ReducedYAMLError(
+        f"line {lineno}: '{key}' opens with a double quote but the line does not close it"
+    )
+
+
 def reduced_scalar(value: str, key: str, lineno: int):
     """Read one scalar, refusing every shape this parser cannot prove is valid."""
     quote = value[:1]
-    if quote in ("'", '"'):
+    if quote == '"':
+        return read_double_quoted(value, key, lineno)
+    if quote == "'":
         if len(value) < 2 or value[-1] != quote:
             raise ReducedYAMLError(
                 f"line {lineno}: '{key}' opens with {quote} but the line does not close it"
             )
         inner = value[1:-1]
-        if quote == "'" and inner.replace("''", "").count("'"):
+        if inner.replace("''", "").count("'"):
             raise ReducedYAMLError(
                 f"line {lineno}: '{key}' holds an unescaped apostrophe — double it as ''"
             )
-        return inner.replace("''", "'") if quote == "'" else inner
+        return inner.replace("''", "'")
     if ": " in value:
         raise ReducedYAMLError(
             f"line {lineno}: unquoted '{key}' contains ': ', which YAML reads as a nested mapping"
@@ -113,7 +164,19 @@ SELF_TEST_CASES = (
     ("description: 'unterminated", True),
     ("description: 'it's unescaped'", True),
     ("description: ok\n  stray: indented", True),
+    # PyYAML reads a colon-less line as a plain scalar rather than raising, so it
+    # rejects this one layer later — `check()` refuses a frontmatter block that is
+    # not a mapping. Same verdict for the file, reached sooner.
     ("description ok", True),
+    ('description: "double quoted"', False),
+    ('description: "an escaped \\" quote"', False),
+    ('description: "a tab \\t and a newline \\n"', False),
+    ('description: "hex \\x41 and unicode \\u00e9"', False),
+    ('description: "bad\\qescape"', True),
+    ('description: "bad hex \\xZZ"', True),
+    ('description: "unterminated', True),
+    ('description: "closes early" then more"', True),
+    ('description: "ends in an escaped quote \\"', True),
 )
 
 

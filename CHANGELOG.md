@@ -33,9 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/code-review max` is reported as Review D and labelled for what it is — the same model family as
   the Bymax review running a different method, not a third independent voice. Two agreeing runs of
   one model is weak evidence, and a reader who mistakes it for corroboration will over-trust it. It
-  cannot be backgrounded (a skill invocation is not a shell), so it is the long pole of both modes
-  that run it — the accepted cost of not letting the pre-push mode skip the bug hunt. `quick` stays
-  free of it and remains the cheap sanity check.
+  forks to a background agent like the Codex shells do, so all three reviewers run in parallel and
+  none of them makes the command slower to sit through. `quick` leaves it out to save tokens, not
+  time — which is the honest reason, unlike the speed argument an earlier draft of this entry made.
 
 - **`argument-hint` on every command that takes arguments** — typing a slash command showed no
   hint of what it accepts, because only `/bymax-pr:push` and `/bymax-web-verify:test` declared the
@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   explicitly, because a gate that skips itself is worse than no gate.
 
 ### Fixed
+
+- **The reduced frontmatter parser accepted invalid YAML escapes.** A double-quoted value such as
+  `description: "bad\qescape"` passed the dependency-free path while PyYAML rejects it outright, so
+  the gate could still go green on frontmatter Claude cannot load — the same fail-open shape, one
+  layer down. Double-quoted scalars are now scanned character by character against YAML's escape
+  set (including the `\x`/`\u`/`\U` hex widths), which also closes the case where the closing quote
+  is itself escaped and the scalar never actually terminates. The self-test grew to 18 cases, and
+  every expectation was cross-checked against real PyYAML. Found by the independent standard review.
 
 - **The frontmatter gate could report success without having run.** `check-frontmatter.py` exited
   with a "skipped" status when PyYAML was missing and `validate.sh` treated that as a warning, so a

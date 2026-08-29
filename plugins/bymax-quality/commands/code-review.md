@@ -215,12 +215,14 @@ else. `--target commit` has no adversarial equivalent and reports
 
 ## Step 1.6 — Claude's own bug hunt at max effort (`full` and `deep`)
 
-Skipped in `quick` — this is the one step that costs session time, and `quick` exists
-to be cheap. Run **after** launching the background shells above, so Codex
-is working while this runs.
+Skipped in `quick`, which stays the minimal pre-push check. Launch it in the **same
+message** as the two shells above: all three reviewers then work in parallel while you
+do Steps 2–4, and all three are harvested together in Step 5.5.
 
 Invoke the built-in review skill at max effort over the same scope:
-`/code-review max` (add the resolved target when it is not the working tree).
+`/code-review max` (add the resolved target when it is not the working tree). It forks
+to a background agent and returns only the agent's name — the findings arrive later as
+a task notification, so do not wait on it here and never invent its results.
 
 Unlike Steps 1.5, this one is **not** a second opinion — it is the same model family as
 Review A, running a different method: a multi-agent bug hunt with its own finder and
@@ -228,14 +230,14 @@ verifier passes. Say that plainly in the report rather than presenting it as a t
 independent voice, because two agreeing runs of the same model is weak evidence and a
 reader who mistakes it for corroboration will over-trust it.
 
-It runs in the session and cannot be backgrounded — a skill invocation is not a shell —
-so it is the long pole of both modes. That is the accepted cost: `full` runs before every
-push, and a bug that reaches a reviewer because the fast mode skipped the bug hunt costs
-more than the minutes saved. Run `quick` when you need the cheap pre-push sanity check.
+It costs no session time — it runs as a forked background agent, like the Codex shells —
+so `full` carrying it does not make `full` slower to sit through. What it does cost is
+tokens, which is the honest reason `quick` leaves it out rather than any claim about
+speed.
 
-> **`/code-review ultra` is not an option here.** It is user-triggered and billed; a
-> skill must not launch it. If the diff warrants that depth, say so in the report and
-> let the user decide.
+> **`/code-review ultra` is a different matter.** It is user-triggered and billed, and a
+> skill must not launch it. If the diff warrants that depth, say so and let the user
+> decide.
 
 ## Step 2 — Mechanical gate (deterministic)
 
@@ -410,7 +412,8 @@ Step 2 (mechanical) findings skip verification — they are already exact.
 
 ## Step 5.5 — Harvest the Codex reviews
 
-Only now, with your own findings frozen, read **both** background shells' output.
+Only now, with your own findings frozen, read the background shells' output — and, in
+`full` and `deep`, Review D's agent report.
 
 Each one's first line is `CODEX_STATUS: <status>`. Branch on it deterministically —
 never on the prose that follows:
