@@ -154,7 +154,7 @@ cleanup() {
   [ -n "${workdir}" ] && rm -rf "${workdir}"
   return 0
 }
-trap 'cleanup' EXIT
+trap cleanup EXIT
 trap 'exit 0' TERM INT
 
 # `--flag=value` is rewritten to `--flag value` up front, so a single `case`
@@ -170,7 +170,10 @@ for arg in "$@"; do
     *) args+=("${arg}") ;;
   esac
 done
-set -- "${args[@]}"
+# `${args[@]+"${args[@]}"}`: an empty array under `set -u` is "unbound" in bash
+# 3.2, and a bare `set -- "${args[@]}"` with no arguments aborted before any
+# status line was written.
+set -- ${args[@]+"${args[@]}"}
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --target|--ref|--budget|--mode)
@@ -402,10 +405,11 @@ fi
 # Adversarial: past the runtime's inline limits it stops putting the diff in
 # the prompt and tells the agent to collect its own with git commands, so the
 # validated scope flags bind nothing; and on a branch target it resolves
-# mergeBase..HEAD, dropping every uncommitted file. Standard: `codex exec
-# review --base` diffs the merge-base against the WORKING TREE, so tracked
-# uncommitted hunks are in, but untracked files are not — a smaller scope than
-# Step 1's, which includes them.
+# mergeBase..HEAD, dropping every uncommitted file. Standard:
+# `--uncommitted` reviews staged, unstaged and untracked changes (its --help),
+# an exact match for Step 1; `--base` diffs the merge-base against the WORKING
+# TREE, so tracked uncommitted hunks are in but untracked files are not — a
+# different scope from the committed range Step 1 resolves for a branch.
 #
 # Measurements mirror the runtime's own commands (staged and unstaged diffed
 # separately, `--binary`); untracked contents are not in the byte count
@@ -431,22 +435,34 @@ diff_uncommitted() { git diff --cached "${diff_flags[@]}" && git diff "${diff_fl
 list_changed_base()  { git diff --name-only "$1...HEAD"; }
 diff_base()          { git diff "${diff_flags[@]}" "$1...HEAD"; }
 
-exceeds_inline_limits() {
-  local kind="$1" files bytes list_fn diff_fn
-  case "${kind}" in
-    uncommitted) list_fn=list_changed_uncommitted; diff_fn=diff_uncommitted ;;
-    base)        list_fn=list_changed_base;        diff_fn=diff_base ;;
+# changed_files <kind> / changed_bytes <kind>: the two measurements, each
+# dispatching on the kind with a direct call — shellcheck cannot follow a
+# function name held in a variable and reports every such function as unused.
+changed_files() {
+  case "$1" in
+    uncommitted) list_changed_uncommitted ;;
+    base)        list_changed_base "${REF}" ;;
   esac
+}
+changed_bytes() {
+  case "$1" in
+    uncommitted) diff_uncommitted ;;
+    base)        diff_base "${REF}" ;;
+  esac
+}
+
+exceeds_inline_limits() {
+  local kind="$1" files bytes
   # A git failure is an unmeasured scope, and an unmeasured scope is unpinned:
   # stderr is discarded and `grep -c` of nothing is 0, which would otherwise
   # read as "small change, inlined".
-  if ! files="$("${list_fn}" "${REF}" 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
+  if ! files="$(changed_files "${kind}" 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
     scope_reason="${SCOPE_UNMEASURED}"; return 0
   fi
   if [ "${files}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
     scope_reason="${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"; return 0
   fi
-  if ! bytes="$("${diff_fn}" "${REF}" 2>/dev/null | wc -c; exit "${PIPESTATUS[0]}")"; then
+  if ! bytes="$(changed_bytes "${kind}" 2>/dev/null | wc -c; exit "${PIPESTATUS[0]}")"; then
     scope_reason="${SCOPE_UNMEASURED}"; return 0
   fi
   bytes="${bytes//[[:space:]]/}"
@@ -462,6 +478,20 @@ SCOPE_UNMEASURED="the scope could not be measured (git failed)"
 list_untracked()  { git ls-files --others --exclude-standard; }
 count_untracked() { list_untracked 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
 count_tracked_dirty() { git diff --name-only HEAD 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
+
+# The inline limits are 1.0.6's numbers. A runtime admitted by the override or
+# by ALLOW_UNVERIFIED may use different ones, so its scope cannot be predicted:
+# report it unpinned rather than `ok` on a guess.
+if [ "${MODE}" = "adversarial" ]; then
+  limits_known=0
+  for verified in ${COMPANION_VERIFIED_VERSIONS}; do
+    [ "${companion_version}" = "${verified}" ] && limits_known=1
+  done
+  if [ "${limits_known}" -eq 0 ]; then
+    scope_unpinned=1
+    scope_reason="runtime version '${companion_version}' is not one whose inline limits were verified, so whether the diff was inlined is unknown"
+  fi
+fi
 
 case "${MODE}:${TARGET}" in
   adversarial:uncommitted)
@@ -489,18 +519,11 @@ case "${MODE}:${TARGET}" in
       scope_unpinned=1
       scope_reason="${untracked} untracked files are outside the diff \`codex exec review --base\` builds"
     fi ;;
-  standard:uncommitted)
-    # `codex exec review --uncommitted` diffs tracked changes only. A tree whose
-    # only change is untracked files has an empty diff — a billed verdict on
-    # nothing — and a mixed tree is reviewed short of its new files.
-    if ! untracked="$(count_untracked)" || ! tracked_dirty="$(count_tracked_dirty)"; then
-      scope_unpinned=1; scope_reason="${SCOPE_UNMEASURED}"
-    elif [ "${tracked_dirty:-0}" -eq 0 ]; then
-      status_only "unsupported-target" "only untracked files changed, and \`codex exec review --uncommitted\` reviews tracked changes only — stage them (git add -N) or use the adversarial mode"
-    elif [ "${untracked:-0}" -gt 0 ]; then
-      scope_unpinned=1
-      scope_reason="${untracked} untracked files are outside the diff \`codex exec review --uncommitted\` builds"
-    fi ;;
+  # standard:uncommitted needs no case: `codex exec review --uncommitted`
+  # reviews "staged, unstaged, and untracked changes" (its own --help), which
+  # is exactly the scope Step 1 resolves. An earlier version refused a tree
+  # whose only change was untracked files, on the belief that the flag diffed
+  # tracked changes only — read the help, not the assumption.
 esac
 
 # --- Run under a budget -----------------------------------------------------

@@ -191,11 +191,25 @@ Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1
   final message through `--output-last-message`, which replaces two hand-written JSONL
   extractors. Every number the script reasons about is now a named constant.
 
+- **A fifth round, and the first one to run shellcheck.** The built-in review's conventions finder
+  installed shellcheck locally; until then `validate.sh` had passed only because that step
+  self-skipped. It found the validator's own comment `# shellcheck flags (SC2181)` parsed as a
+  malformed directive — a red CI on every push of this branch — and five functions reported as
+  never invoked because their only callers were a `trap` or a function name held in a variable.
+  The indirect calls are direct now; the trap-handler case is a stated project-wide exclusion.
+  `set -- "${args[@]}"` on an empty array is "unbound" under `set -u` in bash 3.2, so the script
+  with no arguments died before writing a status line. And a premise of the fourth round was
+  wrong: `codex exec review --uncommitted` reviews staged, unstaged **and untracked** changes —
+  its own `--help` says so — so the refusal of an untracked-only tree and the `ok-unpinned` for a
+  mixed one were both reverted; read the help, not the assumption. An adversarial run on a
+  runtime version whose inline limits were never verified is now `ok-unpinned`, because whether
+  its diff was inlined cannot be predicted. Step 1.6 passes the branch name to the built-in review
+  rather than "no target", which on a clean tree is an empty diff, and skips it when no
+  unprefixed `code-review` skill exists rather than risk invoking this command by its own name.
+
 - **A fourth round, all scope and plumbing.** An empty `<base>...HEAD` range on a clean tree
   billed both reviewers over nothing and was counted as a clean second opinion; refused now, like
-  the clean tree. `codex exec review --uncommitted` diffs tracked changes only, so a tree whose
-  only change was untracked files got a verdict on an empty diff — refused — and a mixed tree is
-  now `ok-unpinned` with the untracked count. `codex exec review --base` diffs the merge-base
+  the clean tree. `codex exec review --base` diffs the merge-base
   against the working tree, so tracked uncommitted hunks were reviewed as if they were part of the
   committed range — `ok-unpinned` now, with the count. Both launch lines read `</dev/null`: under
   `set -m` a background job keeps the script's stdin, which `codex exec` folds into its prompt, and

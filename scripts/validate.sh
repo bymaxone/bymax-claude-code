@@ -102,7 +102,12 @@ if command -v shellcheck >/dev/null 2>&1; then
   if [[ "${#shell_scripts[@]}" -gt 0 ]]; then
     # SC1091 — disabled because shellcheck cannot follow dynamic source paths in this repo.
     # SC2059 — disabled because we deliberately put color escapes in printf format strings.
-    if shellcheck -e SC1091,SC2059 "${shell_scripts[@]}" 2>&1; then
+    # SC2329 — disabled because it reports a function as "never invoked" when its only
+    #          caller is a `trap` (cleanup handlers), which shellcheck cannot follow. Every
+    #          other indirect call in this repo was rewritten as a direct one so this
+    #          exclusion covers trap handlers alone; a genuinely dead function still has
+    #          to be caught in review.
+    if shellcheck -e SC1091,SC2059,SC2329 "${shell_scripts[@]}" 2>&1; then
       ok "All shell scripts pass shellcheck"
     else
       fail "shellcheck reported issues"
@@ -130,7 +135,7 @@ section "Verifying command / skill / agent frontmatter"
 # prevent. shellcheck above is genuinely optional; frontmatter validity is not.
 if command -v python3 >/dev/null 2>&1; then
   # Capture the status via `||` rather than reading $? in a conditional, which
-  # shellcheck flags (SC2181) and which any command in between would clobber.
+  # ShellCheck reports as SC2181 and which any command in between would clobber.
   frontmatter_status=0
   frontmatter_output="$(python3 "${SCRIPT_DIR}/lib/check-frontmatter.py" 2>&1)" \
     || frontmatter_status=$?

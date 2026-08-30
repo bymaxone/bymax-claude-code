@@ -255,17 +255,21 @@ range, and with no target it reviews *the current diff*:
 | --- | --- |
 | uncommitted work (dirty tree) | no target — the current diff is the scope |
 | PR target, after `gh pr checkout` | the PR number |
-| branch target **that is the current HEAD** | no target |
+| branch target that is the current HEAD, or a clean tree ahead of upstream | **the branch name** — never "no target": on a clean tree the built-in's default scope is empty |
 | a single file | that path |
 | branch target that is **not** checked out | **skip Review D** |
 | a ref range not ending at HEAD, or `<base>...FETCH_HEAD` | **skip Review D** |
-| clean tree, reviewing commits ahead of upstream | **skip Review D** — see below |
 
-That last row is the one that bites. On a clean tree the default scope is *empty*: the
-built-in would review nothing, return no findings, and Step 6 would print it beside A, B
-and C as a peer bug hunt of the same diff. That is the same false-clean shape the
-empty-base guard and the Step 1.5 checkout guard exist to prevent. Pass the branch or PR
-explicitly when one applies; otherwise skip Review D and say so in its status line.
+The third row is the one that bites. On a clean tree, invoked without a target, the
+built-in would review an empty diff, return no findings, and Step 6 would print it beside
+A, B and C as a peer bug hunt of the same diff — the same false-clean shape the empty-base
+guard and the Step 1.5 checkout guard exist to prevent. Passing the branch name gives it
+the committed range.
+
+**The built-in is the skill named exactly `code-review`, unprefixed.** This command is
+`bymax-quality:code-review`; if no unprefixed `code-review` skill is listed in the session,
+skip Review D with `Status: no built-in review` — never invoke a prefixed name, which would
+be this command calling itself.
 
 It forks to a background agent and returns only the agent's name; the findings arrive
 later as a task notification, so do not wait on it here, and never invent its results.
@@ -482,7 +486,7 @@ reader, not for you to summarise.
 | `unauthenticated` | logged out or session expired | idem |
 | `unsupported-target` | the scope has no Codex equivalent | idem |
 | `timeout` | exceeded the budget | report the status **and the line after it verbatim** — when the cancel failed it names the one command that still reaches a billing run |
-| `failed` | non-zero exit, no readable output, a parse-failure page, or a review with no verdict | report the status and the line after it verbatim |
+| `failed` | non-zero exit, no readable output, or — in adversarial mode — a parse-failure page or a review with no `Target:`/`Verdict:` lines; a standard review is accepted as whatever `codex exec review` returned | report the status and the line after it verbatim |
 | `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing, **or the installed version is not one the script has verified** — the second line says which | report the status and its line |
 
 `ok-unpinned` is followed by a `CODEX_SCOPE:` line naming the cause. For Review C it
@@ -490,9 +494,12 @@ usually means the change was too large for the runtime to inline in the prompt (
 than two files or 256 KiB — which is most real reviews), so the reviewer collected its
 own scope with git commands, minutes after launch, against a tree that may have moved;
 on a branch target it can also mean uncommitted work was outside the reviewed range.
-Review B reports it on a branch target when untracked files exist: `codex exec review
---base` diffs against the working tree, so tracked edits are in, but untracked files are
-not. **Print the status and reproduce
+Review B reports it on a branch target when the tree is dirty: `codex exec review --base`
+diffs the merge-base against the working tree, so tracked edits are reviewed beyond the
+committed range and untracked files are not reviewed at all. (`--uncommitted` reviews
+staged, unstaged and untracked changes — exactly Step 1's scope — so Review B on a dirty
+tree is always pinned.) An unverified runtime version also makes Review C unpinned: its
+inline limits are unknown, so whether the diff was inlined cannot be predicted. **Print the status and reproduce
 the scope line verbatim in Review C's section.** Its findings are still about this
 change and still get a disposition; what changes is the cross-read: an `ok-unpinned`
 Review C that found nothing is not evidence the diff is clean, and must not be written
@@ -509,8 +516,10 @@ the budget, because stopping the run (a bounded cancel, then TERM and KILL) happ
 the deadline, not before it — once, for both shells together, never one after the other.
 Then treat whatever is still running as `timeout`. In `quick`, wait at most 60 s: it is the
 pre-push sanity check and must not stall on a background reviewer. Report an unfinished
-shell as `Status: still running — output at <path>` so the user can read it when it
-lands; never as absent, and never as clean.
+shell as `Status: still running — output at <path>` — never as absent, and never as clean
+— **and when its task notification arrives later in the session, read the file and append
+a "Late arrivals" section to the report** with the same disposition rule as Step 6. A
+billed review whose findings nobody reads is worse than no review.
 
 ### Review D — the agent
 

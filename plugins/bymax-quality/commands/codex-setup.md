@@ -118,9 +118,9 @@ The first line is the contract:
 | `CODEX_STATUS: ok-unpinned` | working, but not over exactly the requested scope — the `CODEX_SCOPE:` line on the next line says why (either mode; the script header lists every cause). The report treats its findings as real and its silence as nothing |
 | `CODEX_STATUS: absent` | the binary is still not on this shell's PATH → back to Step 1 |
 | `CODEX_STATUS: unauthenticated` | login did not persist → back to Step 2 |
-| `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or returned a review with no verdict — see troubleshooting |
+| `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or (adversarial mode) returned a parse-failure page or a review without `Target:`/`Verdict:` — see troubleshooting |
 | `CODEX_STATUS: timeout` | exceeded the budget; retry with a larger `--budget` |
-| `CODEX_STATUS: unsupported-target` | the requested scope has no Codex equivalent (a file path, a ref range not ending at HEAD, or `--target commit` in adversarial mode) |
+| `CODEX_STATUS: unsupported-target` | the requested scope has no Codex equivalent, or nothing to review: a file path, a ref range not ending at HEAD, `--target commit` in adversarial mode, a clean tree for `--target uncommitted`, an empty `<ref>...HEAD` on a clean tree (the verification example below hits this on the default branch itself — run it from a feature branch), or a base with no shared history |
 | `CODEX_STATUS: adversarial-absent` | adversarial mode only: the openai-codex plugin or node is missing, **or the installed plugin version is not one the script has verified** — the second line says which; this command fixes neither, see below |
 | `CODEX_STATUS: bad-invocation` | the command line was wrong (a flag without its value, an unknown flag or `--mode`) — not a Codex problem |
 
