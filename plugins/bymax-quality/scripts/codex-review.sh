@@ -128,6 +128,7 @@ status_only() { status_emitted=1; emit "CODEX_STATUS: $1"; [ "${2:-}" = "" ] || 
 workdir=""
 cancel_failed=0
 companion=""
+companion_error=""
 review_session=""
 review_rc=1
 cancel_remedy() {
@@ -243,7 +244,8 @@ fi
 # `codex exec review` exits 0 and returns "Commit X does not exist" as its final
 # message — which would otherwise be reported as a successful review.
 if [ -n "${REF}" ] && ! git rev-parse --verify -q "${REF}" >/dev/null 2>&1; then
-  status_only "unsupported-target" "ref '${REF}' does not resolve in this repository"
+  hint=""; git rev-parse --verify -q "origin/${REF}" >/dev/null 2>&1 && hint=" — origin/${REF} exists; a bare name needs a local branch"
+  status_only "unsupported-target" "ref '${REF}' does not resolve in this repository${hint}"
 fi
 # Resolving is not enough for a base: an orphan branch has no merge base with
 # HEAD. The adversarial runtime fails cleanly on that; `codex exec review
@@ -253,6 +255,12 @@ fi
 # history" and refused every valid base — the positive case must be tested too.)
 if [ "${TARGET}" = "base" ] && ! git merge-base "${REF}" HEAD >/dev/null 2>&1; then
   status_only "unsupported-target" "ref '${REF}' shares no history with HEAD — no diff to review"
+fi
+# An empty range is as empty as a clean tree: a branch in sync with its base
+# would bill both reviewers over nothing and be counted as a clean second opinion.
+if [ "${TARGET}" = "base" ] && git diff --quiet "${REF}...HEAD" 2>/dev/null && git diff --quiet HEAD 2>/dev/null \
+  && [ -z "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then
+  status_only "unsupported-target" "'${REF}...HEAD' is empty and the tree is clean — nothing to review"
 fi
 # A clean tree is not a review either: both backends will bill a full turn over
 # "(none)" sections and return a verdict on nothing.
@@ -299,16 +307,16 @@ find_companion() {
   # An explicit override is the user's own decision, made in their environment,
   # and is honoured as such. It is the one path that bypasses the identity check.
   if [ -n "${BYMAX_CODEX_COMPANION:-}" ]; then
-    [ -f "${BYMAX_CODEX_COMPANION}" ] || return 1
+    [ -f "${BYMAX_CODEX_COMPANION}" ] || { companion_error="BYMAX_CODEX_COMPANION points at a file that does not exist: ${BYMAX_CODEX_COMPANION}"; return 1; }
     # No version to report for an override: it is trusted as-is.
     printf '%s\t%s' "override" "${BYMAX_CODEX_COMPANION}"
     return 0
   fi
 
-  command -v claude >/dev/null 2>&1 || return 1
+  command -v claude >/dev/null 2>&1 || { companion_error="the claude CLI is not on PATH, so the installed-plugin list cannot be read"; return 1; }
   local listing install_path
-  listing="$(claude plugin list --json 2>/dev/null)" || return 1
-  [ -n "${listing}" ] || return 1
+  listing="$(claude plugin list --json 2>/dev/null)" || { companion_error="'claude plugin list --json' failed"; return 1; }
+  [ -n "${listing}" ] || { companion_error="'claude plugin list --json' returned nothing"; return 1; }
 
   # Exact id AND enabled. A disabled plugin is one the user turned off; running
   # its code anyway would override that choice. Version and path come out as
@@ -332,13 +340,13 @@ for plugin in plugins if isinstance(plugins, list) else []:
         break
 ' "${COMPANION_PLUGIN_ID}" 2>/dev/null)"
   else
-    return 1
+    companion_error="neither jq nor python3 is available to read the plugin list"; return 1
   fi
 
-  [ -n "${record}" ] || return 1
+  [ -n "${record}" ] || { companion_error="openai-codex plugin not found among installed, enabled plugins — install it to enable the adversarial review"; return 1; }
   install_path="${record#*	}"
-  [ -n "${install_path}" ] || return 1
-  [ -f "${install_path}/scripts/codex-companion.mjs" ] || return 1
+  [ -n "${install_path}" ] || { companion_error="the openai-codex plugin record carries no installPath"; return 1; }
+  [ -f "${install_path}/scripts/codex-companion.mjs" ] || { companion_error="${install_path}/scripts/codex-companion.mjs does not exist — reinstall the openai-codex plugin"; return 1; }
   # Printed as "<version><TAB><path>": this runs in a command substitution, so
   # a variable set here would not survive — the caller splits the one line.
   printf '%s\t%s' "${record%%	*}" "${install_path}/scripts/codex-companion.mjs"
@@ -360,13 +368,20 @@ command -v codex >/dev/null 2>&1 || status_only "absent"
 # `codex login status` is a local read of the credential store: exit 0 when a
 # session is active, exit 1 ("Not logged in") otherwise. Measured at ~13 ms.
 # This is what makes an expired session cost nothing to detect.
-codex login status >/dev/null 2>&1 || status_only "unauthenticated"
+# `codex exec` also honours CODEX_API_KEY (sent as a bearer token), which the
+# on-disk credential store knows nothing about — a headless machine exporting it
+# would otherwise be sent to an interactive `codex login` it does not need.
+[ -n "${CODEX_API_KEY:-}" ] || codex login status >/dev/null 2>&1 || status_only "unauthenticated"
 
 if [ "${MODE}" = "adversarial" ]; then
   command -v node >/dev/null 2>&1 \
     || status_only "adversarial-absent" "node is required by the openai-codex plugin runtime"
-  companion_record="$(find_companion)" \
-    || status_only "adversarial-absent" "openai-codex plugin not found — install it to enable the adversarial review"
+  # find_companion runs in a command substitution, so its error text travels
+  # through a file rather than a variable.
+  companion_error_file="$(mktemp 2>/dev/null)" || status_only "failed" "cannot create a temp file"
+  companion_record="$(find_companion 2>/dev/null; printf '%s' "${companion_error}" >"${companion_error_file}")"
+  companion_error="$(cat "${companion_error_file}" 2>/dev/null)"; rm -f "${companion_error_file}"
+  [ -n "${companion_record}" ] || status_only "adversarial-absent" "${companion_error:-openai-codex plugin not found — install it to enable the adversarial review}"
   companion_version="${companion_record%%	*}"
   companion="${companion_record#*	}"
   version_verified=0
@@ -410,7 +425,7 @@ diff_flags=(--binary --no-ext-diff --submodule=diff)
 # measurement would run that payload with the user's permissions — before any
 # Codex gate, so without Codex even installed.
 list_changed_uncommitted() {
-  git diff --cached --name-only && git diff --name-only && git ls-files --others --exclude-standard
+  git diff --cached --name-only && git diff --name-only && list_untracked
 }
 diff_uncommitted() { git diff --cached "${diff_flags[@]}" && git diff "${diff_flags[@]}"; }
 list_changed_base()  { git diff --name-only "$1...HEAD"; }
@@ -426,13 +441,13 @@ exceeds_inline_limits() {
   # stderr is discarded and `grep -c` of nothing is 0, which would otherwise
   # read as "small change, inlined".
   if ! files="$("${list_fn}" "${REF}" 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
-    scope_reason="the scope could not be measured (git failed)"; return 0
+    scope_reason="${SCOPE_UNMEASURED}"; return 0
   fi
   if [ "${files}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
     scope_reason="${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"; return 0
   fi
   if ! bytes="$("${diff_fn}" "${REF}" 2>/dev/null | wc -c; exit "${PIPESTATUS[0]}")"; then
-    scope_reason="the scope could not be measured (git failed)"; return 0
+    scope_reason="${SCOPE_UNMEASURED}"; return 0
   fi
   bytes="${bytes//[[:space:]]/}"
   if [ "${bytes}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
@@ -443,15 +458,18 @@ exceeds_inline_limits() {
 
 # Prints the count; exits non-zero when git itself failed (grep's "no match"
 # status is discarded on purpose — zero untracked files is a valid answer).
-count_untracked() { git ls-files --others --exclude-standard 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
+SCOPE_UNMEASURED="the scope could not be measured (git failed)"
+list_untracked()  { git ls-files --others --exclude-standard; }
+count_untracked() { list_untracked 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
+count_tracked_dirty() { git diff --name-only HEAD 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
 
 case "${MODE}:${TARGET}" in
   adversarial:uncommitted)
     exceeds_inline_limits uncommitted && scope_unpinned=1 ;;
   adversarial:base)
-    if ! dirty="$( { git diff --name-only HEAD && git ls-files --others --exclude-standard; } 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
+    if ! dirty="$( { git diff --name-only HEAD && list_untracked; } 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
       scope_unpinned=1
-      scope_reason="the scope could not be measured (git failed)"
+      scope_reason="${SCOPE_UNMEASURED}"
     elif [ "${dirty:-0}" -gt 0 ]; then
       scope_unpinned=1
       scope_reason="${dirty} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
@@ -459,12 +477,29 @@ case "${MODE}:${TARGET}" in
       scope_unpinned=1
     fi ;;
   standard:base)
-    if ! untracked="$(count_untracked)"; then
+    # `codex exec review --base` diffs the merge-base against the WORKING TREE:
+    # tracked uncommitted hunks are reviewed although the requested scope is the
+    # committed range, and untracked files are not reviewed at all.
+    if ! untracked="$(count_untracked)" || ! tracked_dirty="$(count_tracked_dirty)"; then
+      scope_unpinned=1; scope_reason="${SCOPE_UNMEASURED}"
+    elif [ "${tracked_dirty:-0}" -gt 0 ]; then
       scope_unpinned=1
-      scope_reason="the scope could not be measured (git failed)"
+      scope_reason="${tracked_dirty} tracked uncommitted files are included beyond '${REF}...HEAD' by \`codex exec review --base\`"
     elif [ "${untracked:-0}" -gt 0 ]; then
       scope_unpinned=1
       scope_reason="${untracked} untracked files are outside the diff \`codex exec review --base\` builds"
+    fi ;;
+  standard:uncommitted)
+    # `codex exec review --uncommitted` diffs tracked changes only. A tree whose
+    # only change is untracked files has an empty diff — a billed verdict on
+    # nothing — and a mixed tree is reviewed short of its new files.
+    if ! untracked="$(count_untracked)" || ! tracked_dirty="$(count_tracked_dirty)"; then
+      scope_unpinned=1; scope_reason="${SCOPE_UNMEASURED}"
+    elif [ "${tracked_dirty:-0}" -eq 0 ]; then
+      status_only "unsupported-target" "only untracked files changed, and \`codex exec review --uncommitted\` reviews tracked changes only — stage them (git add -N) or use the adversarial mode"
+    elif [ "${untracked:-0}" -gt 0 ]; then
+      scope_unpinned=1
+      scope_reason="${untracked} untracked files are outside the diff \`codex exec review --uncommitted\` builds"
     fi ;;
 esac
 
@@ -578,16 +613,19 @@ stop_review() {
 # Adversarial mode: the runtime is invoked WITHOUT its `--background` flag. That
 # flag is inert there anyway — `adversarial-review` always runs in the
 # foreground and the openai-codex command backgrounds it from the Claude side.
+# `</dev/null` on both: under `set -m` a background job keeps the script's
+# stdin, and `codex exec` reads piped stdin into its prompt — an open pipe or a
+# TTY would stall the run (SIGTTIN) until the budget expired.
 set -m
 if [ "${MODE}" = "standard" ]; then
   codex exec review "${codex_args[@]}" --ephemeral \
     -c sandbox_mode="read-only" -c approval_policy="never" \
     --output-last-message "${raw}" \
-    >/dev/null 2>"${err}" &
+    </dev/null >/dev/null 2>"${err}" &
 else
   CODEX_COMPANION_SESSION_ID="${review_session}" \
     node "${companion}" adversarial-review "${codex_args[@]}" \
-    >"${raw}" 2>"${err}" &
+    </dev/null >"${raw}" 2>"${err}" &
 fi
 codex_pid=$!
 set +m

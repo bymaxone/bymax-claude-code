@@ -172,7 +172,7 @@ Map the scope resolved in Step 1 onto the one flag Codex understands:
 | uncommitted work (dirty tree) | `--target uncommitted` |
 | branch vs upstream (clean tree) | `--target base --ref "$BASE"` |
 | branch target **that is the current HEAD** | `--target base --ref "$DEFAULT_REF"` |
-| PR target, **after `gh pr checkout` made it HEAD** | `--target base --ref <pr base branch>` |
+| PR target, **after `gh pr checkout` made it HEAD** | `--target base --ref origin/<pr base branch>` — the `origin/` prefix, because the base may exist only as a remote-tracking ref (worktrees, `--single-branch` clones) |
 | a single commit | `--target commit --ref <sha>` — Review B only; Review C reports `unsupported-target`, the runtime has no per-commit scope |
 | a branch target that is **not** checked out | **skip Codex** (see below) |
 | a file path, or a ref range not ending at HEAD | **no equivalent — skip Codex** |
@@ -504,8 +504,10 @@ so `adversarial-absent` next to a healthy `ok` is the expected shape on a machin
 without the plugin — not a symptom.
 
 If a shell has not finished: in `full` and `deep`, wait until the **later** of the two
-budgets has elapsed — once, for both shells together, never one after the other — then
-treat whatever is still running as `timeout`. In `quick`, wait at most 60 s: it is the
+budgets has elapsed **plus 20 s** — the script's own `timeout` line lands up to ~19 s after
+the budget, because stopping the run (a bounded cancel, then TERM and KILL) happens after
+the deadline, not before it — once, for both shells together, never one after the other.
+Then treat whatever is still running as `timeout`. In `quick`, wait at most 60 s: it is the
 pre-push sanity check and must not stall on a background reviewer. Report an unfinished
 shell as `Status: still running — output at <path>` so the user can read it when it
 lands; never as absent, and never as clean.

@@ -107,7 +107,7 @@ on nothing. From a feature branch:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
-  --mode adversarial --target base --ref "$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's@^origin/@@')" --budget 300
+  --mode adversarial --target base --ref "$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)" --budget 300
 ```
 
 The first line is the contract:
@@ -157,7 +157,8 @@ So: this command cannot fix `adversarial-absent`, and its second line says what 
 
 | Second line says | Remedy |
 | --- | --- |
-| plugin not found | install the openai-codex plugin |
+| plugin not found among installed, enabled plugins | install (or enable) the openai-codex plugin |
+| the claude CLI is not on PATH / `claude plugin list` failed / neither jq nor python3 | the plugin list could not be read — fix that tool, not the plugin |
 | version `X` is not a verified version | the script's contract with that runtime is undocumented and was read in the listed versions only. Either wait for the plugin to be re-verified, or run it anyway with `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` — the user's explicit decision |
 | a project-local or pinned install | point `BYMAX_CODEX_COMPANION` at its `codex-companion.mjs` |
 
@@ -171,7 +172,7 @@ If the user only wants the standard second opinion, they need nothing beyond thi
 | `unauthenticated` right after `codex login` | the browser flow never completed, or a different `CODEX_HOME` is in play | re-run `codex login`; check `codex doctor` → `CODEX_HOME` |
 | `failed` on every run | rate limit, expired plan, or network egress blocked | run `codex exec review --uncommitted` directly and read its stderr |
 | `failed` only in one repository | not a git repo, or the scope is empty | confirm with `git rev-parse --show-toplevel` and `git status` |
-| `timeout` on a large change | budget too small | the review command uses 180 s in `quick` and `full`, 600 s in `deep`; the script accepts 30–3600 and clamps anything outside, saying so on the timeout line |
+| `timeout` on a large change | budget too small | the review command uses 180 s in `quick` and `full`, 600 s in `deep`; the script accepts 30–3600: a 1–4-digit value outside that is clamped to the nearest bound, anything else (five digits, non-numeric) falls back to 300 — either way the timeout line says which |
 | two `codex` binaries on PATH | installed via both brew and npm | remove one; `codex doctor` names the active install |
 
 ## When you are done

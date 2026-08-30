@@ -191,6 +191,23 @@ Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1
   final message through `--output-last-message`, which replaces two hand-written JSONL
   extractors. Every number the script reasons about is now a named constant.
 
+- **A fourth round, all scope and plumbing.** An empty `<base>...HEAD` range on a clean tree
+  billed both reviewers over nothing and was counted as a clean second opinion; refused now, like
+  the clean tree. `codex exec review --uncommitted` diffs tracked changes only, so a tree whose
+  only change was untracked files got a verdict on an empty diff — refused — and a mixed tree is
+  now `ok-unpinned` with the untracked count. `codex exec review --base` diffs the merge-base
+  against the working tree, so tracked uncommitted hunks were reviewed as if they were part of the
+  committed range — `ok-unpinned` now, with the count. Both launch lines read `</dev/null`: under
+  `set -m` a background job keeps the script's stdin, which `codex exec` folds into its prompt, and
+  an open pipe or a TTY would have stalled the run until the budget expired. `CODEX_API_KEY` now
+  satisfies the auth gate, which only ever read the on-disk credential store. Every way the plugin
+  lookup can fail says which prerequisite failed instead of "install the plugin". A bare `--ref`
+  that exists only as `origin/<name>` says so. The agent model check is an allowlist (`sonnet`,
+  `opus`) rather than a `haiku` denylist that `inherit` and a typo walked past. And the harvest
+  rule allows for the ~19 s the script needs to stop a run after its budget — the `timeout` line
+  lands after the deadline, not on it. Measured while fixing: two of these were proven with real
+  Codex runs because the test harness did not stub the binary; it does now.
+
 - **A third round of the built-in review, on the tree after the second.** A second `TERM` during
   cleanup ran `exit 0` inside the `EXIT` handler, which bash never re-enters — no status, no kill;
   the handler now ignores further signals. A review finishing in the instant between the liveness

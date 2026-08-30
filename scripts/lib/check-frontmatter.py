@@ -38,10 +38,11 @@ REQUIRED_FIELDS = {
     "agent": ("name", "description", "tools", "model"),
 }
 
-# CONTRIBUTING.md requires every agent to run on at least `sonnet`; a `haiku`
-# agent is a review that quietly reasons less than the checklist assumes. Matched
-# as a substring: the field accepts full model ids like `claude-haiku-4-5-…`.
-AGENT_FORBIDDEN_MODELS = ("haiku",)
+# CONTRIBUTING.md requires every agent to run on at least `sonnet`. An allowlist,
+# not a `haiku` denylist: `inherit` takes whatever the parent session runs on, a
+# typo like `sonet` names nothing, and a future cheaper tier will not be called
+# haiku. The field accepts full ids (`claude-sonnet-5`), so match as a substring.
+AGENT_ALLOWED_MODEL_MARKERS = ("sonnet", "opus")
 
 # Optional everywhere, but must be a string when present: a bare `[a|b]` parses as
 # a sequence, which is the bug that prompted this gate.
@@ -123,10 +124,11 @@ def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
                 " — wrap it in quotes"
             )
 
-    # `model` is required above; this rejects the one value CONTRIBUTING.md forbids.
-    if kind == "agent" and any(m in str(data.get("model", "")).lower() for m in AGENT_FORBIDDEN_MODELS):
+    # `model` is required above; it must also name a tier CONTRIBUTING.md allows.
+    if kind == "agent" and isinstance(data.get("model"), str) \
+            and not any(m in data["model"].lower() for m in AGENT_ALLOWED_MODEL_MARKERS):
         problems.append(
-            f"{relative}: agent model '{data['model']}' is below the minimum (sonnet) CONTRIBUTING.md requires"
+            f"{relative}: agent model '{data['model']}' is not sonnet or opus, the minimum CONTRIBUTING.md requires"
         )
 
     # A skill is addressed by its `name`, and Claude Code resolves it from the
