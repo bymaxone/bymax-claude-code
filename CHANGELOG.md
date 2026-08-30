@@ -191,6 +191,24 @@ Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1
   final message through `--output-last-message`, which replaces two hand-written JSONL
   extractors. Every number the script reasons about is now a named constant.
 
+- **Review C is now opt-in behind `--adversarial`, because the reason it was automatic was false.**
+  The script's header justified driving the openai-codex runtime past that plugin's
+  `disable-model-invocation: true` gate on the grounds that the billed run only starts when a user
+  invokes this command — "a user-only command in this toolkit". It is not one: no Bymax command
+  sets that flag, and fifteen files invoke this one from a model, `/bymax-workflow:task` and
+  `/bymax-workflow:autopilot` among them. A model in an agentic loop could therefore start two
+  billed Codex turns unasked, one of them through the very runtime upstream gated to stop that.
+  The premise was written five times across five rounds and never checked; the seventh review
+  checked it. Consent now lives on a flag a person has to type; Review B keeps running in every
+  mode, and the workflow chains keep the reviewers that need no such gate.
+
+  Also from that round: `codex exec review --base` builds a merge-base-vs-working-tree diff in
+  which untracked files never appear, so untracked-only changes could not rescue an empty range
+  from billing a verdict on nothing; `BYMAX_CODEX_COMPANION` marked itself version-verified and so
+  skipped the unpinned-scope guard whose own comment names the override; the skills glob was still
+  one level deep after commands and agents were fixed; and `codex-setup` still quoted 180 s for
+  `quick` after it became 120.
+
 - **A sixth round: ten findings, every one verified against the code before it was fixed.**
   `stop_review` was re-entrant — the budget path calls it with `TERM`/`INT` still armed, so a
   signal mid-cancel fired the exit trap, re-entered with `run_active` still 1, issued a second

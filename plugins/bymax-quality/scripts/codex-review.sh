@@ -20,22 +20,23 @@
 # runs fine when invoked by absolute path. Reusing it means the adversarial
 # prompt keeps tracking upstream instead of drifting in a copy here.
 #
-# On whether that is a bypass of upstream's boundary — it was raised in review
-# and is answered here rather than left to be re-argued each time:
-#   - `disable-model-invocation` gates the slash-command WRAPPER: the piece
-#     that asks the user "wait or background?" and echoes output verbatim. The
-#     runtime carries no such flag, and upstream's own `codex-rescue` subagent
-#     invokes that same runtime (`task`) from an agent.
-#   - The consent the flag protects is "a model must not start a billed Codex
-#     run on its own". Here the billed run is started because the USER invoked
-#     `/bymax-quality:code-review` — a user-only command in this toolkit — and
-#     opted into this integration by installing the plugin. Review B starts an
-#     equally billed `codex exec review` on the same authority.
-#   - What the flag cannot express is "this runtime is internal": that is
-#     addressed by the version pin below, not by pretending the wrapper was
-#     the boundary.
-# If upstream ever publishes a supported invocation surface for the
-# adversarial review, prefer it and delete this mode's direct call.
+# On whether that is a bypass of upstream's boundary — answered here rather than
+# left to be re-argued each round:
+#   - `disable-model-invocation` gates the slash-command WRAPPER. The runtime
+#     carries no such flag, and upstream's own `codex-rescue` subagent invokes
+#     that same runtime (`task`) from an agent.
+#   - What the flag protects is consent: a model must not start a billed Codex
+#     run on its own. An earlier version of this comment claimed the calling
+#     command supplied that consent because it is "user-only in this toolkit".
+#     That was false and had never been checked — no Bymax command sets
+#     `disable-model-invocation`, and fifteen files invoke the review command
+#     from a model. The consent now lives where it can be enforced: the caller
+#     passes `--mode adversarial` only when the user asked for it with the
+#     `--adversarial` flag, which is off by default.
+#   - What the flag cannot express is "this runtime is internal": that is the
+#     version allowlist below, not the wrapper.
+# If upstream publishes a supported invocation surface for the adversarial
+# review, prefer it and delete this mode's direct call.
 #
 # The two modes are meant to be launched as two concurrent background shells by
 # the caller, so they cost wall-clock only once.
@@ -268,9 +269,11 @@ if [ "${TARGET}" = "base" ] && git diff --quiet "${REF}...HEAD" 2>/dev/null; the
   if [ "${MODE}" = "adversarial" ]; then
     status_only "unsupported-target" "'${REF}...HEAD' is empty, and the adversarial runtime reviews only that range — nothing to review"
   fi
-  if git diff --quiet HEAD 2>/dev/null \
-    && [ -z "$(git ls-files --others --exclude-standard -- "$(git rev-parse --show-toplevel)" 2>/dev/null)" ]; then
-    status_only "unsupported-target" "'${REF}...HEAD' is empty and the tree is clean — nothing to review"
+  # Only TRACKED edits rescue an empty range for the standard reviewer: the
+  # merge-base-vs-working-tree diff `--base` builds does not contain untracked
+  # files, so a tree whose only change is a new file leaves it with nothing.
+  if git diff --quiet HEAD 2>/dev/null; then
+    status_only "unsupported-target" "'${REF}...HEAD' is empty and no tracked file is modified — nothing for \`--base\` to review"
   fi
 fi
 # A clean tree is not a review either: both backends will bill a full turn over
@@ -395,10 +398,16 @@ if [ "${MODE}" = "adversarial" ]; then
   [ -n "${companion_record}" ] || status_only "adversarial-absent" "${companion_error:-openai-codex plugin not found — install it to enable the adversarial review}"
   companion_version="${companion_record%%	*}"
   companion="${companion_record#*	}"
+  # Two different questions. `version_verified` — may this runtime run at all?
+  # An explicit override says yes, because the user chose it. `limits_known` —
+  # do 1.0.6's inline-diff constants describe it? Only a version on the list
+  # answers that, and an override never does: the user pointed at a file, not at
+  # a version whose lib/git.mjs anyone read.
   version_verified=0
+  limits_known=0
   [ "${companion_version}" = "override" ] && version_verified=1
   for verified in ${COMPANION_VERIFIED_VERSIONS}; do
-    [ "${companion_version}" = "${verified}" ] && version_verified=1
+    [ "${companion_version}" = "${verified}" ] && { version_verified=1; limits_known=1; }
   done
   if [ "${version_verified}" -eq 0 ] && [ "${BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED:-0}" != "1" ]; then
     status_only "adversarial-absent" \
@@ -500,11 +509,12 @@ count_tracked_dirty() { git diff --name-only HEAD 2>/dev/null | grep -c .; exit 
 # The inline limits are 1.0.6's numbers. A runtime admitted by the override or
 # by ALLOW_UNVERIFIED may use different ones, so its scope cannot be predicted:
 # report it unpinned rather than `ok` on a guess.
-# `version_verified` was computed once at the availability gate; a second copy of
-# that loop here is one more thing to forget to update.
-if [ "${MODE}" = "adversarial" ] && [ "${version_verified:-0}" -eq 0 ]; then
+# `limits_known` was computed once at the availability gate, alongside — and
+# deliberately apart from — `version_verified`: an override may run but brings no
+# version whose constants anyone checked.
+if [ "${MODE}" = "adversarial" ] && [ "${limits_known:-0}" -eq 0 ]; then
   scope_unpinned=1
-  scope_reason="runtime version '${companion_version}' is not one whose inline limits were verified, so whether the diff was inlined is unknown"
+  scope_reason="runtime '${companion_version}' is not one whose inline limits were read, so whether the diff was inlined is unknown"
 fi
 
 case "${MODE}:${TARGET}" in

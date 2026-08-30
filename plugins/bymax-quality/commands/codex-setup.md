@@ -176,7 +176,7 @@ If the user only wants the standard second opinion, they need nothing beyond thi
 | `unauthenticated` right after `codex login` | the browser flow never completed, or a different `CODEX_HOME` is in play | re-run `codex login`; check `codex doctor` → `CODEX_HOME` |
 | `failed` on every run | rate limit, expired plan, or network egress blocked | run `codex exec review --uncommitted` directly and read its stderr |
 | `failed` only in one repository | not a git repo, or the scope is empty | confirm with `git rev-parse --show-toplevel` and `git status` |
-| `timeout` on a large change | budget too small | the review command uses 180 s in `quick` and `full`, 600 s in `deep`; the script accepts 30–3600: a 1–4-digit value outside that is clamped to the nearest bound, anything else (five digits, non-numeric) falls back to 300 — either way the timeout line says which |
+| `timeout` on a large change | budget too small | the review command uses 120 s in `quick`, 180 s in `full`, 600 s in `deep`; the script accepts 30–3600: a 1–4-digit value outside that is clamped to the nearest bound, anything else (five digits, non-numeric) falls back to 300 — either way the timeout line says which |
 | two `codex` binaries on PATH | installed via both brew and npm | remove one; `codex doctor` names the active install |
 
 ## When you are done

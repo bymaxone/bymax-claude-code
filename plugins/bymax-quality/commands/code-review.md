@@ -1,6 +1,6 @@
 ---
 description: 'Comprehensive security and quality review with selectable depth: mechanical gate (deterministic greps for secrets/suppressions/Tailwind/console), bug hunt (single-pass or parallel finder agents with adversarial verification), and the Bymax convention checklist across CRITICAL (secrets, SQL injection, XSS, suppression comments like @ts-ignore/eslint-disable or Rust #[allow]/unsafe), HIGH (long functions, missing JSDoc on exports, cross-feature imports, swallowed errors, reinvented wheels per the standards §0 simplicity ladder), MEDIUM (mutation patterns, magic numbers, enum usage, non-English comments, copy-pasted logic, speculative generality), and LOW (nits). Every candidate finding is re-verified against the file before it is reported. In every mode, quick included, two independent Codex reviews run in parallel background shells — a standard one (is this correct?) and an adversarial one (is this the right approach?) — and full and deep additionally run Claude''s own built-in review (high in full, max in deep); the report carries every review side by side with a cross-read. All of it is optional: absent, logged-out or slow Codex degrades to a one-line status and changes nothing, and the adversarial review additionally needs the openai-codex plugin. Blocks the commit on any CRITICAL or HIGH from the Bymax review. Modes: quick | full (default) | deep. Optional target (branch, ref range, PR#, file), --fix, --no-codex and --no-builtin. Run before /bymax-workflow:verify and before any commit. Triggers: "code review", "review changes", "check this code", "is this safe to commit", "revisar código".'
-argument-hint: "[quick|full|deep] [target] [--fix] [--no-codex] [--no-builtin]"
+argument-hint: "[quick|full|deep] [target] [--fix] [--adversarial] [--no-codex] [--no-builtin]"
 ---
 
 # Code Review
@@ -9,9 +9,10 @@ Comprehensive security and quality review, structured as a pipeline: a determini
 mechanical gate, a bug hunt at the requested depth, the Bymax convention checklist,
 and a verification pass that filters false positives before anything is reported.
 
-In **every** mode, **two independent Codex reviews run in parallel** background shells —
-a standard one (is this correct?) and an adversarial one (is this the right approach?) —
-and in `full` and `deep` Claude's own built-in review runs alongside them as Review D.
+In **every** mode an **independent Codex review** runs in a background shell (Review B: is
+this correct?); with `--adversarial` a second one joins it (Review C: is this the right
+approach?); and in `full` and `deep` Claude's own built-in review runs alongside them as
+Review D.
 Every review is reported side by side with a cross-read. The Codex pair is kept apart from
 this command's own judgment on purpose: both are launched before it forms any opinion, and
 neither output is read until its own findings are frozen. When a review is absent, logged
@@ -20,7 +21,7 @@ out, rate-limited or slow, the report says so in one line and nothing else chang
 ## Usage
 
 ```
-/bymax-quality:code-review [quick|full|deep] [target] [--fix] [--no-codex] [--no-builtin]
+/bymax-quality:code-review [quick|full|deep] [target] [--fix] [--adversarial] [--no-codex] [--no-builtin]
 ```
 
 | Argument | Meaning |
@@ -30,7 +31,8 @@ out, rate-limited or slow, the report says so in one line and nothing else chang
 | `deep` | `full`, but the bug hunt additionally fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified, and Review D runs at `max` instead of `high`. Use before merging a feature branch. |
 | `target` | Optional. A branch name (`feature-x` → reviews `<default-branch>...feature-x`), a ref range (`main...feature-x`), a PR number (`#123`, checked out locally so `$RANGE` works with `git diff` — see Step 1), or a file path. Without a target: uncommitted changes, plus the branch's commits ahead of upstream when the working tree is clean. |
 | `--fix` | After the report, apply the confirmed mechanical MEDIUM fixes (Tailwind renames, canonical tokens) and any finding the user approves. Never commits. |
-| `--no-codex` | Skip **both** Codex reviews (Steps 1.5). They run in **every** mode otherwise, `quick` included — they cost background wall-clock, not session time, and a second opinion is worth as much before a quick push as before a merge. |
+| `--adversarial` | Also run Review C, the adversarial Codex review. **Off unless asked for**, because it drives the openai-codex plugin's internal runtime — the one whose slash command upstream marked `disable-model-invocation: true` — and nothing in this toolkit stops a model from selecting this command on its own. A billed run behind an upstream user-only gate starts because a person typed this flag, or not at all. |
+| `--no-codex` | Skip Review B (Step 1.5), and Review C if it was asked for. They run in **every** mode otherwise, `quick` included — they cost background wall-clock, not session time, and a second opinion is worth as much before a quick push as before a merge. |
 | `--no-builtin` | Skip Review D (Step 1.6). Its cost is tokens, and a three-line diff does not need a multi-agent bug hunt; without this flag there is no way to decline the most expensive reviewer in the set. |
 
 > **Stack-adaptive.** Detect the stack first. On a **Rust** project (`Cargo.toml`), apply the
@@ -46,17 +48,20 @@ out, rate-limited or slow, the report says so in one line and nothing else chang
 > to run alongside them; only `quick` leaves the bug hunt to you. `ultra` is always the user's to
 > launch — it is billed, and a skill must not trigger it.
 
-> **Both Codex reviews are optional; only the standard one is self-contained.** Review B needs
-> only the `codex` binary on `PATH` with an active session — run **`/bymax-quality:codex-setup`**
-> to install and authenticate it. Review C needs the OpenAI Codex *plugin* on top of that, because
-> the adversarial stance lives in that plugin's prompt.
+> **Review B is self-contained; Review C is opt-in, and this is why.** Review B needs only the
+> `codex` binary on `PATH` with an active session — run **`/bymax-quality:codex-setup`** to install
+> and authenticate it. Review C needs the OpenAI Codex *plugin* on top of that, because the
+> adversarial stance lives in that plugin's prompt, and it runs only when `--adversarial` is passed.
 >
-> Note what is and is not being invoked there. That plugin's `/codex:review` and
-> `/codex:adversarial-review` are marked `disable-model-invocation: true` — user-only by design,
-> and a skill must not route around that by pretending to be the user. What Review C drives is the
-> plugin's `codex-companion.mjs` runtime directly, by absolute path: a plain Node script with no
-> such gate, which locates its own prompts relative to itself. Reusing it is what keeps the
-> adversarial prompt tracking upstream instead of drifting in a copy here.
+> That flag is a consent boundary, not a convenience. Upstream marks `/codex:review` and
+> `/codex:adversarial-review` `disable-model-invocation: true`: a model must not start those billed
+> runs on its own. Review C drives the plugin's `codex-companion.mjs` runtime directly, by absolute
+> path — a plain Node script carrying no such gate — which is what keeps the adversarial prompt
+> tracking upstream instead of drifting in a copy here. An earlier version of this file argued that
+> invoking *this* command supplied the missing consent, on the grounds that it is user-only. It is
+> not: no command in this toolkit sets `disable-model-invocation`, and fifteen files invoke this one
+> from a model, `/bymax-workflow:task` and `/bymax-workflow:autopilot` among them. The consent is
+> attached to the flag instead, where a person has to type it.
 >
 > Without either, this command behaves exactly as it did before.
 
@@ -187,16 +192,16 @@ Map the scope resolved in Step 1 onto the one flag Codex understands:
 > a review command must not mutate the working tree. Skip both Codex reviews and say so
 > in Review B and in Review C.
 
-Launch **both** Codex reviews with `run_in_background: true`, in the same message so
-they run concurrently, and note each shell id for Step 5.5. They ask different
-questions of the same diff, so neither substitutes for the other:
+Launch Review B with `run_in_background: true` — and Review C in the **same message** when
+`--adversarial` was passed, so the two run concurrently. Note each shell id for Step 5.5.
+They ask different questions of the same diff, so neither substitutes for the other:
 
 ```bash
 # Review B — standard: is this change correct?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
   --target <target> [--ref <ref>] --budget <120 in quick | 180 in full | 600 in deep>
 
-# Review C — adversarial: is this the right approach at all?
+# Review C — adversarial: is this the right approach at all?  (ONLY with --adversarial)
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" --mode adversarial \
   --target <target> [--ref <ref>] --budget <120 in quick | 180 in full | 600 in deep>
 ```
@@ -516,10 +521,11 @@ change and still get a disposition; what changes is the cross-read: an `ok-unpin
 Review C that found nothing is not evidence the diff is clean, and must not be written
 up as "B and C silent". It examined roughly this change, not demonstrably exactly it.
 
-The two shells are read independently. One of them degrading says nothing about the
-other: Review B needs only the `codex` binary, Review C needs the plugin on top of it,
-so `adversarial-absent` next to a healthy `ok` is the expected shape on a machine
-without the plugin — not a symptom.
+The shells are read independently. One degrading says nothing about the other: Review B
+needs only the `codex` binary, Review C needs the plugin on top of it, so
+`adversarial-absent` next to a healthy `ok` is the expected shape on a machine without the
+plugin — not a symptom. Without `--adversarial` there is no Review C shell at all; omit its
+section rather than reporting it as skipped.
 
 If a shell has not finished, wait until the **later** of the two budgets has elapsed
 **plus 20 s** — the script's own `timeout` line lands up to ~19 s after the budget, because

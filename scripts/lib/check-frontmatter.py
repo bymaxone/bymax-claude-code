@@ -62,7 +62,7 @@ def frontmatter_files() -> list[tuple[pathlib.Path, str]]:
     # "Checked N files" because the flat siblings kept the count non-zero.
     for path in REPO_ROOT.glob("plugins/*/commands/**/*.md"):
         found.append((path, "command"))
-    for path in REPO_ROOT.glob("plugins/*/skills/*/SKILL.md"):
+    for path in REPO_ROOT.glob("plugins/*/skills/**/SKILL.md"):
         found.append((path, "skill"))
     for path in REPO_ROOT.glob("plugins/*/agents/**/*.md"):
         found.append((path, "agent"))
