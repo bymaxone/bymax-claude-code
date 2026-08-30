@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Plugin versions: `bymax-quality` 1.6.0 → 1.6.1 · marketplace 1.9.0 → 1.9.1.
+
 ### Fixed
 
 - **A dirty tree downgraded an adversarial branch review that was correctly pinned.** With
@@ -20,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exact. The dirty-tree condition is gone and the inline-limit measurement always runs.
   `standard:base` keeps its own dirty-tree check, which is the opposite case — `codex exec review
   --base` diffs the merge base against the working tree, so tracked uncommitted edits really are
-  reviewed beyond the requested range. Reported by the Codex reviewer on #13 after it merged.
+  reviewed beyond the requested range.
 
 ### Added
 

@@ -26,13 +26,12 @@
 #     carries no such flag, and upstream's own `codex-rescue` subagent invokes
 #     that same runtime (`task`) from an agent.
 #   - What the flag protects is consent: a model must not start a billed Codex
-#     run on its own. An earlier version of this comment claimed the calling
-#     command supplied that consent because it is "user-only in this toolkit".
-#     That was false and had never been checked — no Bymax command sets
-#     `disable-model-invocation`, and fifteen files invoke the review command
-#     from a model. The consent now lives where it can be enforced: the caller
-#     passes `--mode adversarial` only when the user asked for it with the
-#     `--adversarial` flag, which is off by default.
+#     run on its own. Invoking the calling command does not supply that consent —
+#     no Bymax command sets `disable-model-invocation`, and fifteen files invoke
+#     the review command from a model. So the caller must pass `--mode
+#     adversarial` only when the user asked for it with the `--adversarial` flag,
+#     which is off by default. Anything that makes this mode reachable without
+#     that flag removes the only consent this integration has.
 #   - What the flag cannot express is "this runtime is internal": that is the
 #     version allowlist below, not the wrapper.
 # If upstream publishes a supported invocation surface for the adversarial
@@ -295,10 +294,10 @@ fi
 # process itself — so whatever this function returns runs with full access to
 # the repository and the user's credentials. That makes the selection a trust
 # decision, and the only trustworthy answer is "the plugin the user installed
-# and enabled", by its exact id. An earlier version globbed
-# `*/codex/*/scripts/codex-companion.mjs` and fell back to marketplace
-# checkouts: any marketplace shipping a plugin named `codex`, installed or not,
-# would have been executed merely by running a code review.
+# and enabled", by its exact id. Never widen this to a glob over the plugin
+# cache or a fallback to marketplace checkouts: any marketplace shipping a
+# plugin named `codex`, installed or not, would then be executed merely by
+# running a code review.
 #
 # `CLAUDE_PLUGIN_ROOT` cannot help here — it points at THIS plugin.
 COMPANION_PLUGIN_ID="codex@openai-codex"
@@ -530,19 +529,14 @@ case "${MODE}:${TARGET}" in
   adversarial:uncommitted)
     exceeds_inline_limits uncommitted && scope_unpinned=1 ;;
   adversarial:base)
-    # A dirty tree is NOT a scope mismatch here. `--target base` asks for the
-    # committed range, and the runtime reviewing exactly `mergeBase..HEAD` is
-    # that request honoured — uncommitted files were never in scope, so their
-    # absence is correct rather than a divergence. An earlier version downgraded
-    # on any dirty file, including one wholly unrelated to the range, and the
-    # `elif` meant it also skipped the measurement below: a small, fully inlined
-    # range came back `ok-unpinned`, and the cross-read then discarded a clean
-    # verdict that was in fact pinned.
+    # A dirty tree is not a scope mismatch here: `--target base` asks for the
+    # committed range, the runtime reviews exactly `mergeBase..HEAD`, and
+    # uncommitted files were never in scope. Only the inline limits can unpin
+    # this scope, so that measurement always runs.
     #
-    # (`standard:base` is the opposite case and keeps its dirty-tree check:
+    # `standard:base` is the opposite case and keeps its dirty-tree check:
     # `codex exec review --base` diffs the merge base against the WORKING TREE,
-    # so tracked uncommitted edits really are reviewed beyond the requested
-    # range there.)
+    # so tracked uncommitted edits are reviewed beyond the requested range.
     exceeds_inline_limits base && scope_unpinned=1 ;;
   standard:base)
     # `codex exec review --base` diffs the merge-base against the WORKING TREE:
@@ -558,10 +552,9 @@ case "${MODE}:${TARGET}" in
       set_scope_reason "${untracked} untracked files are outside the diff \`codex exec review --base\` builds"
     fi ;;
   # standard:uncommitted needs no case: `codex exec review --uncommitted`
-  # reviews "staged, unstaged, and untracked changes" (its own --help), which
-  # is exactly the scope Step 1 resolves. An earlier version refused a tree
-  # whose only change was untracked files, on the belief that the flag diffed
-  # tracked changes only — read the help, not the assumption.
+  # reviews "staged, unstaged, and untracked changes" (its own --help), which is
+  # exactly the scope Step 1 resolves. Untracked files are included, so a tree
+  # whose only change is a new file has a real diff and must not be refused.
 esac
 
 # --- Run under a budget -----------------------------------------------------
