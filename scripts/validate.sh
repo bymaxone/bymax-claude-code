@@ -173,7 +173,7 @@ REQUIRED_FILES=(
   ".gitignore"
   ".claude-plugin/marketplace.json"
   "templates/CLAUDE.md"
-  "templates/AGENTS.md"
+  "templates/AGENTS.starter.md"
   "templates/README.md"
   "personal/settings.template.json"
   "personal/mcp.template.json"
