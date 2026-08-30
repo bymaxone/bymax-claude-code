@@ -211,6 +211,13 @@ Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1
   one level deep after commands and agents were fixed; and `codex-setup` still quoted 180 s for
   `quick` after it became 120.
 
+- **The local shellcheck gate and CI's disagreed, and CI was right to fail.** A function whose only
+  caller is a `trap` cannot be followed by shellcheck, and the two versions name that differently:
+  0.11 (Homebrew, local) reports the function as never invoked — `SC2329`, which the exclusion
+  already carried — while 0.9 (`ubuntu-latest`, and so CI) reports every statement in its body as
+  unreachable, `SC2317`. A green local run therefore proved nothing about CI. Both codes are listed
+  now, with the reason, because neither version reproduces the other's.
+
 - **A final round, all diagnosability and honest labelling — no correctness defect left.** The
   harvest rule read as a sentence to serve rather than a deadline, so a model would idle to the
   budget even when both shells had returned in 45 s; it polls now. The `--adversarial` flag is

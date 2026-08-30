@@ -102,12 +102,18 @@ if command -v shellcheck >/dev/null 2>&1; then
   if [[ "${#shell_scripts[@]}" -gt 0 ]]; then
     # SC1091 — disabled because shellcheck cannot follow dynamic source paths in this repo.
     # SC2059 — disabled because we deliberately put color escapes in printf format strings.
-    # SC2329 — disabled because it reports a function as "never invoked" when its only
-    #          caller is a `trap` (cleanup handlers), which shellcheck cannot follow. Every
-    #          other indirect call in this repo was rewritten as a direct one so this
-    #          exclusion covers trap handlers alone; a genuinely dead function still has
-    #          to be caught in review.
-    if shellcheck -e SC1091,SC2059,SC2329 "${shell_scripts[@]}" 2>&1; then
+    # SC2329 / SC2317 — the same situation under two names, because shellcheck
+    #          renamed it: a function whose only caller is a `trap` cannot be
+    #          followed, so 0.11 reports the FUNCTION as "never invoked" (SC2329)
+    #          while 0.9 — the version on ubuntu-latest, and therefore in CI —
+    #          reports each statement in its BODY as unreachable (SC2317). Both
+    #          are listed because a contributor's local run and CI will not agree
+    #          otherwise: this exclusion was added for 0.11, CI failed on 0.9, and
+    #          neither version reproduces the other's code. Every other indirect
+    #          call in this repo was rewritten as a direct one, so these cover trap
+    #          handlers alone; a genuinely dead function still has to be caught in
+    #          review.
+    if shellcheck -e SC1091,SC2059,SC2317,SC2329 "${shell_scripts[@]}" 2>&1; then
       ok "All shell scripts pass shellcheck"
     else
       fail "shellcheck reported issues"
