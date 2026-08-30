@@ -249,7 +249,9 @@ fi
 # HEAD. The adversarial runtime fails cleanly on that; `codex exec review
 # --base` falls back to a prompt that finds a scope by itself and reports `ok`
 # over whatever it chose.
-if [ "${TARGET}" = "base" ] && ! git merge-base -q "${REF}" HEAD 2>/dev/null; then
+# (`merge-base` has no `-q`; an unknown option exits 129, which read as "no
+# history" and refused every valid base — the positive case must be tested too.)
+if [ "${TARGET}" = "base" ] && ! git merge-base "${REF}" HEAD >/dev/null 2>&1; then
   status_only "unsupported-target" "ref '${REF}' shares no history with HEAD — no diff to review"
 fi
 # A clean tree is not a review either: both backends will bill a full turn over
