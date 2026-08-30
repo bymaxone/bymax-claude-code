@@ -738,7 +738,11 @@ review="$(cat "${raw}" 2>/dev/null)"
 # real review has required: the renderer's `Target:` line, then `Verdict:`.
 # Positive tests fail closed if upstream changes its format.
 if [ "${MODE}" = "adversarial" ]; then
-  if printf '%s\n' "${review}" | grep -qE 'did not return valid structured JSON|unexpected review shape'; then
+  # Anchored to the start of a line: upstream renders each failure sentence as its
+  # own line, while a legitimate review can quote either phrase inside a finding
+  # body — this repository's own diff contains both, so an unanchored match would
+  # discard a paid review of it as a parse failure.
+  if printf '%s\n' "${review}" | grep -qE '^[[:space:]]*Codex (did not return valid structured JSON|returned JSON with an unexpected review shape)'; then
     reason="$(printf '%s\n' "${review}" | grep -E 'Parse error|unexpected review shape' | head -n 1 | cut -c1-"${REASON_MAX_CHARS}")"
     status_only "failed" "adversarial review returned unparseable output — ${reason:-see the runtime failure page}"
   fi

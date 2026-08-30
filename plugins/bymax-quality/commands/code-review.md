@@ -26,8 +26,8 @@ out, rate-limited or slow, the report says so in one line and nothing else chang
 
 | Argument | Meaning |
 | --- | --- |
-| `quick` | Mechanical gate + CRITICAL/HIGH judgment checks on changed lines only, plus both Codex reviews. Sanity check before a push. |
-| `full` *(default)* | Everything: mechanical gate, single-pass bug hunt, full convention checklist, verification, both Codex reviews, and Claude's built-in `/code-review high` as Review D. |
+| `quick` | Mechanical gate + CRITICAL/HIGH judgment checks on changed lines only, plus Review B (and Review C when `--adversarial` is passed). Sanity check before a push. |
+| `full` *(default)* | Everything: mechanical gate, single-pass bug hunt, full convention checklist, verification, Review B (and Review C when `--adversarial` is passed), and Claude's built-in `/code-review high` as Review D. |
 | `deep` | `full`, but the bug hunt additionally fans out to parallel finder sub-agents (stack reviewer + security reviewer) whose candidates are then adversarially verified, and Review D runs at `max` instead of `high`. Use before merging a feature branch. |
 | `target` | Optional. A branch name (`feature-x` → reviews `<default-branch>...feature-x`), a ref range (`main...feature-x`), a PR number (`#123`, checked out locally so `$RANGE` works with `git diff` — see Step 1), or a file path. Without a target: uncommitted changes, plus the branch's commits ahead of upstream when the working tree is clean. |
 | `--fix` | After the report, apply the confirmed mechanical MEDIUM fixes (Tailwind renames, canonical tokens) and any finding the user approves. Never commits. |
@@ -189,7 +189,7 @@ Map the scope resolved in Step 1 onto the one flag Codex understands:
 > second opinion on the requested branch. That is the same false-clean failure the
 > empty-base guard exists to prevent. So: only send Codex a base when the head it will
 > compare **is** the scope you resolved in Step 1. Never switch branches to make it fit —
-> a review command must not mutate the working tree. Skip both Codex reviews and say so
+> a review command must not mutate the working tree. Skip every Codex review that was asked for and say so
 > in Review B and in Review C.
 
 Launch Review B with `run_in_background: true` — and Review C in the **same message** when
@@ -261,17 +261,20 @@ range, and with no target it reviews *the current diff*:
 | --- | --- |
 | uncommitted work (dirty tree) | no target — the current diff is the scope |
 | PR target, after `gh pr checkout` | the PR number |
-| branch target that is the current HEAD, or a clean tree ahead of **the default branch** | **the branch name** — never "no target": on a clean tree the built-in's default scope is empty |
+| branch target that is the current HEAD **and is not the default branch** | **the branch name** — it resolves to `<default-branch>...<branch>` |
+| the current branch **is** the default branch | **skip Review D** — a branch name would resolve to `<default>...<default>`, an empty diff |
 | a clean tree ahead of an upstream that is **not** the default branch (a stacked branch) | **skip Review D** — see below |
 | a single file | that path |
 | branch target that is **not** checked out | **skip Review D** |
 | a ref range not ending at HEAD, or `<base>...FETCH_HEAD` | **skip Review D** |
 
-The third row is the one that bites. On a clean tree, invoked without a target, the
-built-in would review an empty diff, return no findings, and Step 6 would print it beside
-A, B and C as a peer bug hunt of the same diff — the same false-clean shape the empty-base
-guard and the Step 1.5 checkout guard exist to prevent. Passing the branch name gives it
-the committed range.
+The third and fourth rows are the ones that bite, and they bite in opposite directions.
+A branch name resolves to `<default-branch>...<branch>`, so it is right for a feature
+branch and empty for the default branch itself — `main...main` returns no findings, and
+Step 6 would print that beside A, B and C as a peer bug hunt of the same diff. That is the
+false-clean shape the empty-base guard and the Step 1.5 checkout guard exist to prevent,
+and it arrives through the remedy rather than the omission. **Never pass a target whose two
+sides can be the same ref**; when they can, skip Review D and say so in its status line.
 
 The fourth row is the same hazard wearing the opposite sign. A branch name hands the
 built-in `<default-branch>...<branch>`, and Step 1 resolves the scope as the commits ahead

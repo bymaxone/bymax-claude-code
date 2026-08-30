@@ -18,7 +18,7 @@
     },
     {
       "name": "bymax-quality",
-      "description": "Quality gates: /bymax-quality:code-review (mechanical gate + verified bug hunt, plus optional independent Codex reviews \u2014 standard and adversarial \u2014 reported side by side with a cross-read; modes quick/full/deep, CRITICAL \u2192 LOW severity, blocks suppression comments), /bymax-quality:review-md (REVIEW.md generator for Anthropic's cloud Code Review), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, seven specialist sub-agents (incl. a Rust reviewer), and two pre/post hooks (secret-scanner, console-log-scan). /bymax-quality:codex-setup installs and authenticates the Codex CLI when the user wants the second opinion \u2014 Codex is optional and never bundled.",
+      "description": "Quality gates: /bymax-quality:code-review (mechanical gate + verified bug hunt, plus an optional independent Codex review, an opt-in adversarial second one behind --adversarial, and the built-in review, reported side by side with a cross-read; modes quick/full/deep, CRITICAL \u2192 LOW severity, blocks suppression comments), /bymax-quality:review-md (REVIEW.md generator for Anthropic's cloud Code Review), /bymax-quality:tdd (red-green-refactor), the multi-stack `tester` skill, seven specialist sub-agents (incl. a Rust reviewer), and two pre/post hooks (secret-scanner, console-log-scan). /bymax-quality:codex-setup installs and authenticates the Codex CLI when the user wants the second opinion \u2014 Codex is optional and never bundled.",
       "category": "quality",
       "source": "./plugins/bymax-quality",
       "homepage": "https://github.com/bymaxone/bymax-claude-code/tree/main/plugins/bymax-quality"

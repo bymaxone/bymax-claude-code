@@ -21,9 +21,11 @@ Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1
   different question — is this the right approach, rather than is this code correct — and, in
   `full` and `deep`, Claude's own built-in review — `/code-review high` in `full`, `max` in `deep`. The two Codex runs launch as concurrent
   background shells before this command forms any opinion, so the pair costs wall-clock once and
-  neither can anchor the other. They run in **every** mode, `quick` included: they cost background
+  neither can anchor the other. Review B runs in **every** mode, `quick` included: it costs background
   wall-clock rather than session time, and a second opinion is worth as much before a quick push as
-  before a merge. `--no-codex` still skips both.
+  before a merge. **Review C is opt-in behind `--adversarial`** — the Fixed entry below says why, and
+  this paragraph described it as automatic until that was corrected inside the same release.
+  `--no-codex` skips whichever of them was going to run.
 
   The adversarial mode drives the openai-codex plugin's own `codex-companion.mjs` runtime by
   absolute path rather than reimplementing it. That plugin marks `/codex:adversarial-review` as
