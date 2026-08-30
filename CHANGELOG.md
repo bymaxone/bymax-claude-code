@@ -9,6 +9,355 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
+Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1.5.0 ·
+`bymax-web-verify` 1.1.0 → 1.1.1 · `bymax-pr`, `bymax-bootstrap`, `bymax-mobile` unchanged.
+
+### Added
+
+- **`/bymax-quality:code-review` now runs three reviews beside its own, not one.** The second
+  opinion was a single unsteered `codex exec review`. It gains an adversarial sibling that asks a
+  different question — is this the right approach, rather than is this code correct — and, in
+  `full` and `deep`, Claude's own built-in review — `/code-review high` in `full`, `max` in `deep`. The two Codex runs launch as concurrent
+  background shells before this command forms any opinion, so the pair costs wall-clock once and
+  neither can anchor the other. Review B runs in **every** mode, `quick` included: it costs background
+  wall-clock rather than session time, and a second opinion is worth as much before a quick push as
+  before a merge. **Review C is opt-in behind `--adversarial`** — the Fixed entry below says why, and
+  this paragraph described it as automatic until that was corrected inside the same release.
+  `--no-codex` skips whichever of them was going to run.
+
+  The adversarial mode drives the openai-codex plugin's own `codex-companion.mjs` runtime by
+  absolute path rather than reimplementing it. That plugin marks `/codex:adversarial-review` as
+  `disable-model-invocation: true` — a deliberate user-only gate — so the slash command stays
+  off-limits to a skill, while the plain Node runtime underneath it does not. Reusing it keeps the
+  adversarial prompt tracking upstream instead of drifting in a copy here; the price is that the
+  mode reports the new `adversarial-absent` status when the plugin is not installed, which changes
+  nothing else. The runtime is invoked without its `--background` flag on purpose: backgrounding it
+  there would put the Codex process outside the group this script signals at budget expiry, leaving
+  an orphan run billing after the review was already reported as `timeout`.
+
+  The built-in review is reported as Review D and labelled for what it is — the same model family as
+  the Bymax review running a different method, not a third independent voice. Two agreeing runs of
+  one model is weak evidence, and a reader who mistakes it for corroboration will over-trust it. It
+  forks to a background agent like the Codex shells do, so all three reviewers run in parallel and
+  none of them makes the command slower to sit through. `quick` leaves it out to save tokens, not
+  time — which is the honest reason, unlike the speed argument an earlier draft of this entry made.
+
+- **`argument-hint` on every command that takes arguments** — typing a slash command showed no
+  hint of what it accepts. Five files declared the field — `/bymax-pr:push`,
+  `/bymax-web-verify:test`, and the three user-invocable skills (`babysit-pr`, `autopilot`,
+  `tester`) — and no command beyond the first two. Eleven commands now do: `/bymax-quality:code-review`, `/bymax-quality:tdd`,
+  `/bymax-web-verify:verify`, and all of `/bymax-workflow:brainstorm`, `:checkpoint`, `:phase-tasks`,
+  `:plan`, `:roadmap`, `:spec`, `:task`, `:verify`. Each hint was derived from the command's own
+  documented invocation, not invented. Commands that genuinely take no argument
+  (`bootstrap`, `upgrade-standards`, `sim-ios`, `sim-android`, `codex-setup`, `review-md`,
+  `web-verify:setup`) deliberately declare none — a hint there would promise an argument that is
+  ignored.
+
+- **`validate.sh` now parses command and skill frontmatter** — `claude plugin validate` reads the
+  JSON manifests, not the Markdown that defines the commands, so a malformed frontmatter block
+  shipped green: the plugin validated while the command itself silently stopped parsing. The new
+  `scripts/lib/check-frontmatter.py` walks every `commands/*.md` and `skills/*/SKILL.md`, requires
+  parseable YAML and a `description`, and rejects a non-string `argument-hint`. CI installs PyYAML
+  explicitly, because a gate that skips itself is worse than no gate.
+
+### Fixed
+
+- **The adversarial review's budget did not bind it.** The plugin runtime runs the turn inside an
+  app-server broker spawned `detached` and `unref()`ed, so `kill -TERM -- -$pid` reached only the
+  short-lived front-end. Measured: a review abandoned at its budget left `app-server-broker.mjs`
+  and `codex app-server` alive and billing for 41 minutes while the report said `timeout`. The
+  script's own comment asserted the opposite as a deliberate safety measure, which is how it would
+  have survived the next reading. It now cancels through the runtime's public `cancel` — which
+  interrupts the billed turn and terminates that job's process tree without killing the broker
+  daemon, shared per workspace — and the cleanup runs on `INT`/`TERM` too, not only `EXIT`.
+
+  The second review of that fix found the cancel itself ambiguous: an ID-less `cancel` resolves
+  the current session's jobs and refuses when there is more than one, so a user with their own
+  `/codex:*` job running when this review timed out would have kept paying for both. The run now
+  carries a session ID nobody else uses (`CODEX_COMPANION_SESSION_ID`, exported to the launch and
+  the cancel and to nothing else), and a cancel that fails is reported in the `timeout` line rather
+  than swallowed — the caller must know a run may still be billing, because nothing else in the
+  script can reach it. The cancel is itself bounded to 15 s: it talks to the broker over a socket,
+  and a hung broker is precisely the case a timeout is handling, so an unbounded cancel would have
+  blocked forever without ever reaching the group kill or emitting `timeout` — found by the
+  standard review on the following round. And the round after that found the signal path: on
+  `INT`/`TERM` the exit trap ran the same cancel, recorded its failure in a variable, and exited
+  without printing it — taking the session id and the recovery command with it. The signal path
+  now reports exactly what the timeout path reports, verified by sending `TERM` to a run whose
+  stubbed cancel refuses to confirm. The scope measurement was likewise corrected to mirror the runtime's own
+  commands (staged and unstaged diffed separately, `--binary`), since `git diff HEAD` undercounts
+  exactly the cases where the runtime has already switched to self-collection.
+
+- **A failed adversarial review was published as a healthy one.** When Codex returns unparseable
+  JSON the runtime still exits 0 and renders a human-readable failure page to stdout; the only
+  check on that path was "is stdout non-empty", so the page shipped under `CODEX_STATUS: ok` and
+  the cross-read counted Review C as an outside voice that examined the diff and found nothing.
+  The output must now carry a `Verdict:` line — a positive structural test, so a change in
+  upstream's format fails closed rather than silently reopening the hole.
+
+- **Review C's scope was not the scope it was launched with.** Past two changed files or 256 KiB
+  the runtime stops inlining the diff and tells the agent to collect its own with git commands, so
+  the validated scope flags bound nothing — and on a branch target it resolves `mergeBase..HEAD`,
+  dropping the uncommitted work the calling command deliberately includes. Practically every real
+  review exceeds two files, so this was the normal case, not the edge. The script now returns a
+  distinct `ok-unpinned` status in that case — not a note under `ok`, because the report branches on
+  the status line and never on prose — followed by a `CODEX_SCOPE: self-collected` line. The
+  review is still published and its findings still get a disposition; what changes is that its
+  silence no longer counts as evidence in the cross-read. The alternative the adversarial review
+  proposed, handing the backend a frozen exact diff, is not available: the runtime accepts a scope,
+  not a patch.
+
+- **`--mode=adversarial` was silently ignored.** The argument loop matched only the
+  space-separated form; the equals form fell through to a catch-all `shift` and left the default
+  `standard` in place. With `--target uncommitted` that launched a *second standard review*,
+  indistinguishable in the output, which the cross-read's "both outside reviews found it" line
+  would then report as the strongest evidence in the report. Both forms are handled now.
+
+- **An out-of-range `--budget` disabled the timeout entirely.** The value was validated as digits
+  only. `/bin/bash` here is 3.2, whose `[` fails with status 2 above 64 bits — a status `if` reads
+  as false — so a caller passing milliseconds made the timeout branch unreachable while the poll
+  loop spun and Codex ran unbounded. `--budget 0` failed the other way, killing a run milliseconds
+  after it started. The budget is now bounded by digit count first, then by range, to [30, 3600].
+
+- **`adversarial-absent` masked the real blocker.** The plugin check ran before the `codex` binary
+  and session checks, so a machine with neither reported the shallower problem — sending the user
+  to install a plugin when what they lacked was the CLI, which is precisely what the remediation
+  text says that install will not fix. The fundamental gates run first now.
+
+- **The runtime lookup would execute code the user never installed.** It globbed
+  `*/codex/*/scripts/codex-companion.mjs` under the plugin cache, fell back to marketplace
+  checkouts, and ran whatever matched with `node` under the user's own permissions — the
+  read-only sandbox covers the Codex thread that runtime starts, not the Node process itself. Any
+  marketplace shipping a plugin named `codex`, installed or not, enabled or not, would have run
+  with full access to the repository and the user's credentials merely because a code review was
+  requested. (Before that, the sort had also preferred the marketplace checkout over the installed
+  version, and BSD `sort` has no `-V`, so `1.9.0` would have beaten `1.10.0` on macOS.) Discovery
+  now goes through `claude plugin list --json` and accepts exactly one answer: the plugin with id
+  `codex@openai-codex`, installed **and enabled**, at its recorded `installPath`. No glob, no
+  fallback, no ordering to get wrong; `BYMAX_CODEX_COMPANION` remains as an explicit override that
+  is trusted as the user's own decision. Found by the adversarial review of the previous fix.
+
+  The next round then asked the right follow-up: the runtime contract this script relies on —
+  read-only sandbox pinned per thread, the detached broker and its `cancel`, session-ID scoping,
+  the scope flags, a `Verdict:` line in the output — is undocumented and was verified by reading
+  1.0.6 only. A routine plugin update could change any of it, and the failure modes are the bad
+  kind: a run still billing past its budget, or a Node process with the user's permissions whose
+  read-only guarantee no longer holds. So only versions that were actually read are accepted — an
+  exact allowlist, currently `1.0.6`. The first cut admitted `1.0.*`, which the next adversarial
+  round correctly called a range hoped compatible rather than a contract verified. Any other
+  version is refused with `adversarial-absent` and a message saying why;
+  `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` runs it anyway as the user's explicit decision.
+  Adding a version means re-reading four upstream files, and the comment names them.
+
+  The same review argued the direct runtime call bypasses upstream's `disable-model-invocation`
+  boundary. Refused, with the reasoning recorded in the script header: that flag gates the
+  slash-command wrapper, not the runtime — upstream's own `codex-rescue` agent calls the same
+  runtime — and the consent it protects (no model-started billed run) is met, because the billed
+  run starts only when the user invokes `/bymax-quality:code-review`, exactly as Review B's
+  `codex exec review` does on the same authority. If upstream publishes a supported surface for the
+  adversarial review, the direct call should go.
+
+- **`/bymax-workflow:verify quick` contradicted itself.** The mode was defined in a new table while
+  the section below it still read "Walk these in order. Do not skip.", and the output template still
+  prescribed all five gates and terminated in `Verdict: READY` — so a `quick` run either paid for
+  everything anyway or claimed READY off a type-check and a test pass, the exact "'compiles' is not
+  'works'" error the file's opening rule forbids. Both now state the `quick` shape explicitly, and
+  `/bymax-workflow:checkpoint` no longer promises a pass rate and coverage that Gate 1 never produces.
+
+- **Stale prose corrected across the review docs.** The command's opening paragraph still described
+  a single Codex review gated to `full`/`deep`; `codex-setup.md` still said installing the
+  openai-codex plugin "does not help here", listed neither `adversarial-absent` nor
+  `unsupported-target`, and quoted budgets that omitted `quick`; the CI comment justified the
+  PyYAML install by a skip path that no longer exists; the report template assumed Review C emits
+  `P0`–`P3` when its runtime emits `critical`/`high`/`medium`/`low`; and Step 5.5 told the model to
+  branch Review D on a `CODEX_STATUS` line an agent never produces. Review D also gained the scope
+  guard Step 1.5 already had — without it, the common clean-tree case had it reviewing an empty
+  diff and reporting no findings, beside three reviews that had read the real one.
+
+- **The built-in review at `high` then found ten more, all verified, all fixed.** The `cancel`
+  exit status is not its verdict — the runtime exits 0 once it has *resolved* the job even when
+  the interrupt RPC failed, so the `--json` payload's `turnInterrupted` is read instead, and a
+  failed cancel now prints the one command that still reaches the run (`/codex:status` cannot
+  show it: it filters by the Claude session id, and this run carries its own). The `Verdict:`
+  guard was satisfied by the runtime's own parse-failure page, which quotes the raw model output
+  in a text fence — the page is now rejected by its markers first, then `Target:` and `Verdict:`
+  are both required. A review finishing in the last poll interval was discarded as a timeout and
+  falsely reported as a failed cancel; liveness is re-checked before either. The scope was
+  measured after the review against a tree that may have moved, and always blamed the file
+  count; it is now measured once at launch, names the limit that tripped, and also covers the
+  branch-target case where uncommitted work is silently outside the reviewed range. `quick` no
+  longer stalls up to a full budget on background shells. The cross-read had lost its
+  strongest bucket — A and an outside review agreeing. And `codex exec review` hands back its
+  final message through `--output-last-message`, which replaces two hand-written JSONL
+  extractors. Every number the script reasons about is now a named constant.
+
+- **Review C is now opt-in behind `--adversarial`, because the reason it was automatic was false.**
+  The script's header justified driving the openai-codex runtime past that plugin's
+  `disable-model-invocation: true` gate on the grounds that the billed run only starts when a user
+  invokes this command — "a user-only command in this toolkit". It is not one: no Bymax command
+  sets that flag, and fifteen files invoke this one from a model, `/bymax-workflow:task` and
+  `/bymax-workflow:autopilot` among them. A model in an agentic loop could therefore start two
+  billed Codex turns unasked, one of them through the very runtime upstream gated to stop that.
+  The premise was written five times across five rounds and never checked; the seventh review
+  checked it. Consent now lives on a flag a person has to type; Review B keeps running in every
+  mode, and the workflow chains keep the reviewers that need no such gate.
+
+  Also from that round: `codex exec review --base` builds a merge-base-vs-working-tree diff in
+  which untracked files never appear, so untracked-only changes could not rescue an empty range
+  from billing a verdict on nothing; `BYMAX_CODEX_COMPANION` marked itself version-verified and so
+  skipped the unpinned-scope guard whose own comment names the override; the skills glob was still
+  one level deep after commands and agents were fixed; and `codex-setup` still quoted 180 s for
+  `quick` after it became 120.
+
+- **The local shellcheck gate and CI's disagreed, and CI was right to fail.** A function whose only
+  caller is a `trap` cannot be followed by shellcheck, and the two versions name that differently:
+  0.11 (Homebrew, local) reports the function as never invoked — `SC2329`, which the exclusion
+  already carried — while 0.9 (`ubuntu-latest`, and so CI) reports every statement in its body as
+  unreachable, `SC2317`. A green local run therefore proved nothing about CI. Both codes are listed
+  now, with the reason, because neither version reproduces the other's.
+
+- **A final round, all diagnosability and honest labelling — no correctness defect left.** The
+  harvest rule read as a sentence to serve rather than a deadline, so a model would idle to the
+  budget even when both shells had returned in 45 s; it polls now. The `--adversarial` flag is
+  labelled for what it is: a default that fails safe, not a gate — `codex-review.sh` accepts
+  `--mode adversarial` from any caller, and the honest claim is that nothing starts the adversarial
+  runtime unless something explicitly asks, not that nothing can. A file that is not UTF-8 is one
+  finding instead of a traceback that left every later file unchecked. `cleanup` ends in `exit 0`,
+  because a returning EXIT trap does not change bash's status and the header promises this script
+  always exits 0. And the two measurement helpers now carry the constraint that made their trailing
+  `exit` correct — call them only inside a command substitution.
+
+- **A sixth round: ten findings, every one verified against the code before it was fixed.**
+  `stop_review` was re-entrant — the budget path calls it with `TERM`/`INT` still armed, so a
+  signal mid-cancel fired the exit trap, re-entered with `run_active` still 1, issued a second
+  cancel under the same session id and reported "may still be billing" for a run the first cancel
+  had stopped; it now clears and disarms on entry. `git ls-files --others` is scoped to the
+  **current directory** while every other measurement is repo-wide, so from a subdirectory an
+  untracked-only change read as a clean tree and both reviews were skipped — measured, and fixed
+  with an explicit repo-root pathspec. An empty `<ref>...HEAD` was only refused on a clean tree,
+  but the adversarial runtime reads that range and nothing else, so a dirty tree bought it a
+  billed verdict on nothing. The honest "this runtime's limits were never verified" reason was
+  then overwritten by a measurement against the limits it had just disclaimed: the first reason
+  set now wins, and the version check is read once instead of copied twice. The `CODEX_SCOPE`
+  line said "self-collected — the reviewer chose its own scope" for all four causes, including
+  the deterministic ones it does not describe. `quick` launched two reviews with a 180 s budget
+  and abandoned them after 60 s: the budget and the wait are one number per mode now, and `quick`
+  gets 120 s — the mode is quick because Review A does less, not because a paid reviewer is cut
+  off mid-sentence. The frontmatter gate globbed one directory level, so a namespaced command
+  would ship unchecked behind a green "Checked N files". The agent tier check matched `sonnet`
+  and `opus` as bare substrings, so `sonnet-6-preview` and `my-opus-fork` passed, and a
+  non-string `model` was reported twice. Review D is skipped on a stacked branch, where a branch
+  name hands the built-in `<default>...<branch>` while Step 1 resolved the commits ahead of a
+  different upstream. And `codex-setup`'s verification example stopped guessing the base from
+  `refs/remotes/origin/HEAD`, which is unset on any clone not made by `git clone`.
+
+- **A fifth round, and the first one to run shellcheck.** The built-in review's conventions finder
+  installed shellcheck locally; until then `validate.sh` had passed only because that step
+  self-skipped. It found the validator's own comment `# shellcheck flags (SC2181)` parsed as a
+  malformed directive — a red CI on every push of this branch — and five functions reported as
+  never invoked because their only callers were a `trap` or a function name held in a variable.
+  The indirect calls are direct now; the trap-handler case is a stated project-wide exclusion.
+  `set -- "${args[@]}"` on an empty array is "unbound" under `set -u` in bash 3.2, so the script
+  with no arguments died before writing a status line. And a premise of the fourth round was
+  wrong: `codex exec review --uncommitted` reviews staged, unstaged **and untracked** changes —
+  its own `--help` says so — so the refusal of an untracked-only tree and the `ok-unpinned` for a
+  mixed one were both reverted; read the help, not the assumption. An adversarial run on a
+  runtime version whose inline limits were never verified is now `ok-unpinned`, because whether
+  its diff was inlined cannot be predicted. Step 1.6 passes the branch name to the built-in review
+  rather than "no target", which on a clean tree is an empty diff, and skips it when no
+  unprefixed `code-review` skill exists rather than risk invoking this command by its own name.
+
+- **A fourth round, all scope and plumbing.** An empty `<base>...HEAD` range on a clean tree
+  billed both reviewers over nothing and was counted as a clean second opinion; refused now, like
+  the clean tree. `codex exec review --base` diffs the merge-base
+  against the working tree, so tracked uncommitted hunks were reviewed as if they were part of the
+  committed range — `ok-unpinned` now, with the count. Both launch lines read `</dev/null`: under
+  `set -m` a background job keeps the script's stdin, which `codex exec` folds into its prompt, and
+  an open pipe or a TTY would have stalled the run until the budget expired. `CODEX_API_KEY` now
+  satisfies the auth gate, which only ever read the on-disk credential store. Every way the plugin
+  lookup can fail says which prerequisite failed instead of "install the plugin". A bare `--ref`
+  that exists only as `origin/<name>` says so. The agent model check is an allowlist (`sonnet`,
+  `opus`) rather than a `haiku` denylist that `inherit` and a typo walked past. And the harvest
+  rule allows for the ~19 s the script needs to stop a run after its budget — the `timeout` line
+  lands after the deadline, not on it. Measured while fixing: two of these were proven with real
+  Codex runs because the test harness did not stub the binary; it does now.
+
+- **A third round of the built-in review, on the tree after the second.** A second `TERM` during
+  cleanup ran `exit 0` inside the `EXIT` handler, which bash never re-enters — no status, no kill;
+  the handler now ignores further signals. A review finishing in the instant between the liveness
+  check and the cancel was discarded as "cancel FAILED"; a completed process with a report is
+  harvested instead — and the fix for that reaped the child twice (`wait` on a reaped pid returns
+  127), which the standard review caught before it was committed. A `--ref` that resolves but
+  shares no history with `HEAD` is refused: `codex exec review --base` on an orphan falls back to a
+  prompt that picks its own scope and reports `ok`. A clean working tree is refused for
+  `--target uncommitted`: both backends bill a full turn over "(none)" and return a verdict on
+  nothing — which is exactly what `codex-setup`'s documented verification step used to do. The
+  `quick` budget goes back to 180 s: the 60 s reasoning confused the shell's deadline with the
+  harvest's wait, which run on different clocks, and 60 s sits at the typical review duration.
+  The dirty-tree and untracked counts treat a failing git as unmeasured rather than as zero. The
+  `haiku` ban matches full model ids. The scope measurement moved below the free availability
+  gates so an absent Codex costs no diff. The cancel remedy is one function instead of two copies.
+
+- **A further round of the built-in review, on the fixed tree.** The failed-cancel branch was
+  unreachable in the exact case it exists for: the runtime's `cancel` SIGTERMs the job's process
+  tree — which is the very process the script holds — so post-cancel liveness was always false.
+  Liveness is now sampled before the cancel. `quick` launched shells with a 180 s budget and waited
+  60 s, so two billed runs outlived the report; the budget is 60 s there now, and the command says
+  why the two must match. A wrong command line (`--mode adverserial`) was reported as
+  `unsupported-target`, which sent the reader to the scope table; it is `bad-invocation` now, and
+  the line after every status is reproduced verbatim in the report, since it is the script's one
+  sentence of remedy. An out-of-range `--budget` is clamped and said, not silently replaced. The
+  standard review on a branch target is `ok-unpinned` when untracked files exist, because
+  `codex exec review --base` never sees them. The scope decision is one helper for both modes, and
+  a git failure inside it makes the scope unpinned rather than "small". The frontmatter gate now
+  tolerates a BOM and a trailing space on a fence, requires `tools` on agents and rejects
+  `model: haiku`, as CONTRIBUTING.md already promised it did. `codex-setup` exercises the
+  adversarial path and documents `adversarial-absent`'s three causes and their remedies.
+
+- **The frontmatter gate could report success without having run, then twice more in miniature.**
+  `check-frontmatter.py` first exited with a "skipped" status when PyYAML was missing while
+  `validate.sh` treated that as a warning, so a machine without PyYAML got `✓ All validations
+  passed` over a check that never executed. Replacing the skip with a hand-written fallback parser
+  moved the problem rather than fixing it: that parser accepted `description: "bad\qescape"`, which
+  PyYAML rejects, and was then measured to disagree with PyYAML in **both** directions — accepting
+  `description: 12345`, `description: null` and `argument-hint: yes`, while rejecting folded
+  scalars, literal scalars and trailing comments that YAML accepts.
+
+  So the second parser is gone. PyYAML is now required, and a missing PyYAML or `python3` fails the
+  gate instead of degrading it. A gate whose verdict depends on which machine ran it is worse than
+  one that says plainly what it needs, and this repo does not need its own YAML implementation. The
+  three rounds were found by, in order, the adversarial review, the standard review, and the
+  built-in review — each on its first run against this branch.
+
+- **The gate skipped the seven `agents/*.md` files while claiming to cover everything the loader
+  reads.** 31 files under `plugins/` carry frontmatter; the check looked at 24. The missing seven
+  are the specialist sub-agents, each with long unquoted `description:` prose of exactly the shape
+  that attracts a colon-space — and a malformed one means `deep` mode fans out to a
+  `security-reviewer` that silently never loaded, while this command reports a clean security pass.
+  Agents are now checked, `name` is required on skills and agents (not merely type-checked when
+  present), and a skill whose `name` does not match its directory is reported.
+
+- **`validate.sh`'s first two gates could never fail.** `if ! claude plugin validate … | sed` tests
+  `sed`'s exit status, not the validator's, so a broken `marketplace.json` or `plugin.json` printed
+  its error and still finished `✓ All validations passed`. Pre-existing, and directly under the new
+  section whose own comment argues that printing success over a check that did not run is the
+  failure mode the gate exists to prevent. Both now read `PIPESTATUS[0]`.
+
+- **`argument-hint` in the `tester` skill parsed as a list, not a string** — it was written
+  unquoted (`argument-hint: [file-path]`), which YAML reads as a one-element sequence. Found by
+  the new frontmatter check on its first run.
+- **`/bymax-workflow:verify quick` was called but never defined** — `/bymax-workflow:checkpoint`
+  has always run `/bymax-workflow:verify quick` before snapshotting, while `verify` documented no
+  modes at all and presented its five gates as unconditional. The mode is now defined where it is
+  implemented: `quick` runs Gate 1 (static gates plus the suppression scan) and nothing else,
+  the default still runs all five. It is a smaller scope, not a lower bar — Gate 1 still fails on
+  one type error, one failing test, or one new suppression comment.
+- **`/bymax-workflow:checkpoint` documented three of its four actions** — the `## Usage` line listed
+  `create|verify|list` while the `## Arguments` section below it also documented `clear`. The usage
+  line now matches.
+
 ### Security
 
 - **`validate.yml` ran with the default `GITHUB_TOKEN` scope** — the workflow declared no `permissions` block, so it inherited whatever the repository default grants (write, on many repos). CodeQL flagged it as `actions/missing-workflow-permissions` (medium). Every step only reads the repository — checkout, a toolchain install, and a local script — so it now declares `contents: read` at workflow level, which also makes any job added later inherit the restriction rather than silently getting the default.
@@ -319,7 +668,8 @@ Initial public release of the toolkit. Five composable plugins, six specialist s
 - **`scripts/validate.sh`** — validates `marketplace.json` and every `plugin.json` (valid JSON, required fields, every command/agent/skill path exists, every command file has a YAML frontmatter `description`, every agent file has `name` + `description` + `tools`, every shell hook is `chmod +x`, shellcheck on every shell script when installed, every required project-level file is present). Used by CI and locally before pushing.
 - **`docs/PROPOSAL.md`** — original design proposal preserved for context.
 
-[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/bymaxone/bymax-claude-code/compare/v1.6.0...v1.6.1

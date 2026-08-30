@@ -1,5 +1,6 @@
 ---
-description: Prove a change actually works before declaring it done. Runs the project's verification gates, exercises the affected paths, and checks the root cause was fixed — not just the symptom. Use after implementation, before /bymax-quality:code-review or commit.
+description: 'Prove a change actually works before declaring it done. Runs the project''s verification gates, exercises the affected paths, and checks the root cause was fixed — not just the symptom. Use after implementation, before /bymax-quality:code-review or commit. Modes: quick (Gate 1 only — the static gates) | full (default, all five gates).'
+argument-hint: "[quick|full] [what changed]"
 ---
 
 # Verify Command
@@ -22,9 +23,33 @@ Use it especially when:
 - A bug fix — to prove the bug is actually gone, and the fix targets the root cause.
 - Anything where "looks right" has burned us before.
 
+## Modes
+
+```
+/bymax-workflow:verify [quick|full] [what changed]
+```
+
+| Mode | Gates | When |
+| --- | --- | --- |
+| `quick` | Gate 1 only — the static gates plus the suppression scan. | A cheap "is the tree clean right now?" check with no specific change to exercise. This is what `/bymax-workflow:checkpoint` runs before snapshotting. |
+| `full` *(default)* | All five gates. | After finishing an implementation, before reporting done. Naming it is optional; it exists so `verify full` is read as a mode, not as a change description. |
+
+`quick` is a smaller scope, never a lower bar: Gate 1 still fails on a single type
+error, lint error, failing test, or new suppression comment. What it drops is the
+work that only makes sense against a specific change — exercising the path, the
+root-cause write-up, the regression scan, the acceptance criteria. Never reach for
+`quick` because the full run is inconvenient; a change that was implemented gets
+all five gates.
+
 ## The verification gates
 
-Walk these in order. Do not skip. If a gate fails, fix the underlying cause — never bypass.
+Walk these in order. If a gate fails, fix the underlying cause — never bypass.
+
+**In the default mode, do not skip any of them. In `quick`, run Gate 1 and stop** — that
+is the whole of `quick`, and it is a smaller scope, not a lower bar: Gate 1 still fails on
+one type error, one failing test, or one new suppression comment. Gates 2–5 are dropped
+there because they only mean something against a specific change, and `quick`'s caller
+(`/bymax-workflow:checkpoint`) is snapshotting a tree, not verifying an implementation.
 
 ### Gate 1 — Static checks
 
@@ -103,7 +128,13 @@ Don't be generous. "Probably works" = ❌.
 
 ## Output
 
-End with a short report — example shape:
+**In `quick`, report Gate 1 and nothing else** — the static block below, then
+`Verdict: GATES PASS / GATES FAIL`. Never print the full template's `Verdict: READY`
+off a `quick` run: four of its five sections would be empty, and "READY" claimed from a
+type-check and a test pass alone is exactly the "'compiles' is not 'works'" error this
+command's opening rule forbids.
+
+In the default mode, end with the short report below:
 
 ```
 ## Verification report
