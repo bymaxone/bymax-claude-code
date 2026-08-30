@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A dirty tree downgraded an adversarial branch review that was correctly pinned.** With
+  `--target base` the requested scope is the committed `<ref>...HEAD` range, so the runtime
+  reviewing exactly `mergeBase..HEAD` is that request honoured — uncommitted files were never in
+  scope. The `adversarial:base` case nevertheless marked any dirty checkout `ok-unpinned`, and
+  because the check sat in an `elif` it also skipped `exceeds_inline_limits`: a small, fully
+  inlined range came back unpinned, and the cross-read discarded a clean verdict that was in fact
+  exact. The dirty-tree condition is gone and the inline-limit measurement always runs.
+  `standard:base` keeps its own dirty-tree check, which is the opposite case — `codex exec review
+  --base` diffs the merge base against the working tree, so tracked uncommitted edits really are
+  reviewed beyond the requested range. Reported by the Codex reviewer on #13 after it merged.
+
 ### Added
 
 - **`AGENTS.md`, with the shared Bymax code-review rules and the `agents-sync` workflow.** Codex

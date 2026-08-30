@@ -530,15 +530,20 @@ case "${MODE}:${TARGET}" in
   adversarial:uncommitted)
     exceeds_inline_limits uncommitted && scope_unpinned=1 ;;
   adversarial:base)
-    if ! dirty="$( { git diff --name-only HEAD && list_untracked; } 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
-      scope_unpinned=1
-      set_scope_reason "${SCOPE_UNMEASURED}"
-    elif [ "${dirty:-0}" -gt 0 ]; then
-      scope_unpinned=1
-      set_scope_reason "${dirty} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
-    elif exceeds_inline_limits base; then
-      scope_unpinned=1
-    fi ;;
+    # A dirty tree is NOT a scope mismatch here. `--target base` asks for the
+    # committed range, and the runtime reviewing exactly `mergeBase..HEAD` is
+    # that request honoured — uncommitted files were never in scope, so their
+    # absence is correct rather than a divergence. An earlier version downgraded
+    # on any dirty file, including one wholly unrelated to the range, and the
+    # `elif` meant it also skipped the measurement below: a small, fully inlined
+    # range came back `ok-unpinned`, and the cross-read then discarded a clean
+    # verdict that was in fact pinned.
+    #
+    # (`standard:base` is the opposite case and keeps its dirty-tree check:
+    # `codex exec review --base` diffs the merge base against the WORKING TREE,
+    # so tracked uncommitted edits really are reviewed beyond the requested
+    # range there.)
+    exceeds_inline_limits base && scope_unpinned=1 ;;
   standard:base)
     # `codex exec review --base` diffs the merge-base against the WORKING TREE:
     # tracked uncommitted hunks are reviewed although the requested scope is the
