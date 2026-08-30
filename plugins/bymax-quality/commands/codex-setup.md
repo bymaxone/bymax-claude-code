@@ -4,8 +4,9 @@ description: 'Get the Codex CLI ready so /bymax-quality:code-review can run its 
 
 # Codex setup
 
-`/bymax-quality:code-review` runs **two independent reviews** through the Codex CLI in
-every mode. This command makes the first of them available, and explains the second.
+`/bymax-quality:code-review` runs an independent review through the Codex CLI in every
+mode, and a second one when it is given `--adversarial`. This command makes the first
+available, and explains the second.
 
 Everything here is optional. Without Codex the review command works exactly as it always
 did — it reports `Status: absent` in one line and computes the same verdict. Nothing in
@@ -99,7 +100,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
   --target commit --ref "$(git rev-parse --short HEAD)" --budget 300
 ```
 
-Then, if the openai-codex plugin is installed, exercise the adversarial path too — the
+Then, if the openai-codex plugin is installed, exercise the adversarial path too — nothing
+else will, since Review C is opt-in and this is the one place setup can prove it works. The
 run above cannot produce its statuses, so a green standard run says nothing about it. Give
 it a scope that exists: on a clean tree the script now refuses `--target uncommitted`, and
 on a branch with nothing ahead of its base it refuses `--target base` — a review of nothing
@@ -147,10 +149,13 @@ and session that both need; only the standard one is complete at that point.
 
 - **Review B, standard** — `codex exec review`. Needs the binary and an active session,
   nothing else. That is what this command delivers.
-- **Review C, adversarial** — the adversarial stance lives in the OpenAI **Codex plugin**
-  for Claude Code, and Review C drives that plugin's `codex-companion.mjs` runtime
-  directly. Without the plugin installed it reports `adversarial-absent` and nothing else
-  changes.
+- **Review C, adversarial** — **opt-in, and off unless `/bymax-quality:code-review` is given
+  `--adversarial`.** The adversarial stance lives in the OpenAI **Codex plugin** for Claude
+  Code, and Review C drives that plugin's `codex-companion.mjs` runtime directly. The flag
+  is the consent boundary: upstream marks its own adversarial command
+  `disable-model-invocation`, so a model must not start that billed run on its own, and no
+  command in this toolkit is user-only. Without the plugin installed it reports
+  `adversarial-absent` and nothing else changes.
 
 Note what is *not* being called there. The plugin's own `/codex:review` and
 `/codex:adversarial-review` are marked `disable-model-invocation`, so a skill cannot
