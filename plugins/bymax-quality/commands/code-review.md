@@ -63,6 +63,13 @@ out, rate-limited or slow, the report says so in one line and nothing else chang
 > from a model, `/bymax-workflow:task` and `/bymax-workflow:autopilot` among them. The consent is
 > attached to the flag instead, where a person has to type it.
 >
+> **Be honest about what that buys.** The flag is enforced by this instruction, not by code:
+> `codex-review.sh` accepts `--mode adversarial` from any caller, so a model that decided to pass
+> it would succeed. What the flag actually does is remove the *default* — no invocation starts the
+> adversarial runtime unless something explicitly asks — and put the asking somewhere a reader can
+> see. Real enforcement would need the runtime itself to distinguish its callers, which it cannot.
+> Treat this as a default that fails safe, not as a gate.
+>
 > Without either, this command behaves exactly as it did before.
 
 > **Invoking this command is not the same as running its steps.** Some environments gate
@@ -530,8 +537,9 @@ needs only the `codex` binary, Review C needs the plugin on top of it, so
 plugin — not a symptom. Without `--adversarial` there is no Review C shell at all; omit its
 section rather than reporting it as skipped.
 
-If a shell has not finished, wait until the **later** of the two budgets has elapsed
-**plus 20 s** — the script's own `timeout` line lands up to ~19 s after the budget, because
+If a shell has not finished, **poll until it returns**, giving up only once the **later** of
+the two budgets has elapsed **plus 20 s**. It is a deadline, not a sentence to serve: two
+shells that come back at 45 s are harvested at 45 s — the script's own `timeout` line lands up to ~19 s after the budget, because
 stopping the run (a bounded cancel, then TERM and KILL) happens after the deadline, not
 before it — once, for both shells together, never one after the other. This holds in
 `quick` too, where the budget is 120 s: the mode is quick because Review A does less, not

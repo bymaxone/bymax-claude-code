@@ -153,7 +153,11 @@ cleanup() {
     fi
   fi
   [ -n "${workdir}" ] && rm -rf "${workdir}"
-  return 0
+  # `exit 0`, not `return 0`: a returning EXIT trap leaves bash's own status
+  # alone, so any exit path that is not `status_only` — an unbound variable
+  # introduced by a later edit, a SIGPIPE on `emit` — would hand the caller a
+  # non-zero shell while the header promises this script always exits 0.
+  exit 0
 }
 trap cleanup EXIT
 trap 'exit 0' TERM INT
@@ -502,6 +506,11 @@ SCOPE_UNMEASURED="the scope could not be measured (git failed)"
 # scoped to the CURRENT DIRECTORY, so from a subdirectory it reports no untracked
 # files while `git diff --quiet HEAD` still answers for the whole repository —
 # a clean-tree verdict on a tree that is not clean.
+# CALL THESE ONLY INSIDE `$( … )`. The trailing `exit` propagates git's own
+# status out of the pipeline — `grep -c` returning 1 for "no matches" is a valid
+# answer, git failing is not — and inside a command substitution that exits the
+# subshell. Called anywhere else it would end the script mid-review, and the EXIT
+# trap would then publish `failed` for a run that was fine.
 list_untracked() { git ls-files --others --exclude-standard -- "$(git rev-parse --show-toplevel)"; }
 count_untracked() { list_untracked 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
 count_tracked_dirty() { git diff --name-only HEAD 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }

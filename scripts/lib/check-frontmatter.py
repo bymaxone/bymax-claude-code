@@ -148,8 +148,15 @@ def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
     """Return a list of human-readable problems with one file's frontmatter."""
     relative = path.relative_to(REPO_ROOT)
     # `utf-8-sig` drops a BOM, which Notepad adds and which would otherwise make
-    # the first line `\ufeff---` and the whole file "missing frontmatter".
-    block = split_frontmatter(path.read_text(encoding="utf-8-sig"))
+    # the first line `\ufeff---` and the whole file "missing frontmatter". A file
+    # that is not UTF-8 at all is one finding, not a traceback: the exception would
+    # otherwise escape the comprehension in main() and leave every later file
+    # unchecked under a red run that names no file.
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        return [f"{relative}: is not UTF-8 — {exc}"]
+    block = split_frontmatter(text)
 
     if block is None:
         return [f"{relative}: missing or unclosed YAML frontmatter"]

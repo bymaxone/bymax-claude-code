@@ -211,6 +211,17 @@ Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1
   one level deep after commands and agents were fixed; and `codex-setup` still quoted 180 s for
   `quick` after it became 120.
 
+- **A final round, all diagnosability and honest labelling — no correctness defect left.** The
+  harvest rule read as a sentence to serve rather than a deadline, so a model would idle to the
+  budget even when both shells had returned in 45 s; it polls now. The `--adversarial` flag is
+  labelled for what it is: a default that fails safe, not a gate — `codex-review.sh` accepts
+  `--mode adversarial` from any caller, and the honest claim is that nothing starts the adversarial
+  runtime unless something explicitly asks, not that nothing can. A file that is not UTF-8 is one
+  finding instead of a traceback that left every later file unchecked. `cleanup` ends in `exit 0`,
+  because a returning EXIT trap does not change bash's status and the header promises this script
+  always exits 0. And the two measurement helpers now carry the constraint that made their trailing
+  `exit` correct — call them only inside a command substitution.
+
 - **A sixth round: ten findings, every one verified against the code before it was fixed.**
   `stop_review` was re-entrant — the budget path calls it with `TERM`/`INT` still armed, so a
   signal mid-cancel fired the exit trap, re-entered with `run_active` still 1, issued a second
