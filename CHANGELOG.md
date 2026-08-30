@@ -191,6 +191,30 @@ Plugin versions: `bymax-quality` 1.5.0 → 1.6.0 · `bymax-workflow` 1.4.2 → 1
   final message through `--output-last-message`, which replaces two hand-written JSONL
   extractors. Every number the script reasons about is now a named constant.
 
+- **A sixth round: ten findings, every one verified against the code before it was fixed.**
+  `stop_review` was re-entrant — the budget path calls it with `TERM`/`INT` still armed, so a
+  signal mid-cancel fired the exit trap, re-entered with `run_active` still 1, issued a second
+  cancel under the same session id and reported "may still be billing" for a run the first cancel
+  had stopped; it now clears and disarms on entry. `git ls-files --others` is scoped to the
+  **current directory** while every other measurement is repo-wide, so from a subdirectory an
+  untracked-only change read as a clean tree and both reviews were skipped — measured, and fixed
+  with an explicit repo-root pathspec. An empty `<ref>...HEAD` was only refused on a clean tree,
+  but the adversarial runtime reads that range and nothing else, so a dirty tree bought it a
+  billed verdict on nothing. The honest "this runtime's limits were never verified" reason was
+  then overwritten by a measurement against the limits it had just disclaimed: the first reason
+  set now wins, and the version check is read once instead of copied twice. The `CODEX_SCOPE`
+  line said "self-collected — the reviewer chose its own scope" for all four causes, including
+  the deterministic ones it does not describe. `quick` launched two reviews with a 180 s budget
+  and abandoned them after 60 s: the budget and the wait are one number per mode now, and `quick`
+  gets 120 s — the mode is quick because Review A does less, not because a paid reviewer is cut
+  off mid-sentence. The frontmatter gate globbed one directory level, so a namespaced command
+  would ship unchecked behind a green "Checked N files". The agent tier check matched `sonnet`
+  and `opus` as bare substrings, so `sonnet-6-preview` and `my-opus-fork` passed, and a
+  non-string `model` was reported twice. Review D is skipped on a stacked branch, where a branch
+  name hands the built-in `<default>...<branch>` while Step 1 resolved the commits ahead of a
+  different upstream. And `codex-setup`'s verification example stopped guessing the base from
+  `refs/remotes/origin/HEAD`, which is unset on any clone not made by `git clone`.
+
 - **A fifth round, and the first one to run shellcheck.** The built-in review's conventions finder
   installed shellcheck locally; until then `validate.sh` had passed only because that step
   self-skipped. It found the validator's own comment `# shellcheck flags (SC2181)` parsed as a

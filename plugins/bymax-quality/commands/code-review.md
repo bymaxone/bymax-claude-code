@@ -194,19 +194,20 @@ questions of the same diff, so neither substitutes for the other:
 ```bash
 # Review B — standard: is this change correct?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
-  --target <target> [--ref <ref>] --budget <180 in quick and full | 600 in deep>
+  --target <target> [--ref <ref>] --budget <120 in quick | 180 in full | 600 in deep>
 
 # Review C — adversarial: is this the right approach at all?
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" --mode adversarial \
-  --target <target> [--ref <ref>] --budget <180 in quick and full | 600 in deep>
+  --target <target> [--ref <ref>] --budget <120 in quick | 180 in full | 600 in deep>
 ```
 
-The budget is the shell's own deadline, measured from launch; Step 5.5's wait is measured
-from the moment the harvest starts, after Steps 2–4. They are not the same clock and do not
-need to match. A typical review takes 40–60 s, so a 60 s budget would kill most adversarial
-runs at the finish line; 180 s lets them complete, and in `quick` a shell still running at
-harvest time is reported as such with its output path — it finishes on its own and is not
-killed for being late.
+**The budget is what the harvest waits out, in every mode.** They were once different
+numbers on the argument that they measure different clocks, which is true and beside the
+point: a review launched and then abandoned before it returns is billed and unread, and in
+`quick` — the mode the pre-push rule runs before every push — that was two paid reviews per
+push whose findings reached nobody. `quick` gets a smaller budget rather than a shorter
+wait: 120 s covers a typical 40–60 s review with room, and bounds the pre-push pause at two
+minutes.
 
 Two background shells, launched together, cost wall-clock once. Running them in
 sequence would double the time for no gain — nothing in the second depends on the
@@ -255,7 +256,8 @@ range, and with no target it reviews *the current diff*:
 | --- | --- |
 | uncommitted work (dirty tree) | no target — the current diff is the scope |
 | PR target, after `gh pr checkout` | the PR number |
-| branch target that is the current HEAD, or a clean tree ahead of upstream | **the branch name** — never "no target": on a clean tree the built-in's default scope is empty |
+| branch target that is the current HEAD, or a clean tree ahead of **the default branch** | **the branch name** — never "no target": on a clean tree the built-in's default scope is empty |
+| a clean tree ahead of an upstream that is **not** the default branch (a stacked branch) | **skip Review D** — see below |
 | a single file | that path |
 | branch target that is **not** checked out | **skip Review D** |
 | a ref range not ending at HEAD, or `<base>...FETCH_HEAD` | **skip Review D** |
@@ -265,6 +267,15 @@ built-in would review an empty diff, return no findings, and Step 6 would print 
 A, B and C as a peer bug hunt of the same diff — the same false-clean shape the empty-base
 guard and the Step 1.5 checkout guard exist to prevent. Passing the branch name gives it
 the committed range.
+
+The fourth row is the same hazard wearing the opposite sign. A branch name hands the
+built-in `<default-branch>...<branch>`, and Step 1 resolves the scope as the commits ahead
+of **upstream** — the same range only while upstream *is* the default branch. On a stacked
+branch (`feature-2` tracking `origin/feature-2`, based on `feature-1`) that difference is
+every commit of `feature-1`: Reviews A, B and C examine two commits, Review D examines
+twenty. Step 6 would then demand a disposition for defects outside the change under review,
+and the cross-read would compare reviews of different diffs. Compare `$BASE` to
+`$DEFAULT_REF` from Step 1; when they differ, skip Review D and say so in its status line.
 
 **The built-in is the skill named exactly `code-review`, unprefixed.** This command is
 `bymax-quality:code-review`; if no unprefixed `code-review` skill is listed in the session,
@@ -510,16 +521,18 @@ other: Review B needs only the `codex` binary, Review C needs the plugin on top 
 so `adversarial-absent` next to a healthy `ok` is the expected shape on a machine
 without the plugin — not a symptom.
 
-If a shell has not finished: in `full` and `deep`, wait until the **later** of the two
-budgets has elapsed **plus 20 s** — the script's own `timeout` line lands up to ~19 s after
-the budget, because stopping the run (a bounded cancel, then TERM and KILL) happens after
-the deadline, not before it — once, for both shells together, never one after the other.
-Then treat whatever is still running as `timeout`. In `quick`, wait at most 60 s: it is the
-pre-push sanity check and must not stall on a background reviewer. Report an unfinished
-shell as `Status: still running — output at <path>` — never as absent, and never as clean
-— **and when its task notification arrives later in the session, read the file and append
-a "Late arrivals" section to the report** with the same disposition rule as Step 6. A
-billed review whose findings nobody reads is worse than no review.
+If a shell has not finished, wait until the **later** of the two budgets has elapsed
+**plus 20 s** — the script's own `timeout` line lands up to ~19 s after the budget, because
+stopping the run (a bounded cancel, then TERM and KILL) happens after the deadline, not
+before it — once, for both shells together, never one after the other. This holds in
+`quick` too, where the budget is 120 s: the mode is quick because Review A does less, not
+because a paid reviewer is abandoned mid-sentence.
+
+Then treat whatever is still running as `timeout`. Report an unfinished shell as
+`Status: still running — output at <path>` — never as absent, and never as clean — **and
+when its task notification arrives later in the session, read the file and append a "Late
+arrivals" section to the report** with the same disposition rule as Step 6. A billed review
+whose findings nobody reads is worse than no review.
 
 ### Review D — the agent
 

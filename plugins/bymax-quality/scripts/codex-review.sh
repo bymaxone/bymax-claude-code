@@ -259,17 +259,25 @@ fi
 if [ "${TARGET}" = "base" ] && ! git merge-base "${REF}" HEAD >/dev/null 2>&1; then
   status_only "unsupported-target" "ref '${REF}' shares no history with HEAD — no diff to review"
 fi
-# An empty range is as empty as a clean tree: a branch in sync with its base
-# would bill both reviewers over nothing and be counted as a clean second opinion.
-if [ "${TARGET}" = "base" ] && git diff --quiet "${REF}...HEAD" 2>/dev/null && git diff --quiet HEAD 2>/dev/null \
-  && [ -z "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then
-  status_only "unsupported-target" "'${REF}...HEAD' is empty and the tree is clean — nothing to review"
+# An empty range bills a reviewer over nothing and is counted as a clean second
+# opinion. How empty it is depends on the backend: the adversarial runtime reads
+# mergeBase..HEAD and nothing else, so the range alone decides; `codex exec
+# review --base` diffs that base against the WORKING TREE, so uncommitted work
+# still gives the standard reviewer something real to read.
+if [ "${TARGET}" = "base" ] && git diff --quiet "${REF}...HEAD" 2>/dev/null; then
+  if [ "${MODE}" = "adversarial" ]; then
+    status_only "unsupported-target" "'${REF}...HEAD' is empty, and the adversarial runtime reviews only that range — nothing to review"
+  fi
+  if git diff --quiet HEAD 2>/dev/null \
+    && [ -z "$(git ls-files --others --exclude-standard -- "$(git rev-parse --show-toplevel)" 2>/dev/null)" ]; then
+    status_only "unsupported-target" "'${REF}...HEAD' is empty and the tree is clean — nothing to review"
+  fi
 fi
 # A clean tree is not a review either: both backends will bill a full turn over
 # "(none)" sections and return a verdict on nothing.
 if [ "${TARGET}" = "uncommitted" ] \
   && git diff --quiet HEAD 2>/dev/null \
-  && [ -z "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then
+  && [ -z "$(git ls-files --others --exclude-standard -- "$(git rev-parse --show-toplevel)" 2>/dev/null)" ]; then
   status_only "unsupported-target" "the working tree is clean — nothing to review; use --target base"
 fi
 
@@ -451,23 +459,29 @@ changed_bytes() {
   esac
 }
 
+# Sets scope_reason only when nothing has set it yet: the first reason recorded
+# is the most fundamental one. An unverified runtime whose limits are unknown
+# must not have that fact overwritten by a measurement against 1.0.6's numbers —
+# the reader would be handed a figure the script had just said it cannot trust.
+set_scope_reason() { [ -n "${scope_reason}" ] || scope_reason="$1"; }
+
 exceeds_inline_limits() {
   local kind="$1" files bytes
   # A git failure is an unmeasured scope, and an unmeasured scope is unpinned:
   # stderr is discarded and `grep -c` of nothing is 0, which would otherwise
   # read as "small change, inlined".
   if ! files="$(changed_files "${kind}" 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
-    scope_reason="${SCOPE_UNMEASURED}"; return 0
+    set_scope_reason "${SCOPE_UNMEASURED}"; return 0
   fi
   if [ "${files}" -gt "${RUNTIME_INLINE_MAX_FILES}" ]; then
-    scope_reason="${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"; return 0
+    set_scope_reason "${files} changed files exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_FILES}"; return 0
   fi
   if ! bytes="$(changed_bytes "${kind}" 2>/dev/null | wc -c; exit "${PIPESTATUS[0]}")"; then
-    scope_reason="${SCOPE_UNMEASURED}"; return 0
+    set_scope_reason "${SCOPE_UNMEASURED}"; return 0
   fi
   bytes="${bytes//[[:space:]]/}"
   if [ "${bytes}" -gt "${RUNTIME_INLINE_MAX_BYTES}" ]; then
-    scope_reason="${bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"; return 0
+    set_scope_reason "${bytes} diff bytes exceed the runtime's inline limit of ${RUNTIME_INLINE_MAX_BYTES}"; return 0
   fi
   return 1
 }
@@ -475,22 +489,22 @@ exceeds_inline_limits() {
 # Prints the count; exits non-zero when git itself failed (grep's "no match"
 # status is discarded on purpose — zero untracked files is a valid answer).
 SCOPE_UNMEASURED="the scope could not be measured (git failed)"
-list_untracked()  { git ls-files --others --exclude-standard; }
+# Repo-wide, like every other measurement here. Bare `git ls-files --others` is
+# scoped to the CURRENT DIRECTORY, so from a subdirectory it reports no untracked
+# files while `git diff --quiet HEAD` still answers for the whole repository —
+# a clean-tree verdict on a tree that is not clean.
+list_untracked() { git ls-files --others --exclude-standard -- "$(git rev-parse --show-toplevel)"; }
 count_untracked() { list_untracked 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
 count_tracked_dirty() { git diff --name-only HEAD 2>/dev/null | grep -c .; exit "${PIPESTATUS[0]}"; }
 
 # The inline limits are 1.0.6's numbers. A runtime admitted by the override or
 # by ALLOW_UNVERIFIED may use different ones, so its scope cannot be predicted:
 # report it unpinned rather than `ok` on a guess.
-if [ "${MODE}" = "adversarial" ]; then
-  limits_known=0
-  for verified in ${COMPANION_VERIFIED_VERSIONS}; do
-    [ "${companion_version}" = "${verified}" ] && limits_known=1
-  done
-  if [ "${limits_known}" -eq 0 ]; then
-    scope_unpinned=1
-    scope_reason="runtime version '${companion_version}' is not one whose inline limits were verified, so whether the diff was inlined is unknown"
-  fi
+# `version_verified` was computed once at the availability gate; a second copy of
+# that loop here is one more thing to forget to update.
+if [ "${MODE}" = "adversarial" ] && [ "${version_verified:-0}" -eq 0 ]; then
+  scope_unpinned=1
+  scope_reason="runtime version '${companion_version}' is not one whose inline limits were verified, so whether the diff was inlined is unknown"
 fi
 
 case "${MODE}:${TARGET}" in
@@ -499,10 +513,10 @@ case "${MODE}:${TARGET}" in
   adversarial:base)
     if ! dirty="$( { git diff --name-only HEAD && list_untracked; } 2>/dev/null | sort -u | grep -c .; exit "${PIPESTATUS[0]}")"; then
       scope_unpinned=1
-      scope_reason="${SCOPE_UNMEASURED}"
+      set_scope_reason "${SCOPE_UNMEASURED}"
     elif [ "${dirty:-0}" -gt 0 ]; then
       scope_unpinned=1
-      scope_reason="${dirty} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
+      set_scope_reason "${dirty} uncommitted files are outside the mergeBase..HEAD range the runtime reviews"
     elif exceeds_inline_limits base; then
       scope_unpinned=1
     fi ;;
@@ -511,13 +525,13 @@ case "${MODE}:${TARGET}" in
     # tracked uncommitted hunks are reviewed although the requested scope is the
     # committed range, and untracked files are not reviewed at all.
     if ! untracked="$(count_untracked)" || ! tracked_dirty="$(count_tracked_dirty)"; then
-      scope_unpinned=1; scope_reason="${SCOPE_UNMEASURED}"
+      scope_unpinned=1; set_scope_reason "${SCOPE_UNMEASURED}"
     elif [ "${tracked_dirty:-0}" -gt 0 ]; then
       scope_unpinned=1
-      scope_reason="${tracked_dirty} tracked uncommitted files are included beyond '${REF}...HEAD' by \`codex exec review --base\`"
+      set_scope_reason "${tracked_dirty} tracked uncommitted files are included beyond '${REF}...HEAD' by \`codex exec review --base\`"
     elif [ "${untracked:-0}" -gt 0 ]; then
       scope_unpinned=1
-      scope_reason="${untracked} untracked files are outside the diff \`codex exec review --base\` builds"
+      set_scope_reason "${untracked} untracked files are outside the diff \`codex exec review --base\` builds"
     fi ;;
   # standard:uncommitted needs no case: `codex exec review --uncommitted`
   # reviews "staged, unstaged, and untracked changes" (its own --help), which
@@ -573,6 +587,14 @@ review_session="bymax-review-$$-$(date +%s)"
 #     ID-less cancel under this run's session id.
 stop_review() {
   [ "${run_active}" -eq 1 ] || return 0
+  # Cleared and disarmed on ENTRY, not on exit. This runs from two places: the
+  # budget path, where TERM/INT are still `exit 0`, and cleanup. A signal
+  # arriving while the bounded cancel is in flight would otherwise fire the EXIT
+  # trap, re-enter here with run_active still 1, issue a second cancel under the
+  # same session id, and report "may still be billing" for a run the first
+  # cancel had already stopped.
+  run_active=0
+  trap '' TERM INT
   if [ "${MODE}" = "adversarial" ] && [ -n "${companion}" ]; then
     local cancel_out="${workdir}/cancel.json" cancel_pid cancel_waited=0 was_alive=0
     # Liveness is sampled BEFORE the cancel, never after: the runtime's cancel
@@ -610,7 +632,6 @@ stop_review() {
   fi
   wait "${codex_pid}" >/dev/null 2>&1
   review_rc=$?
-  run_active=0
 }
 
 # The EXIT/TERM/INT traps were armed at the top of the script. From here on
@@ -738,7 +759,7 @@ fi
 status_emitted=1
 if [ "${scope_unpinned}" -eq 1 ]; then
   emit "CODEX_STATUS: ok-unpinned"
-  emit "CODEX_SCOPE: self-collected — ${scope_reason}; the reviewer chose its own scope"
+  emit "CODEX_SCOPE: ${scope_reason}"
 else
   emit "CODEX_STATUS: ok"
 fi

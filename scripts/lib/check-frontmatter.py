@@ -26,6 +26,7 @@ Exit codes:
 from __future__ import annotations
 
 import pathlib
+import re
 import sys
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -39,24 +40,31 @@ REQUIRED_FIELDS = {
 }
 
 # CONTRIBUTING.md requires every agent to run on at least `sonnet`. An allowlist,
-# not a `haiku` denylist: `inherit` takes whatever the parent session runs on, a
-# typo like `sonet` names nothing, and a future cheaper tier will not be called
-# haiku. The field accepts full ids (`claude-sonnet-5`), so match as a substring.
-AGENT_ALLOWED_MODEL_MARKERS = ("sonnet", "opus")
+# not a `haiku` denylist: `inherit` takes whatever the parent session runs on and
+# a typo like `sonet` names nothing. Matched against the WHOLE value rather than
+# as a substring — `sonnet-6-preview` and `my-opus-fork` contain a tier name and
+# are not one. A new canonical id is added here when it exists, which is the
+# point of an allowlist.
+AGENT_ALLOWED_MODELS = ("sonnet", "opus")
+AGENT_ALLOWED_MODEL_PATTERN = re.compile(r"^claude-(sonnet|opus)[-.]")
 
 # Optional everywhere, but must be a string when present: a bare `[a|b]` parses as
 # a sequence, which is the bug that prompted this gate.
 OPTIONAL_STRING_FIELDS = ("argument-hint", "model")
 
 
+
 def frontmatter_files() -> list[tuple[pathlib.Path, str]]:
     """Every Markdown file whose frontmatter Claude Code reads, tagged by kind."""
     found: list[tuple[pathlib.Path, str]] = []
-    for path in REPO_ROOT.glob("plugins/*/commands/*.md"):
+    # `**` on purpose: a namespaced command or agent in a subdirectory loads the
+    # same way, and a one-level glob skipped it while still printing a green
+    # "Checked N files" because the flat siblings kept the count non-zero.
+    for path in REPO_ROOT.glob("plugins/*/commands/**/*.md"):
         found.append((path, "command"))
     for path in REPO_ROOT.glob("plugins/*/skills/*/SKILL.md"):
         found.append((path, "skill"))
-    for path in REPO_ROOT.glob("plugins/*/agents/*.md"):
+    for path in REPO_ROOT.glob("plugins/*/agents/**/*.md"):
         found.append((path, "agent"))
     return sorted(found)
 
@@ -96,7 +104,11 @@ def check_fields(data: dict, kind: str, relative: pathlib.Path) -> list[str]:
                 " — wrap it in quotes"
             )
 
+    # Skip anything the required loop already judged for this kind, or a
+    # non-string `model` on an agent is reported twice for one defect.
     for field in OPTIONAL_STRING_FIELDS:
+        if field in REQUIRED_FIELDS[kind]:
+            continue
         if field in data and not isinstance(data[field], str):
             problems.append(
                 f"{relative}: '{field}' must be a string, got {type(data[field]).__name__}"
@@ -109,11 +121,13 @@ def check_identity(data: dict, kind: str, path: pathlib.Path, relative: pathlib.
     """Problems with how an agent or skill identifies itself: model tier, directory name."""
     problems = []
     # `model` is required above; it must also name a tier CONTRIBUTING.md allows.
-    if kind == "agent" and isinstance(data.get("model"), str) \
-            and not any(m in data["model"].lower() for m in AGENT_ALLOWED_MODEL_MARKERS):
-        problems.append(
-            f"{relative}: agent model '{data['model']}' is not sonnet or opus, the minimum CONTRIBUTING.md requires"
-        )
+    if kind == "agent" and isinstance(data.get("model"), str):
+        model = data["model"].strip().lower()
+        if model not in AGENT_ALLOWED_MODELS and not AGENT_ALLOWED_MODEL_PATTERN.match(model):
+            problems.append(
+                f"{relative}: agent model '{data['model']}' is not sonnet or opus, the minimum"
+                " CONTRIBUTING.md requires"
+            )
 
     # A skill is addressed by its `name`, and Claude Code resolves it from the
     # directory. A mismatch loads nothing while every other check passes.

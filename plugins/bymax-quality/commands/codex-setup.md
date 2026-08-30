@@ -101,13 +101,17 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
 
 Then, if the openai-codex plugin is installed, exercise the adversarial path too — the
 run above cannot produce its statuses, so a green standard run says nothing about it. Give
-it a scope that exists: on a clean tree the script now refuses `--target uncommitted`
-(`unsupported-target`), because a review of nothing bills a full turn and returns a verdict
-on nothing. From a feature branch:
+it a scope that exists: on a clean tree the script now refuses `--target uncommitted`, and
+on a branch with nothing ahead of its base it refuses `--target base` — a review of nothing
+bills a full turn and returns a verdict on nothing. Run this **from a feature branch with
+commits on it**, and name the base yourself rather than deriving it: `refs/remotes/origin/HEAD`
+is unset on any clone not made by `git clone`, and a wrong guess reports
+`unsupported-target — ref does not resolve`, which reads as "this repository is unsupported"
+rather than "that base was a guess".
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
-  --mode adversarial --target base --ref "$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)" --budget 300
+  --mode adversarial --target base --ref "<your default branch, e.g. origin/main>" --budget 300
 ```
 
 The first line is the contract:
