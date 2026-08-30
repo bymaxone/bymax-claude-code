@@ -516,10 +516,11 @@ reader, not for you to summarise.
 | `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing, **or the installed version is not one the script has verified** — the second line says which | report the status and its line |
 
 `ok-unpinned` is followed by a `CODEX_SCOPE:` line naming the cause. For Review C it
-usually means the change was too large for the runtime to inline in the prompt (more
-than two files or 256 KiB — which is most real reviews), so the reviewer collected its
-own scope with git commands, minutes after launch, against a tree that may have moved;
-on a branch target it can also mean uncommitted work was outside the reviewed range.
+means the change was too large for the runtime to inline in the prompt (more than two
+files or 256 KiB — which is most real reviews), so the reviewer collected its own scope
+with git commands, minutes after launch, against a tree that may have moved. A dirty tree
+on a branch target is **not** a cause: `--target base` asks for the committed range, and
+the runtime reviewing exactly that range is the request honoured.
 Review B reports it on a branch target when the tree is dirty: `codex exec review --base`
 diffs the merge-base against the working tree, so tracked edits are reviewed beyond the
 committed range and untracked files are not reviewed at all. (`--uncommitted` reviews
