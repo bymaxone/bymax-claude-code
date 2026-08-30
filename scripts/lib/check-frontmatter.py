@@ -79,6 +79,53 @@ def split_frontmatter(text: str) -> str | None:
     return None
 
 
+def check_fields(data: dict, kind: str, relative: pathlib.Path) -> list[str]:
+    """Problems with the required and optional fields of one parsed frontmatter."""
+    problems = []
+    for field in REQUIRED_FIELDS[kind]:
+        value = data.get(field)
+        if value is None or value == "" or value == []:
+            problems.append(f"{relative}: {kind} is missing required '{field}'")
+        elif field == "tools":
+            # A list of tool names, or a comma-separated string — both load.
+            if not isinstance(value, (list, str)):
+                problems.append(f"{relative}: 'tools' must be a list or string, got {type(value).__name__}")
+        elif not isinstance(value, str):
+            problems.append(
+                f"{relative}: '{field}' must be a string, got {type(value).__name__}"
+                " — wrap it in quotes"
+            )
+
+    for field in OPTIONAL_STRING_FIELDS:
+        if field in data and not isinstance(data[field], str):
+            problems.append(
+                f"{relative}: '{field}' must be a string, got {type(data[field]).__name__}"
+                " — wrap it in quotes"
+            )
+    return problems
+
+
+def check_identity(data: dict, kind: str, path: pathlib.Path, relative: pathlib.Path) -> list[str]:
+    """Problems with how an agent or skill identifies itself: model tier, directory name."""
+    problems = []
+    # `model` is required above; it must also name a tier CONTRIBUTING.md allows.
+    if kind == "agent" and isinstance(data.get("model"), str) \
+            and not any(m in data["model"].lower() for m in AGENT_ALLOWED_MODEL_MARKERS):
+        problems.append(
+            f"{relative}: agent model '{data['model']}' is not sonnet or opus, the minimum CONTRIBUTING.md requires"
+        )
+
+    # A skill is addressed by its `name`, and Claude Code resolves it from the
+    # directory. A mismatch loads nothing while every other check passes.
+    if kind == "skill" and isinstance(data.get("name"), str):
+        if data["name"] != path.parent.name:
+            problems.append(
+                f"{relative}: name '{data['name']}' does not match its directory"
+                f" '{path.parent.name}'"
+            )
+    return problems
+
+
 def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
     """Return a list of human-readable problems with one file's frontmatter."""
     relative = path.relative_to(REPO_ROOT)
@@ -102,45 +149,7 @@ def check(path: pathlib.Path, kind: str, yaml) -> list[str]:
     if not isinstance(data, dict):
         return [f"{relative}: frontmatter must be a mapping, got {type(data).__name__}"]
 
-    problems = []
-    for field in REQUIRED_FIELDS[kind]:
-        value = data.get(field)
-        if value is None or value == "" or value == []:
-            problems.append(f"{relative}: {kind} is missing required '{field}'")
-        elif field == "tools":
-            # A list of tool names, or a comma-separated string — both load.
-            if not isinstance(value, (list, str)):
-                problems.append(f"{relative}: 'tools' must be a list or string, got {type(value).__name__}")
-        elif not isinstance(value, str):
-            problems.append(
-                f"{relative}: '{field}' must be a string, got {type(value).__name__}"
-                " — wrap it in quotes"
-            )
-
-    for field in OPTIONAL_STRING_FIELDS:
-        if field in data and not isinstance(data[field], str):
-            problems.append(
-                f"{relative}: '{field}' must be a string, got {type(data[field]).__name__}"
-                " — wrap it in quotes"
-            )
-
-    # `model` is required above; it must also name a tier CONTRIBUTING.md allows.
-    if kind == "agent" and isinstance(data.get("model"), str) \
-            and not any(m in data["model"].lower() for m in AGENT_ALLOWED_MODEL_MARKERS):
-        problems.append(
-            f"{relative}: agent model '{data['model']}' is not sonnet or opus, the minimum CONTRIBUTING.md requires"
-        )
-
-    # A skill is addressed by its `name`, and Claude Code resolves it from the
-    # directory. A mismatch loads nothing while every other check passes.
-    if kind == "skill" and isinstance(data.get("name"), str):
-        if data["name"] != path.parent.name:
-            problems.append(
-                f"{relative}: name '{data['name']}' does not match its directory"
-                f" '{path.parent.name}'"
-            )
-
-    return problems
+    return check_fields(data, kind, relative) + check_identity(data, kind, path, relative)
 
 
 def main() -> int:
