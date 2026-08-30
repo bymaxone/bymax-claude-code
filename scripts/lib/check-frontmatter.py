@@ -46,7 +46,11 @@ REQUIRED_FIELDS = {
 # are not one. A new canonical id is added here when it exists, which is the
 # point of an allowlist.
 AGENT_ALLOWED_MODELS = ("sonnet", "opus")
-AGENT_ALLOWED_MODEL_PATTERN = re.compile(r"^claude-(sonnet|opus)[-.]")
+# Anchored at BOTH ends: `^claude-(sonnet|opus)[-.]` alone accepted
+# `claude-sonnet-typo` and `claude-opus-anything`, which is every string that
+# merely starts like an id. A real one ends in a version, optionally dated:
+# claude-sonnet-5, claude-opus-4-1, claude-haiku-4-5-20251001.
+AGENT_ALLOWED_MODEL_PATTERN = re.compile(r"^claude-(sonnet|opus)-\d+(?:[-.]\d+)*$")
 
 # Optional everywhere, but must be a string when present: a bare `[a|b]` parses as
 # a sequence, which is the bug that prompted this gate.
