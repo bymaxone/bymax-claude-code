@@ -57,11 +57,11 @@ out, rate-limited or slow, the report says so in one line and nothing else chang
 > `/codex:adversarial-review` `disable-model-invocation: true`: a model must not start those billed
 > runs on its own. Review C drives the plugin's `codex-companion.mjs` runtime directly, by absolute
 > path — a plain Node script carrying no such gate — which is what keeps the adversarial prompt
-> tracking upstream instead of drifting in a copy here. An earlier version of this file argued that
-> invoking *this* command supplied the missing consent, on the grounds that it is user-only. It is
-> not: no command in this toolkit sets `disable-model-invocation`, and fifteen files invoke this one
-> from a model, `/bymax-workflow:task` and `/bymax-workflow:autopilot` among them. The consent is
-> attached to the flag instead, where a person has to type it.
+> tracking upstream instead of drifting in a copy here. Invoking *this* command does not supply the
+> missing consent: no command in this toolkit sets `disable-model-invocation`, and commands and
+> skills across it invoke this one from a model — `/bymax-workflow:task` and
+> `/bymax-workflow:autopilot` among them.
+> The consent is attached to the flag instead, where a person has to type it.
 >
 > **Be honest about what that buys.** The flag is enforced by this instruction, not by code:
 > `codex-review.sh` accepts `--mode adversarial` from any caller, so a model that decided to pass

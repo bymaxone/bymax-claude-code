@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Two comments in the shipped command and its script no longer carry a hard count.** The consent argument for `--adversarial` named an exact number of files that invoke `/bymax-quality:code-review` from a model; the number was already stale and moves whenever a command is added, so the claim is stated without it. What it establishes — that no Bymax command sets `disable-model-invocation`, so invoking this one supplies no consent — is unchanged and still verifiable.
+- **Three comments state their constraint instead of narrating the edit that produced it.** `agents-sync.yml`, `code-review.md` and `check-frontmatter.py` each explained themselves by describing what an earlier version of the same text said. A reader without that history cannot tell which half is the rule and which is the changelog; the durable reason was the only load-bearing part and is what remains.
 - **The `agents-sync` caller authenticates with the organisation's GitHub App, and the shared block
   is at `v1`.** The reusable workflow's secret contract is `app-id` / `app-private-key`; the
   organisation has `AGENTS_SYNC_APP_ID` and `AGENTS_SYNC_PRIVATE_KEY` and no `AGENTS_SYNC_TOKEN`, so
