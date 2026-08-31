@@ -61,7 +61,7 @@ claude plugin install bymax-pr@bymax-claude-code
 claude plugin install bymax-pm@bymax-claude-code
 ```
 
-That's it. Restart Claude Code and you have **7 installable plugins** with **21 slash commands**, **5 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
+That's it. Restart Claude Code and you have **7 installable plugins** with **22 slash commands**, **5 skills**, **7 sub-agents**, **3 hooks**, and **23 templates** — the full workflow ready.
 
 ---
 

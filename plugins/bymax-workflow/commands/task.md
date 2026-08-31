@@ -39,6 +39,13 @@ End-to-end runner for tasks scaffolded by `/bymax-workflow:phase-tasks`. Treats 
 
 ## Step 1 — Per task, in order
 
+> **Status vocabulary — every status cell in every dashboard uses exactly the
+> planning legend, emoji included:** 📋 ToDo · 🔄 In Progress · 👀 Review ·
+> ✅ Done · ⛔ Blocked · 🟡 Partial. Mark the task 🔄 In Progress in the task
+> index when starting it, 👀 Review while its review gates run, ⛔ Blocked (with
+> a one-line reason) when it stalls — never a bare word without the emoji, never
+> a second vocabulary.
+
 For each task in the phase (or for the single task requested):
 
 ### 1.1 — Read the task block

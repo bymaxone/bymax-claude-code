@@ -70,11 +70,18 @@ P2 ──────────────────┘
 
 ### Step 5 — Render the document
 
-Use `~/.claude/templates/roadmap.template.md` as the structure. Required sections:
+Use the `roadmap.template.md` structure — resolve it in this order, first hit wins: (1) `${CLAUDE_PLUGIN_ROOT}/templates/roadmap.template.md` — the copy versioned with this command; (2) only if that is absent, `~/.claude/templates/roadmap.template.md`; (3) only if both are absent, build the document from the required sections below — they are the same contract. Required sections:
 
 1. **Header** — status legend, last updated, source spec link
 2. **Progress dashboard** — counter (`N / M phases done`, `XX%`)
-3. **Phase table** — columns: ID · Name · Status · Progress · Size · Last Updated
+3. **Phase table** — exactly this shape (Status always carries the legend emoji;
+   Progress is `done/total` tasks):
+
+   ```markdown
+   | ID | Phase | Status | Progress | Size | Last updated |
+   |---|---|---|---|---|---|
+   | P0 | <kebab-title — short description> | 📋 ToDo | 0/4 | M | — |
+   ```
 4. **Dependency graph** — ASCII DAG
 5. **Parallelization notes** — what can run together, what blocks what
 6. **Global conventions** — TypeScript / naming / paths / lint / test rules that apply across phases (lift from `CLAUDE.md` + `/bymax-workflow:standards`)

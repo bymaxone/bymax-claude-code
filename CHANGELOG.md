@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-08-31
+
 ### Added
 
 - **`/bymax-web-verify:record` — a UI flow recorded as reviewable video evidence** (`bymax-web-verify`
@@ -76,6 +78,22 @@ Plugin versions: `bymax-quality` 1.6.0 → 1.6.1 · marketplace 1.9.0 → 1.9.1.
   cap. The starter itself is unchanged.
 
 ### Fixed
+
+- **`/bymax-workflow:roadmap`, `phase-tasks` and `spec` can now find their document templates on a
+  marketplace install** (`bymax-workflow` `1.6.0`). The three commands pointed only at
+  `~/.claude/templates/…`, a path that exists solely after a dotfiles restore via
+  `scripts/install.sh` — installed via marketplace, the templates were unreachable (they shipped
+  inside `bymax-bootstrap`, a different plugin), so generated roadmaps and task dashboards lost the
+  emoji status legend and the standard table shape and were improvised per run. The templates now
+  ship inside `bymax-workflow` itself, the commands read `${CLAUDE_PLUGIN_ROOT}/templates/` first
+  with the dotfiles path as fallback, and when neither resolves the required sections in the command
+  are the same contract, so the structure survives. `/bymax-workflow:task` now pins the same
+  status vocabulary (emoji included) for every dashboard cell it writes, with the 🔄/👀/⛔
+  transitions named — the autopilot skill already did. Marketplace to `1.12.0`.
+- **`roadmap.template.md`'s source-spec link resolves from where the roadmap actually lives**
+  (`bymax-bootstrap` `1.1.4`, and the copy now shipped in `bymax-workflow`). Rendered at
+  `docs/plans/<feature>-plan.md`, the relative target `specs/…` pointed at `docs/plans/specs/…`;
+  it is now `../specs/…`.
 
 - **A dirty tree downgraded an adversarial branch review that was correctly pinned.** With
   `--target base` the requested scope is the committed `<ref>...HEAD` range, so the runtime
@@ -747,7 +765,8 @@ Initial public release of the toolkit. Five composable plugins, six specialist s
 - **`scripts/validate.sh`** — validates `marketplace.json` and every `plugin.json` (valid JSON, required fields, every command/agent/skill path exists, every command file has a YAML frontmatter `description`, every agent file has `name` + `description` + `tools`, every shell hook is `chmod +x`, shellcheck on every shell script when installed, every required project-level file is present). Used by CI and locally before pushing.
 - **`docs/PROPOSAL.md`** — original design proposal preserved for context.
 
-[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/bymaxone/bymax-claude-code/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.9.0...v1.12.0
 [1.9.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/bymaxone/bymax-claude-code/compare/v1.6.1...v1.7.0
