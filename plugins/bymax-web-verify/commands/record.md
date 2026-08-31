@@ -146,9 +146,10 @@ of each invocation — with a shared one, back-to-back recordings silently destr
 each other). Add `--headed` only when the user asked to watch; headless records
 identically. **Confirm the assertions passed** — a failed run still produces a
 video, but that video documents a bug, not a verification. On failure: report it
-as exactly that, skip Steps 4–5 (nothing gets published), and go **straight to
-Step 6** — cleanup is unconditional; a failed run must not leave the temporary
-spec or command-started servers behind.
+as exactly that, skip Steps 4–5 **and Step 7** (nothing gets published, so there
+is no footage to caption — the failure report replaces the walkthrough), and go
+**straight to Step 6** — cleanup is unconditional; a failed run must not leave
+the temporary spec or command-started servers behind.
 
 ## Step 4 — Recover the video
 
@@ -220,7 +221,7 @@ Copy (don't move) the final file into the Step 0.3 artifact location, named
 - **Never commit from this command** — the artifact directory may be tracked, and
   committing is the user's decision, always.
 
-## Step 7 — The companion walkthrough (always)
+## Step 7 — The companion walkthrough (always, for every published recording)
 
 A video with no caption is unusable — the viewer cannot tell what to watch for.
 Every run ends with a **plain-text, English, condensed step-by-step** the user can
