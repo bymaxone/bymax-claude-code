@@ -44,9 +44,11 @@ End-to-end runner for tasks scaffolded by `/bymax-workflow:phase-tasks`. Treats 
 > ✅ Done · ⛔ Blocked · 🟡 Partial. Every transition updates **both** places the
 > status lives — the task index row AND the task's own block in the phase file —
 > in the same edit: 🔄 In Progress when starting, 👀 Review while its review
-> gates run, ⛔ Blocked (with a one-line reason) when it stalls — never a bare
-> word without the emoji, never a second vocabulary, never one copy updated
-> without the other.
+> gates run, ⛔ Blocked when it stalls — the status cell carries exactly
+> `⛔ Blocked` and nothing more; the one-line reason goes on its own
+> `> Blocked: <reason>` line directly under the task's block heading (never
+> inside a status cell). Never a bare word without the emoji, never a second
+> vocabulary, never one copy updated without the other.
 
 For each task in the phase (or for the single task requested):
 
