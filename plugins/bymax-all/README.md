@@ -1,6 +1,6 @@
 # 🎁 Bymax All — Reference Index
 
-> **Docs-only marketplace entry.** Claude Code's plugin manifest does not auto-install dependencies, so this plugin does nothing on its own. Install the six sibling plugins individually for the complete toolkit.
+> **Docs-only marketplace entry.** Claude Code's plugin manifest does not auto-install dependencies, so this plugin does nothing on its own. Install the seven sibling plugins individually for the complete toolkit.
 
 ## Install
 
@@ -29,7 +29,7 @@ The complete bymax toolkit (after installing the seven siblings above):
 
 ## When to use this vs picking individual plugins
 
-- **Just starting** → install all six. Easier mental model, all tools available.
+- **Just starting** → install all seven. Easier mental model, all tools available.
 - **Already have your own equivalents** for some areas → install only what you're missing (`bymax-workflow` if you don't have a planning chain, `bymax-quality` if you don't have review/TDD, `bymax-bootstrap` if you don't have project scaffolding, `bymax-web-verify` for browser checks, `bymax-pr` for PR automation).
 
 ## License
