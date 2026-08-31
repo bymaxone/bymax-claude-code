@@ -93,7 +93,10 @@ Plugin versions: `bymax-quality` 1.6.0 → 1.6.1 · marketplace 1.9.0 → 1.9.1.
 - **`roadmap.template.md`'s source-spec link resolves from where the roadmap actually lives**
   (`bymax-bootstrap` `1.1.4`, and the copy now shipped in `bymax-workflow`). Rendered at
   `docs/plans/<feature>-plan.md`, the relative target `specs/…` pointed at `docs/plans/specs/…`;
-  it is now `../specs/…`.
+  it is now `../specs/…`. Two more template defects fixed in both copies: task
+  blocks after the first said `1-7 (same as task N.1)` in a prompt contractually required to be
+  self-contained (the seven steps are now spelled out), and the roadmap update protocol ordered a
+  commit while `/bymax-workflow:task` forbids committing — the commit now belongs to the user.
 
 - **A dirty tree downgraded an adversarial branch review that was correctly pinned.** With
   `--target base` the requested scope is the committed `<ref>...HEAD` range, so the runtime

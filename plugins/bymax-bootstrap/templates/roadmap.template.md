@@ -1,6 +1,6 @@
 # Roadmap — {{FEATURE_TITLE}}
 
-> **Source spec**: [`docs/specs/{{feature-slug}}.md`](../specs/{{feature-slug}}.md)
+> **Source spec**: [`docs/specs/{{feature-slug}}.md`]({{relative-path-from-this-file-to-the-spec}}) <!-- default layout docs/plans/ → ../specs/{{feature-slug}}.md; compute from where this roadmap actually lives -->
 > **Last updated**: {{YYYY-MM-DD}}
 
 ---
@@ -126,7 +126,9 @@ When a phase moves status:
 3. Update **Active phase** and **Blocked** lines at the top.
 4. If the phase is ✅ Done, append a one-line entry to the **Completion log** in this file (or in `CHANGELOG.md` if the project keeps one).
 5. If a downstream phase becomes unblocked, update its status from 📋 ToDo to 🔄 In Progress (or just notify).
-6. Commit with `chore(roadmap): {{feature-slug}} phase {{N}} → {{status}}`.
+6. Leave the commit to the user — suggested message when they ask:
+   `chore(roadmap): {{feature-slug}} phase {{N}} → {{status}}`. Commands that run
+   this protocol never commit on their own.
 
 ---
 

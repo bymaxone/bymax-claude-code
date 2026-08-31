@@ -211,8 +211,15 @@ Verification:
 - `pnpm test src/features/{{feature}}/{{file}}.test.ts`
 - {{MANUAL_STEP}}
 
-Completion Protocol:
-1-7 (same as task {{N}}.1)
+Completion Protocol (after the agent reports done):
+1. Update task status emoji to ✅ Done in this file
+2. Tick acceptance-criteria checkboxes above
+3. Update task row in the task index table (status column)
+4. Increment phase progress counter at top of this file (`N/{{TOTAL_TASKS}} tasks`)
+5. Update phase row in the master roadmap dashboard at `docs/plans/{{feature-slug}}-plan.md`
+6. Recompute overall progress percentage in the roadmap
+7. Append a completion log entry at the bottom of this file:
+   `- {{N}}.2 ✅ YYYY-MM-DD — {{one-line summary}}`
 ````
 
 ---

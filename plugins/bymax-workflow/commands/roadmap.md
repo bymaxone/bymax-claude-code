@@ -72,7 +72,10 @@ P2 ──────────────────┘
 
 Use the `roadmap.template.md` structure — resolve it in this order, first hit wins: (1) `${CLAUDE_PLUGIN_ROOT}/templates/roadmap.template.md` — the copy versioned with this command; (2) only if that is absent, `~/.claude/templates/roadmap.template.md`; (3) only if both are absent, build the document from the required sections below — they are the same contract. Required sections:
 
-1. **Header** — status legend, last updated, source spec link
+1. **Header** — status legend, last updated, source spec link — computed
+   relative to where the roadmap file actually lives (default
+   `docs/plans/<feature>-plan.md` → `../specs/<feature-slug>.md`; a custom
+   location changes the prefix, so derive it, never paste the default)
 2. **Progress dashboard** — counter (`N / M phases done`, `XX%`)
 3. **Phase table** — exactly this shape (Status always carries the legend emoji;
    Progress is `done/total` tasks):
