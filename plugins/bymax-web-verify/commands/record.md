@@ -48,8 +48,13 @@ sleep. If this command started the servers, it kills them in Step 6.
 
 ## Step 2 — Locate or create the spec
 
-1. Search `<testDir>` for a spec already covering the flow — prefer extending it
-   over forking a duplicate.
+1. Search `<testDir>` for a spec already covering the flow. **Never edit an
+   existing spec in place for a recording** — the `test.use` video/`slowMo`
+   overrides, the raised timeout and the final hold are recording-only edits
+   that would otherwise be left behind, permanently slowing that test. Copy the
+   spec into `.record-tmp/` (fixing relative imports for the new depth), apply
+   the recording overrides to the copy, and delete it in Step 6 like any other
+   throwaway. The original stays byte-identical.
 2. If none exists, decide the spec's fate **now**:
    - **Throwaway** (evidence only) → write it under `<testDir>/.record-tmp/<slug>.spec.ts`,
      delete in Step 6.
@@ -206,3 +211,4 @@ Keep it under a screen — it is a caption, not a manual.
 | Walkthrough written from the plan instead of the spec that ran | Lists steps the footage doesn't contain; the reader loses sync in seconds. |
 | Naming test accounts by email instead of role | Leaks a credential into chat/tickets and tells the reader nothing. |
 | Bolting Playwright onto a project that doesn't have it | Out of scope for producing one video — report the gap instead. |
+| Editing an existing spec in place to force video/`slowMo` | The recording-only overrides outlive the recording — that test stays slowed and video-enabled for every future run. Record from a `.record-tmp/` copy. |
