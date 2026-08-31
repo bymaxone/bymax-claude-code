@@ -59,7 +59,7 @@ sleep. Step 6 kills exactly the processes this command started, nothing else.
    existing spec in place for a recording** — the `test.use` video/`slowMo`
    overrides, the raised timeout and the final hold are recording-only edits
    that would otherwise be left behind, permanently slowing that test. Copy the
-   spec into `.record-tmp/<run-id>/` (fixing relative imports for the new
+   spec into `<testDir>/.record-tmp/<run-id>/` (fixing relative imports for the new
    depth), apply
    the recording overrides to the copy, and delete it in Step 6 like any other
    throwaway. The original stays byte-identical. In the copy, keep **only the
@@ -216,7 +216,9 @@ Copy (don't move) the final file into the Step 0.3 artifact location, named
   reporter names every step it executed. A step the runner never reached is
   reported **NOT RUN** — a mid-flow failure proves nothing about later steps,
   and inventing their status is worse than omitting it. Then: navigation gaps
-  found, and the artifact path.
+  found, and — for a successful, published recording — the artifact path; a
+  failed run states plainly that nothing was published, never a scratch path
+  dressed up as evidence.
 - Delete this run's `<testDir>/.record-tmp/<run-id>/` — only this run's, never
   the whole `.record-tmp/`, which may hold a concurrent recording's spec. If
   permanent,
