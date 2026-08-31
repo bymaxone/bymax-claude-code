@@ -96,10 +96,15 @@ sleep. Step 6 kills exactly the processes this command started, nothing else.
    single action.
 4. **Authentication:** reuse the stored session when the selected project
    declares `use.storageState` (verified in Step 0.1) — never re-implement
-   login. When the flow *is* login,
-   take credentials from the project's env/helpers; never reconstruct them
-   through shell interpolation (`grep`/`cut`/`$(...)`) — test passwords may carry
-   shell metacharacters that corrupt silently in a round-trip.
+   login. When the flow *is* login, remember **the camera sees what is typed**:
+   the account identifier filled into the form is published in the footage, and
+   no caption redaction removes it. Record login only with an account whose
+   identifier is synthetic and non-sensitive; if the only available account
+   carries a real address, start from the stored session instead and list login
+   under "not in this video". Credentials come from the project's env/helpers;
+   never reconstruct them through shell interpolation (`grep`/`cut`/`$(...)`) —
+   test passwords may carry shell metacharacters that corrupt silently in a
+   round-trip.
 5. **Click-only navigation:** the only direct `page.goto()` is the flow's true
    entry point. Every other screen is reached by clicking, as a user would. If no
    clickable path exists to a required screen, stop and record it as a gap — a
@@ -149,8 +154,14 @@ that and stop the publishing path.
 find <scratch>/record-run-<timestamp> -iname '*.webm'
 ```
 
-Copy it out to your scratchpad immediately anyway (belt and braces — scratch
-directories are cheap, re-recording a flow is not), then post-process the copy.
+More than one file is normal — retries, multiple browser projects, or a spec
+with sibling tests each produce their own. **Never publish "the newest" blind:**
+Playwright names each result directory after the test title, project and retry
+(`<spec>-<title>-<project>[-retryN]/`), so map the intended test's *successful*
+attempt to its directory and take that video; cross-check against the reporter
+output when in doubt. Copy the selected file to your scratchpad immediately
+(belt and braces — scratch directories are cheap, re-recording is not), then
+post-process the copy.
 
 ## Step 5 — Post-process before publishing
 
