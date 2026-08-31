@@ -64,7 +64,9 @@ same names at any time.
 ## Requirements
 
 - Claude Code with cross-session messaging (2.1.236+ for idle notifications).
-- `git`, and `gh` authenticated for PR/CI evidence (recommended, not mandatory).
+- `git` always; `gh` authenticated wherever verification reads PRs or CI — Gate 3,
+  startup reconciliation, and `release-check` depend on it. Without `gh` the PM must
+  report those checks as unverifiable, never assume them green.
 - Optional: Agent Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`) if you want the
   PM to also spawn managed teammates; independent peer sessions work without it.
 

@@ -22,8 +22,10 @@ Rules that keep it trustworthy:
 
 - **Single writer.** Only the PM writes here. Workers report via messages; the PM
   records. Two writers on coordination files is how boards silently fork.
-- **The PM never writes into a worker's repository.** Inspect freely (`git -C`,
-  `gh`), delegate all modifications. The board is the PM's blast radius.
+- **The PM never modifies a worker repository's working tree, branches, or
+  history.** Inspect freely (`git -C`, `gh`) — including `git fetch`, which
+  touches only remote-tracking refs and is part of reading — and delegate all
+  real modifications. The board is the PM's blast radius.
 - `board.md` is a living index, rewritten as state changes. `tasks/`, `decisions.md`
   and `activity.md` are append-oriented — history is never edited, corrections are
   new entries.

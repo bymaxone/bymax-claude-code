@@ -72,6 +72,7 @@ protect; point at files/PRs/decision IDs instead of pasting content.
 | PRIORITY_CHANGE | new priority, what to preempt or resume |
 | DEPENDENCY_UPDATE | what changed upstream, where (commit/PR/DEC-nnn), what the receiver must do about it |
 | DECISION | answer to a DECISION_REQUEST, with the DEC-nnn reference |
+| VERIFICATION_FAILED | which gate failed, what the PM measured (commit/diff/CI), what to fix — the task stays with its owner |
 | REVIEW_REQUEST | (to a reviewer) branch/PR, contract's acceptance criteria, risk level, focus areas |
 
 **Worker → PM** (workers learn these from the contract's reply instructions):
@@ -117,8 +118,10 @@ Two distinct cases — a peer still listed but silent, and a peer missing from
 receive a message.
 
 **Listed but silent** past its contract checkpoint: one direct question → an
-idle-notice subscription → after a full session with no signal, treat it as
-missing (below).
+idle-notice subscription → after a full session with no signal, release the
+assignment — but a listed peer can still receive messages, so send `CANCEL_TASK`
+directly **before** returning the task to READY or reassigning it. Only a peer
+that is actually absent gets the pending-cancellation record below.
 
 **Missing from `ListAgents`** (exited or crashed — the human may restart it under
 the same name later): no message can reach it, so act on the board instead:

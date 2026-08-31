@@ -55,8 +55,10 @@ gh pr checks <n>                                                    # every chec
 ```
 
 If the claimed commit does not exist, the diff does not match the claimed scope, or
-CI is red — the claim fails verification and goes back with a precise, evidence-based
-rejection (`TASK_REJECTED`), never a vague "please check again".
+CI is red — the claim fails verification and goes back as `VERIFICATION_FAILED`
+(PM → worker, `peer-protocol.md`): which gate failed, what was measured, what to
+fix — never a vague "please check again". (`TASK_REJECTED` is the worker's message
+for refusing a contract; it is not the PM's verdict on evidence.)
 
 ## Quality gates
 
@@ -66,7 +68,7 @@ not a box you ticked.
 | Gate | Question | Checked how | Required for |
 | --- | --- | --- | --- |
 | 1 — Criteria | does the work satisfy every acceptance criterion in the contract? | PM reads each criterion against the diff/behaviour | all |
-| 2 — Evidence | does the claimed evidence exist? | commit reachable, diff matches scope, PR exists | all |
+| 2 — Evidence | does the claimed evidence exist, as the contract's Required evidence specified? | per the task type (table below): commit reachable and diff matching scope for code, a PR only where the contract requires one, written findings for investigations | all |
 | 3 — Checks | did the required verification run green? | test/lint/build output, CI status via `gh` | all |
 | 4 — Review | did someone other than the owner approve it? | reviewer's `REVIEW_RESULT`, or PR review state | MEDIUM+ |
 | 5 — Integration | does it hold across repository boundaries? | consumer builds against the change; contract tests; migration order validated | HIGH+ |
