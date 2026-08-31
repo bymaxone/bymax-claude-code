@@ -26,7 +26,8 @@ BACKLOG → READY → ASSIGNED → ACKNOWLEDGED → IN_PROGRESS → REVIEW → V
 
 - **Only the PM moves tasks between states.** Workers report events; the PM decides
   what they mean. A worker cannot self-serve into DONE.
-- READY requires all `Depends on` tasks VERIFIED (not merely claimed complete).
+- READY requires all `Depends on` tasks at least VERIFIED — VERIFIED or DONE,
+  never merely claimed complete.
 - ASSIGNED → ACKNOWLEDGED requires a real ack, not receipt (`task-contract.md`).
 - `TASK_COMPLETE` from the worker moves IN_PROGRESS → REVIEW when review is required
   by risk, else directly → VERIFICATION. **It never moves anything to DONE.**

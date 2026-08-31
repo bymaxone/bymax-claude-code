@@ -7,13 +7,15 @@ in the seams, not in the files. The PM owns the seams.
 
 Tasks form a DAG. Record edges on the board (`Dependencies` section) using:
 
-- `BLOCKED_BY` — cannot meaningfully start until the other task is VERIFIED.
+- `BLOCKED_BY` — cannot meaningfully start until the other task is at least
+  VERIFIED (VERIFIED or DONE).
   The inverse (`BLOCKS`) is derived; record one direction only.
 - `RELATED_TO` — shared context worth knowing, no ordering constraint.
 
 Rules:
-- A task is READY only when every `BLOCKED_BY` edge points at a VERIFIED task —
-  claimed-complete does not unblock anyone (`lifecycle.md`).
+- A task is READY only when every `BLOCKED_BY` edge points at a task that is at
+  least VERIFIED (VERIFIED or DONE) — claimed-complete does not unblock anyone
+  (`lifecycle.md`).
 - **Partial unblocking beats waiting:** if TASK-B needs only TASK-A's interface,
   not its implementation, split A into "define + publish the contract" (small,
   expedited) and "implement" — B starts against the contract. This is the single
