@@ -44,6 +44,21 @@ Plugin versions: `bymax-quality` 1.6.0 → 1.6.1 · marketplace 1.9.0 → 1.9.1.
 
 ### Added
 
+- **`bymax-pm` — Engineering Project Manager for multi-agent development** (`1.0.0`). `/bymax-pm:pm`
+  turns a session into the PM/TPM above independent Claude Code peer sessions, built on the native
+  cross-session tools: discovery via `ListAgents` (session names are the addresses — workers start as
+  `claude --name <agent>`), delegation via `SendMessage` with structured task contracts that carry
+  their own reply instructions (peers have nothing installed), and one-shot idle notices
+  (`notify_when_idle`) instead of polling. Deterministic lifecycle (BACKLOG → … → VERIFIED → DONE)
+  where a worker's "done" is a claim moved to review, never a completion — DONE requires evidence
+  (commits, diffs, tests, CI via `gh`) checked by the PM through six quality gates scaled by a
+  four-level risk model. Blocker/disagreement/escalation protocols, an append-only decision log, and
+  a git-friendly `.claude/pm/` workspace (board + one file per task + roster + activity log) that a
+  cold session can resume by reconciling against the repositories. The skill ships as
+  `SKILL.md` + 8 lazily-loaded references (peer protocol, task contract, lifecycle, escalation,
+  reporting, persistence, multi-repo, worked example). Marketplace to `1.10.0`; `bymax-all` to
+  `1.4.0` with the new sibling listed.
+
 - **`AGENTS.md`, with the shared Bymax code-review rules and the `agents-sync` workflow.** Codex
   reviews every pull request here and reads its guidance from `AGENTS.md` alone — root rules apply
   broadly, a nested file governs its directory, one file per directory, up to 32 KiB combined. The shared block between the

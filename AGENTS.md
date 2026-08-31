@@ -245,6 +245,16 @@ Some passages look like they could be trimmed and exist because the shorter form
 **Safe path:** a simplification of an instruction needs the same justification as a
 suppression — say what the longer form guarded against and why that no longer applies.
 
+### Trigger phrases in `Triggers:` lists may include Portuguese
+
+A `description`'s trigger list exists to match what a user actually types, and this
+toolkit's users invoke commands in Portuguese as often as in English — thirteen
+command and skill files carry Portuguese trigger phrases by design (`"sobe isso"`,
+`"rodar o roadmap inteiro"`, `"instalar codex"`). This is the narrowing the shared
+language rule calls for: quoted trigger phrases inside a `Triggers:` list are exempt
+from the English-only rule. Nothing else in those files is — prose, field names,
+examples and the rest of the description stay English.
+
 ### Frontmatter is code
 
 Command, skill and agent frontmatter is parsed at load time and validated by
