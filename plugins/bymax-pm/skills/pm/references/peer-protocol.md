@@ -117,13 +117,14 @@ Two distinct cases — a peer still listed but silent, and a peer missing from
 `ListAgents` entirely. They need different handling, because only the first can
 receive a message.
 
-**Listed but silent** past its contract checkpoint: one direct question → an
-idle-notice subscription → then release the assignment if no signal has arrived
-by the earlier of its **next contract checkpoint** or **24 hours after the
-roster's last-contact entry** (both are written down, so the threshold is
-checkable). A listed peer can still receive messages, so send `CANCEL_TASK`
-directly **before** returning the task to READY or reassigning it. Only a peer
-that is actually absent gets the pending-cancellation record below.
+**Listed but silent** past its contract checkpoint: send one direct question and
+record its date in the task file, subscribe for an idle notice, then release the
+assignment if no signal has arrived within **24 hours of that question** — the
+deadline is set by the question itself, so it is always in the future and always
+checkable against the recorded date. A listed peer can still receive messages,
+so send `CANCEL_TASK` directly **before** returning the task to READY or
+reassigning it. Only a peer that is actually absent gets the
+pending-cancellation record below.
 
 **Missing from `ListAgents`** (exited or crashed — the human may restart it under
 the same name later): no message can reach it, so act on the board instead:
