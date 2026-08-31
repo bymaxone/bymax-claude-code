@@ -21,9 +21,12 @@ new E2E stack onto a repo to produce one video.
 
 1. **Playwright config** — find `playwright.config.(ts|js|mjs)`. Read from it:
    `testDir` (where specs live), `outputDir` (scratch for artifacts), the current
-   `video` setting, and the `projects` list — specifically whether a `setup`
-   project injects `storageState` (stored authentication). No config → report
-   what is missing and stop.
+   `video` setting, and the `projects` list — for the project you will run:
+   its `testMatch`/`testIgnore` (Step 2's copy must still be matched), and its
+   authentication wiring — a `setup` project only *writes* the state file; what
+   makes a run authenticated is the selected project declaring
+   `use.storageState` plus a dependency on that setup. Read both ends before
+   assuming a session exists. No config → report what is missing and stop.
 2. **Dev servers** — same discovery as `/bymax-web-verify:test`: map the layout
    (single app or monorepo), read each `package.json` for the dev script, note
    ports from `.env`/config. If the config has a `webServer` block, Playwright
@@ -91,8 +94,9 @@ sleep. Step 6 kills exactly the processes this command started, nothing else.
    still reads as "too fast" once someone tries to track individual form fields.
    Size `test.setTimeout` to the step count — `slowMo` time is added to every
    single action.
-4. **Authentication:** reuse the stored session when the config's `setup` project
-   provides `storageState` — never re-implement login. When the flow *is* login,
+4. **Authentication:** reuse the stored session when the selected project
+   declares `use.storageState` (verified in Step 0.1) — never re-implement
+   login. When the flow *is* login,
    take credentials from the project's env/helpers; never reconstruct them
    through shell interpolation (`grep`/`cut`/`$(...)`) — test passwords may carry
    shell metacharacters that corrupt silently in a round-trip.
@@ -109,6 +113,18 @@ sleep. Step 6 kills exactly the processes this command started, nothing else.
    might append query params.
 
 ## Step 3 — Run it, isolated per run
+
+First prove the runner can see the copy — a spec relocated under
+`.record-tmp/<run-id>/` can fall outside the project's `testMatch`, and the
+symptom ("No tests found") is cheaper to meet before recording than after:
+
+```bash
+npx playwright test <spec-path> --project=<project> --list
+```
+
+Empty listing → adjust the copy's filename/location until it satisfies the
+project's matching (staying inside the run-scoped directory), or pass a
+project whose matching covers it. Then run:
 
 ```bash
 npx playwright test <spec-path> --project=<project> --output <scratch>/record-run-<timestamp> --reporter=list
