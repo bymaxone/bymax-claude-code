@@ -29,18 +29,18 @@ jobs:
       contents: write
       pull-requests: write
     secrets:
-      # Named rather than `inherit`, so the called workflow receives this one
-      # secret and not every secret this repository holds.
+      # A GitHub App, not a PAT: the reusable mints a token per run, scoped to
+      # this repository only, and revokes it in its post step. Both halves are
+      # required together — the reusable treats exactly one as a hard failure
+      # rather than falling back, which is the right shape for a credential.
       #
-      # The mapping is present even while the secret is not, because a reusable
-      # workflow receives no secret it is not passed: adding AGENTS_SYNC_TOKEN
-      # later would otherwise change nothing, and the run would keep using the
-      # default token while looking configured. An unset secret evaluates to the
-      # empty string, which the called workflow already falls back from.
+      # `sync-token` is deliberately absent. It is still accepted, but this
+      # organisation has no AGENTS_SYNC_TOKEN, so mapping it would read as
+      # configured while resolving to empty — the failure this comment used to
+      # describe and now avoids.
       #
-      # Why it is worth setting here: a pull request opened with the default
-      # GITHUB_TOKEN starts no workflow runs. This repository's ruleset requires
-      # no status checks, so such a pull request could merge — but it would merge
-      # without `validate.yml` ever having run on it, which is the one check that
-      # proves the synced file still parses.
-      sync-token: ${{ secrets.AGENTS_SYNC_TOKEN }}
+      # Why it is worth having: a pull request opened with the default
+      # GITHUB_TOKEN starts no workflow runs, so the sync would merge without
+      # `validate.yml` ever proving the synced file still parses.
+      app-id: ${{ secrets.AGENTS_SYNC_APP_ID }}
+      app-private-key: ${{ secrets.AGENTS_SYNC_PRIVATE_KEY }}
