@@ -88,7 +88,7 @@ demanding more is bureaucracy that teaches agents to route around the PM.
 
 | Task type | Minimum evidence for Gate 2/3 |
 | --- | --- |
-| Code change | branch, commit SHA, `--stat` summary, test run tail, PR URL |
+| Code change | branch, commit SHA, `--stat` summary, test run tail; the PR URL when — and only when — the contract requires a PR |
 | Bug fix | the above + a failing-then-passing test that pins the bug |
 | Refactor | the above + proof of no behaviour change (same tests green before/after) |
 | Migration | forward + rollback tested on a real dataset copy, ordering documented |
