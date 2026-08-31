@@ -28,15 +28,18 @@ Rules:
 
 ## Health criteria (objective, not vibes)
 
+Evaluate top-down and report the **first** state whose criteria hold — the order
+is the precedence, so two PMs reading the same board reach the same answer:
+
 | State | Criteria |
 | --- | --- |
-| ON_TRACK | no P0/P1 blocked; critical path moving; no decision waiting > 1 session |
-| AT_RISK | a critical-path task blocked or stuck, a HIGH/CRITICAL risk without mitigation, or verification debt piling up (> 2 tasks stuck in REVIEW/VERIFICATION) |
-| BLOCKED | nothing on the critical path can move without a human decision or external event |
 | COMPLETE | every task for the stated goal DONE; release readiness satisfied |
+| BLOCKED | nothing on the critical path can move without a human decision or external event |
+| AT_RISK | a critical-path task blocked or stuck, a HIGH/CRITICAL risk without mitigation, or verification debt piling up (> 2 tasks stuck in REVIEW/VERIFICATION) |
+| ON_TRACK | none of the above |
 
-State the criterion that produced the state: "AT_RISK — TASK-021 stuck 2 sessions
-on the critical path", never a bare label.
+State the criterion that produced the state: "AT_RISK — TASK-021 stuck 2 days on
+the critical path", never a bare label.
 
 ## Session report (end of a working session / on request)
 

@@ -118,8 +118,10 @@ Two distinct cases — a peer still listed but silent, and a peer missing from
 receive a message.
 
 **Listed but silent** past its contract checkpoint: one direct question → an
-idle-notice subscription → after a full session with no signal, release the
-assignment — but a listed peer can still receive messages, so send `CANCEL_TASK`
+idle-notice subscription → then release the assignment if no signal has arrived
+by the earlier of its **next contract checkpoint** or **24 hours after the
+roster's last-contact entry** (both are written down, so the threshold is
+checkable). A listed peer can still receive messages, so send `CANCEL_TASK`
 directly **before** returning the task to READY or reassigning it. Only a peer
 that is actually absent gets the pending-cancellation record below.
 

@@ -104,8 +104,8 @@ For any incoming work (human request, worker message, idle notice):
 Watch for: no ack after assignment, silence past a contract checkpoint, repeated
 identical failures, evidence-free "almost done" statuses, scope drifting from the
 contract, CI cycling red. Intervene early with the smallest sufficient step
-(`peer-protocol.md` § Unresponsive peers); a stuck agent left alone for a session
-is a PM failure, not a worker failure. Cap retries: the same approach failing
+(`peer-protocol.md` § Unresponsive peers); a stuck agent left alone past the
+24-hour silent-peer threshold is a PM failure, not a worker failure. Cap retries: the same approach failing
 twice means change the approach, the owner, or the task shape — never a third
 identical attempt.
 
