@@ -210,8 +210,11 @@ paste next to the video. It narrates the *footage*, not the report:
 
 - **The text is the recording, step for step** — derived from the spec that
   actually ran, in execution order, using the literal values typed and the
-  literal strings asserted on screen. A step cut from the spec goes in a final
-  "not in this video" line, never in the numbered list.
+  literal strings asserted on screen — with one exemption that overrides the
+  literal rule: credentials and account identifiers (passwords, emails,
+  usernames, tokens) are never transcribed; write the role instead ("the admin
+  account's password"). A step cut from the spec goes in a final "not in this
+  video" line, never in the numbered list.
 - Plain text in the chat reply — no artifact, no file, no code fences (the user
   copies it straight out of the terminal). English regardless of conversation
   language.
