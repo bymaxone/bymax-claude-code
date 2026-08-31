@@ -88,7 +88,7 @@ from ListAgents keeps its row — sessions come and go; responsibility persists.
      `STALE`-marked roster rows: a returned owner may resume only under a fresh
      assignment.
    - For every ASSIGNED/ACKNOWLEDGED/IN_PROGRESS task: check the branch/PR
-     (`git -C <repo> fetch && git log`, `gh pr view`) — did work land that the
+     (`git -C <repo> fetch && git -C <repo> log`, `gh pr view`) — did work land that the
      board does not know? Did nothing land where the board says IN_PROGRESS?
    - For every REVIEW/VERIFICATION task: is the evidence still valid (new pushes
      invalidate old review)?

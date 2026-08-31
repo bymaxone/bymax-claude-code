@@ -103,7 +103,7 @@ re-classify if scope reveals more.
 | --- | --- | --- |
 | LOW | docs, tests, internal refactor with no exported-surface change | evidence + PM verification |
 | MEDIUM | new features behind existing contracts, bug fixes touching shared code | + independent review (Gate 4) |
-| HIGH | public API changes, shared libraries, DB schema/migrations, auth-adjacent code, CI/CD pipelines, cross-repo contracts | + plan approval before implementation, + review is mandatory, + integration validation (Gate 5) |
+| HIGH | public API changes, shared libraries, DB schema/migrations, auth-adjacent code, CI/CD pipelines, cross-repo contracts | + plan approval before implementation, + review is mandatory, + Gate 5 integration validation when the effects cross a repository boundary (`lifecycle.md`) |
 | CRITICAL | authentication/authorization, payments, security boundaries, destructive/irreversible operations, backwards-compatibility breaks | everything HIGH requires, + a second specialised reviewer (security/architecture), + explicit human sign-off before merge |
 
 Anything touching secrets, credentials, or data deletion is CRITICAL by default and
