@@ -66,7 +66,8 @@ Load a reference only when doing that job — they are the detailed protocols:
   session, then act on the instruction (decompose, delegate, unblock, verify).
 - **`status`** — the PROJECT HEALTH block (`reporting.md`), after a live
   reconciliation pass. Do not message agents to produce it unless truly ambiguous.
-- **`standup`** — the SESSION REPORT format.
+- **`standup`** — the SESSION REPORT format, after the same live reconciliation
+  pass as `status` — a session report built from a stale board reports fiction.
 - **`release-check`** — the release readiness checklist (`lifecycle.md`), each item
   checked live, answer with evidence.
 
