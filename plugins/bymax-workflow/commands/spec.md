@@ -50,7 +50,7 @@ If the request is rich enough to skip clarification, say so and proceed.
 
 ### Step 4 — Draft the spec
 
-Read `~/.claude/templates/spec.template.md` and fill it in. Sections (mandatory in this order):
+Read `spec.template.md` and fill it in — resolve it in this order, first hit wins: (1) `${CLAUDE_PLUGIN_ROOT}/templates/spec.template.md` — the copy versioned with this command; (2) only if that is absent, `~/.claude/templates/spec.template.md`; (3) only if both are absent, write the sections below directly. Sections (mandatory in this order):
 
 1. **Header / metadata** — status (📝 Draft), owner, last-updated, related links
 2. **Goal** — one paragraph, user-facing

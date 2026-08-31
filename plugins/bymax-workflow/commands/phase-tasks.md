@@ -61,13 +61,23 @@ For each task, capture:
 
 ### Step 4 — Render the file
 
-Use `~/.claude/templates/phase-tasks.template.md`. Required sections:
+Use the `phase-tasks.template.md` structure — resolve it in this order, first hit wins: (1) `${CLAUDE_PLUGIN_ROOT}/templates/phase-tasks.template.md` — the copy versioned with this command; (2) only if that is absent, `~/.claude/templates/phase-tasks.template.md`; (3) only if both are absent, build the file from the required sections below. Required sections:
 
 1. **Header** — phase id, title, status, progress (`0/N tasks`), last-updated, source roadmap link
+   — and in the same scaffold, replace the phase's `—` Progress in the master
+   roadmap with `0/N`: the task count is born here, so this command is what
+   writes the denominator upstream
 2. **Context** — preconditions + state of codebase expected at start (1-2 paragraphs)
 3. **Rules-of-phase** — numbered list of project rules that apply specifically (lift from roadmap)
 4. **Reference docs** — relevant `docs/guidelines/` and `docs/knowledge-base/` files with section anchors
-5. **Task index table** — columns: ID · Task · Status · Priority · Size · Depends on
+5. **Task index table** — exactly this shape (Status always carries the legend
+   emoji: 📋 🔄 👀 ✅ ⛔ 🟡):
+
+   ```markdown
+   | ID | Task | Status | Priority | Size | Depends on |
+   |---|---|---|---|---|---|
+   | <N>.1 | <imperative title> | 📋 ToDo | P0 | S | — |
+   ```
 6. **Per-task block** — for each task: header / status / priority / size / depends / description / acceptance criteria / files / agent prompt
 7. **Completion log** — append-only at the end, one line per completed task: `- <task-id> ✅ YYYY-MM-DD — <one-line summary>`
 
