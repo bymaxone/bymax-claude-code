@@ -47,7 +47,11 @@ BACKLOG → READY → ASSIGNED → ACKNOWLEDGED → IN_PROGRESS → REVIEW → V
 ## WORKER_COMPLETE ≠ PM_VERIFIED
 
 The single most important distinction in this skill. `TASK_COMPLETE` is a claim.
-The PM verifies claims **against the repositories, not against the message**:
+The PM verifies claims **against the repositories, not against the message** — so
+the evidence must name a location the PM can actually read: a pushed branch (the
+default the contract should require), or, for legitimately local-only work, the
+worker's checkout path — in which case the reads below run against that path
+(`git -C <worker-checkout> …`) instead of `origin/<branch>`:
 
 ```bash
 git -C <repo> fetch origin && git -C <repo> log --oneline origin/<branch> | head -5

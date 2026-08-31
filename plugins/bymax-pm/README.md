@@ -18,11 +18,12 @@ claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-pm@bymax-claude-code
 ```
 
-Per-project instead of global: install it in the **coordination directory** — the
-folder the PM session runs from (step 1 below), never a worker's repository — by
-running the install there, or by copying `skills/pm/` into
-`<coordination-dir>/.claude/skills/pm/` (project-level skills need no plugin).
-Verify with `claude plugin list` and by typing `/bymax-pm:pm` in a session.
+Per-project instead of global: `claude plugin install` is user-wide regardless of
+where it runs, so the genuinely project-scoped path is copying `skills/pm/` into
+`<coordination-dir>/.claude/skills/pm/` — the coordination directory the PM session
+runs from (step 1 below), never a worker's repository; project-level skills need no
+plugin. Verify the plugin install with `claude plugin list`, or the copied skill by
+typing `/pm` in a session started there.
 
 ## Set up the topology
 
