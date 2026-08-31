@@ -14,7 +14,7 @@ BACKLOG → READY → ASSIGNED → ACKNOWLEDGED → IN_PROGRESS → REVIEW → V
 | BACKLOG | captured, not yet actionable (missing decomposition, decision, or dependency) |
 | READY | contract complete, dependencies satisfied, an owner could start today |
 | ASSIGNED | `TASK_ASSIGN` sent to exactly one owner; awaiting acknowledgement |
-| ACKNOWLEDGED | owner restated the goal correctly and proposed an approach (see `task-contract.md`); for HIGH/CRITICAL, plan approved |
+| ACKNOWLEDGED | owner restated the goal correctly and proposed an approach (see `task-contract.md`); a HIGH/CRITICAL task stays here until `PLAN_APPROVED` — approval gates the move to IN_PROGRESS, not this state |
 | IN_PROGRESS | owner reported starting, or a checkpoint/status shows work happening |
 | BLOCKED | a `BLOCKER` message is on file with cause, evidence, and what would unblock it |
 | REVIEW | worker sent `TASK_COMPLETE` with evidence; an independent reviewer is examining it |
