@@ -61,10 +61,14 @@ sleep. If this command started the servers, it kills them in Step 6.
      — a per-run directory, so overlapping recording sessions cannot delete each
      other's specs — removed in Step 6.
    - **Permanent coverage** (`--keep-spec`, or the flow verifies a new feature
-     that deserves regression coverage) → write it at its real location and obey
-     the project's E2E conventions (fixtures/seeds committed alongside — check
-     the repo's own rules). "It's just for the video" is not an exemption.
-3. Force video and human pacing for this spec only — **no config edits**:
+     that deserves regression coverage) → write the **clean** spec at its real
+     location, obeying the project's E2E conventions (fixtures/seeds committed
+     alongside — check the repo's own rules; "it's just for the video" is not an
+     exemption) — then record from a `.record-tmp/<run-id>/` copy exactly as in
+     item 1. The permanent spec never carries recording overrides.
+3. Force video and human pacing **in the temp copy only** — whatever the spec's
+   origin, the overrides live and die with `.record-tmp/<run-id>/`; no config
+   edits, no permanent spec touched:
 
    ```ts
    import { test, expect } from '@playwright/test';
