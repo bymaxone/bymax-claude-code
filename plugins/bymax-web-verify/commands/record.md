@@ -62,7 +62,11 @@ sleep. Step 6 kills exactly the processes this command started, nothing else.
    spec into `.record-tmp/<run-id>/` (fixing relative imports for the new
    depth), apply
    the recording overrides to the copy, and delete it in Step 6 like any other
-   throwaway. The original stays byte-identical.
+   throwaway. The original stays byte-identical. In the copy, keep **only the
+   intended test** (plus the imports/hooks it needs) — sibling tests would run
+   too, slowly and with their own side effects, and produce extra videos; if
+   trimming them out is impractical, add `-g '<exact test title>'` to the Step 3
+   run so only the intended test executes.
 2. If none exists, decide the spec's fate **now**:
    - **Throwaway** (evidence only) → write it under `<testDir>/.record-tmp/<run-id>/<slug>.spec.ts`
      — a per-run directory, so overlapping recording sessions cannot delete each
