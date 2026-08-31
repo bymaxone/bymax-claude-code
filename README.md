@@ -61,7 +61,7 @@ claude plugin install bymax-pr@bymax-claude-code
 claude plugin install bymax-pm@bymax-claude-code
 ```
 
-That's it. Restart Claude Code and you have **7 installable plugins** with **20 slash commands**, **5 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
+That's it. Restart Claude Code and you have **7 installable plugins** with **21 slash commands**, **5 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
 
 ---
 
@@ -275,6 +275,7 @@ Confirms a web change works in a live browser, and drives the full stack for ass
 | `/bymax-web-verify:setup`  | One-shot, idempotent install of the `agent-browser` CLI **and** Chrome for Testing, finished by a live smoke test.              |
 | `/bymax-web-verify:verify` | Drives a real browser to confirm a change works (navigate, interact, screenshot, read console/page errors). Auto-probes local dev ports. |
 | `/bymax-web-verify:test`   | Assisted UI testing with the stack up: reuses or starts the backend, opens the frontend in the Claude Desktop preview, and walks a flow step by step (page state + console + network 2xx + server logs). `agent-browser` fallback in a terminal. |
+| `/bymax-web-verify:record` | Records a UI flow as reviewable video evidence via the project's own Playwright — human-paced (`slowMo`), lead-in trimmed and verified, pacing gated with `ffprobe`, published with a plain-text walkthrough of the footage. |
 | `check-agent-browser` hook | **SessionStart** — silent when the CLI is present; nudges Claude to offer `/bymax-web-verify:setup` only when it's missing.      |
 
 ### 🤖 [`bymax-pr`](./plugins/bymax-pr/) — The PR lifecycle

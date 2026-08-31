@@ -9,40 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **Two comments in the shipped command and its script no longer carry a hard count.** The consent argument for `--adversarial` named an exact number of files that invoke `/bymax-quality:code-review` from a model; the number was already stale and moves whenever a command is added, so the claim is stated without it. What it establishes — that no Bymax command sets `disable-model-invocation`, so invoking this one supplies no consent — is unchanged and still verifiable.
-- **Three comments state their constraint instead of narrating the edit that produced it.** `agents-sync.yml`, `code-review.md` and `check-frontmatter.py` each explained themselves by describing what an earlier version of the same text said. A reader without that history cannot tell which half is the rule and which is the changelog; the durable reason was the only load-bearing part and is what remains.
-- **The `agents-sync` caller authenticates with the organisation's GitHub App, and the shared block
-  is at `v1`.** The reusable workflow's secret contract is `app-id` / `app-private-key`; the
-  organisation has `AGENTS_SYNC_APP_ID` and `AGENTS_SYNC_PRIVATE_KEY` and no `AGENTS_SYNC_TOKEN`, so
-  the `sync-token` mapping this repository shipped resolved to empty and read as configured while
-  falling back to `GITHUB_TOKEN` — whose pull requests start no workflow runs. It is deleted rather
-  than left dead. The App is installed org-wide and mints a token per run, scoped to this repository
-  and revoked afterwards.
-- **Shared block `075b9975` → `02b55a5`.** `docs/` language is now a per-repository statement,
-  English by default, instead of a blanket Portuguese carve-out; violations of a block rule carry a
-  P1 floor, since Codex surfaces only P0 and P1 on a pull request; the 50-line function limit is
-  scoped to what a change introduces and excludes test-grouping constructs; and the
-  empty-directory rule left the block for a CI check. None of this repository's narrowings depended
-  on the two rules that moved.
-
-Plugin versions: `bymax-quality` 1.6.0 → 1.6.1 · marketplace 1.9.0 → 1.9.1.
-
-### Fixed
-
-- **A dirty tree downgraded an adversarial branch review that was correctly pinned.** With
-  `--target base` the requested scope is the committed `<ref>...HEAD` range, so the runtime
-  reviewing exactly `mergeBase..HEAD` is that request honoured — uncommitted files were never in
-  scope. The `adversarial:base` case nevertheless marked any dirty checkout `ok-unpinned`, and
-  because the check sat in an `elif` it also skipped `exceeds_inline_limits`: a small, fully
-  inlined range came back unpinned, and the cross-read discarded a clean verdict that was in fact
-  exact. The dirty-tree condition is gone and the inline-limit measurement always runs.
-  `standard:base` keeps its own dirty-tree check, which is the opposite case — `codex exec review
-  --base` diffs the merge base against the working tree, so tracked uncommitted edits really are
-  reviewed beyond the requested range.
-
 ### Added
+
+- **`/bymax-web-verify:record` — a UI flow recorded as reviewable video evidence** (`bymax-web-verify`
+  `1.2.0`). Generalised from a project-specific skill that worked, keeping its operational lessons
+  intact: `test.use({ video: 'on', launchOptions: { slowMo } })` with the test timeout resized to the
+  step count; the trailing-`**` `waitForURL` rule for query-param routes (a race that hides until
+  `slowMo` exposes it); the blank first-paint lead-in trimmed with ffmpeg and the cut verified by
+  pulling the first frame; an `ffprobe` pacing gate before publishing, with `setpts` stretching demoted
+  to a fallback; and a mandatory plain-text walkthrough derived from the spec that actually ran, with
+  signed-in users named by role, never by address. New here: `--output` per run makes Playwright's
+  output-wipe hazard structural instead of procedural, `--mp4` produces a universally previewable
+  H.264 copy, discovery reads the project's own Playwright config and artifact conventions instead of
+  assuming any, and missing ffmpeg degrades to publishing raw with the reason stated. Marketplace to
+  `1.11.0`.
 
 - **`bymax-pm` — Engineering Project Manager for multi-agent development** (`1.0.0`). `/bymax-pm:pm`
   turns a session into the PM/TPM above independent Claude Code peer sessions, built on the native
@@ -71,11 +51,42 @@ Plugin versions: `bymax-quality` 1.6.0 → 1.6.1 · marketplace 1.9.0 → 1.9.1.
 
 ### Changed
 
+- **Two comments in the shipped command and its script no longer carry a hard count.** The consent argument for `--adversarial` named an exact number of files that invoke `/bymax-quality:code-review` from a model; the number was already stale and moves whenever a command is added, so the claim is stated without it. What it establishes — that no Bymax command sets `disable-model-invocation`, so invoking this one supplies no consent — is unchanged and still verifiable.
+- **Three comments state their constraint instead of narrating the edit that produced it.** `agents-sync.yml`, `code-review.md` and `check-frontmatter.py` each explained themselves by describing what an earlier version of the same text said. A reader without that history cannot tell which half is the rule and which is the changelog; the durable reason was the only load-bearing part and is what remains.
+- **The `agents-sync` caller authenticates with the organisation's GitHub App, and the shared block
+  is at `v1`.** The reusable workflow's secret contract is `app-id` / `app-private-key`; the
+  organisation has `AGENTS_SYNC_APP_ID` and `AGENTS_SYNC_PRIVATE_KEY` and no `AGENTS_SYNC_TOKEN`, so
+  the `sync-token` mapping this repository shipped resolved to empty and read as configured while
+  falling back to `GITHUB_TOKEN` — whose pull requests start no workflow runs. It is deleted rather
+  than left dead. The App is installed org-wide and mints a token per run, scoped to this repository
+  and revoked afterwards.
+- **Shared block `075b9975` → `02b55a5`.** `docs/` language is now a per-repository statement,
+  English by default, instead of a blanket Portuguese carve-out; violations of a block rule carry a
+  P1 floor, since Codex surfaces only P0 and P1 on a pull request; the 50-line function limit is
+  scoped to what a change introduces and excludes test-grouping constructs; and the
+  empty-directory rule left the block for a CI check. None of this repository's narrowings depended
+  on the two rules that moved.
+
+Plugin versions: `bymax-quality` 1.6.0 → 1.6.1 · marketplace 1.9.0 → 1.9.1.
+
 - **`templates/AGENTS.md` is now `templates/AGENTS.starter.md`.** It is a 26 KB starter for other
   projects, with `{{PROJECT_NAME}}` placeholders. Under its old name Codex would have discovered it
   as this repository's nested `AGENTS.md` for anything changed under `templates/` — applying a
   fictional project's rules to a review here, and pushing the combined guidance past the 32 KiB
   cap. The starter itself is unchanged.
+
+### Fixed
+
+- **A dirty tree downgraded an adversarial branch review that was correctly pinned.** With
+  `--target base` the requested scope is the committed `<ref>...HEAD` range, so the runtime
+  reviewing exactly `mergeBase..HEAD` is that request honoured — uncommitted files were never in
+  scope. The `adversarial:base` case nevertheless marked any dirty checkout `ok-unpinned`, and
+  because the check sat in an `elif` it also skipped `exceeds_inline_limits`: a small, fully
+  inlined range came back unpinned, and the cross-read discarded a clean verdict that was in fact
+  exact. The dirty-tree condition is gone and the inline-limit measurement always runs.
+  `standard:base` keeps its own dirty-tree check, which is the opposite case — `codex exec review
+  --base` diffs the merge base against the working tree, so tracked uncommitted edits really are
+  reviewed beyond the requested range.
 
 ## [1.9.0] — 2026-08-29
 
