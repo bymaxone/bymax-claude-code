@@ -58,9 +58,10 @@ claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
+claude plugin install bymax-pm@bymax-claude-code
 ```
 
-That's it. Restart Claude Code and you have **6 installable plugins** with **19 slash commands**, **4 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
+That's it. Restart Claude Code and you have **7 installable plugins** with **20 slash commands**, **5 skills**, **7 sub-agents**, **3 hooks**, and **20 templates** — the full workflow ready.
 
 ---
 
@@ -83,6 +84,7 @@ claude plugin install bymax-bootstrap@bymax-claude-code     # scaffold new proje
 claude plugin install bymax-mobile@bymax-claude-code        # iOS Simulator + Android Emulator
 claude plugin install bymax-web-verify@bymax-claude-code    # real-browser verification (needs agent-browser)
 claude plugin install bymax-pr@bymax-claude-code            # autonomous PR babysitting (needs gh CLI)
+claude plugin install bymax-pm@bymax-claude-code            # engineering PM for multi-agent development
 ```
 
 > Plugins install user-wide by default (available in every project). To pin a plugin to a single project instead, add it to `enabledPlugins` in that project's `.claude/settings.json`.
@@ -287,9 +289,20 @@ Ships your work and drives the PR to merge-readiness on **any** project, powered
 
 Project-agnostic: auto-detects the package manager + lint/test/typecheck/build scripts, and respects the project's own `CLAUDE.md` / `AGENTS.md`. Depends on `gh` + `git`; never bundles them.
 
+### 📋 [`bymax-pm`](./plugins/bymax-pm/) — Engineering Project Manager
+
+Turns one session into the PM/TPM above your other Claude Code sessions. You talk to the PM; it discovers the workers (`ListAgents`), delegates structured task contracts (`SendMessage`), verifies completion against git/CI evidence through quality gates, resolves blockers between agents, and keeps the whole board in a persistent `.claude/pm/` workspace that survives restarts. Built on native cross-session messaging — no daemon, no database.
+
+| Item | Purpose |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `/bymax-pm:pm`            | Operate as PM: decompose, delegate to named peer sessions, verify evidence, unblock, report. Modes: `status`, `standup`, `release-check`. |
+| `pm` skill + 8 references | Peer protocol, task contracts, lifecycle + gates, escalation, reporting, persistence, multi-repo coordination, worked example. |
+
+Start workers with names (`claude --name nest-logger`) — the name is the address. Workers need nothing installed; the PM's messages carry their own reply instructions.
+
 ### 🎁 [`bymax-all`](./plugins/bymax-all/) — Reference index
 
-A docs-only marketplace entry that lists the full set. Claude Code's plugin manifest does **not** auto-install dependencies, so installing `bymax-all` does nothing on its own — install the six sibling plugins individually for the complete toolkit.
+A docs-only marketplace entry that lists the full set. Claude Code's plugin manifest does **not** auto-install dependencies, so installing `bymax-all` does nothing on its own — install the seven sibling plugins individually for the complete toolkit.
 
 ---
 
@@ -404,6 +417,7 @@ bymax-claude-code/
 │   ├── bymax-mobile/                   ← iOS Simulator + Android Emulator
 │   ├── bymax-web-verify/               ← real-browser verification (needs agent-browser)
 │   ├── bymax-pr/               ← autonomous PR babysitting (needs gh CLI)
+│   ├── bymax-pm/                       ← engineering PM for multi-agent development
 │   └── bymax-all/                      ← reference index (no auto-install in Claude Code)
 │
 ├── templates/                          ← project bootstrapping templates
@@ -440,6 +454,7 @@ claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
+claude plugin install bymax-pm@bymax-claude-code
 ```
 
 Only the `plugins/` content is exposed via `/plugin install`. The vendor/ and personal/ folders are visible in the repo for backup but not installable.
@@ -473,6 +488,7 @@ claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
+claude plugin install bymax-pm@bymax-claude-code
 claude plugin marketplace add anthropics/claude-plugins-official
 claude plugin install frontend-design@claude-plugins-official
 claude plugin marketplace add getsentry/sentry-mcp
@@ -592,6 +608,7 @@ claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
+claude plugin install bymax-pm@bymax-claude-code
 ```
 
 ---
