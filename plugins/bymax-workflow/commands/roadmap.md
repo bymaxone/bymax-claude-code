@@ -83,8 +83,13 @@ Use the `roadmap.template.md` structure — resolve it in this order, first hit 
    ```markdown
    | ID | Phase | Status | Progress | Size | Last updated |
    |---|---|---|---|---|---|
-   | P0 | <kebab-title — short description> | 📋 ToDo | 0/4 | M | — |
+   | P0 | <kebab-title — short description> | 📋 ToDo | — | M | — |
    ```
+
+   Progress becomes `done/total` tasks only when the phase's task file exists —
+   `/bymax-workflow:phase-tasks` writes the `0/N` when it scaffolds the phase.
+   At roadmap time the denominator is unknown: write `—`, never an invented
+   count.
 4. **Dependency graph** — ASCII DAG
 5. **Parallelization notes** — what can run together, what blocks what
 6. **Global conventions** — TypeScript / naming / paths / lint / test rules that apply across phases (lift from `CLAUDE.md` + `/bymax-workflow:standards`)

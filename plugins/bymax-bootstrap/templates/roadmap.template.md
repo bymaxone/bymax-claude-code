@@ -32,11 +32,11 @@
 
 | ID | Phase | Status | Progress | Size | Last updated |
 |---|---|---|---|---|---|
-| P0 | {{P0_TITLE}} | 📋 ToDo | 0/{{P0_TASKS}} | S | — |
-| P1 | {{P1_TITLE}} | 📋 ToDo | 0/{{P1_TASKS}} | M | — |
-| P2 | {{P2_TITLE}} | 📋 ToDo | 0/{{P2_TASKS}} | M | — |
-| P3 | {{P3_TITLE}} | 📋 ToDo | 0/{{P3_TASKS}} | L | — |
-| P4 | {{P4_TITLE}} | 📋 ToDo | 0/{{P4_TASKS}} | S | — |
+| P0 | {{P0_TITLE}} | 📋 ToDo | — | S | — |
+| P1 | {{P1_TITLE}} | 📋 ToDo | — | M | — |
+| P2 | {{P2_TITLE}} | 📋 ToDo | — | M | — |
+| P3 | {{P3_TITLE}} | 📋 ToDo | — | L | — |
+| P4 | {{P4_TITLE}} | 📋 ToDo | — | S | — |
 
 ---
 
