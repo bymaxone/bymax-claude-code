@@ -52,12 +52,14 @@ sleep. If this command started the servers, it kills them in Step 6.
    existing spec in place for a recording** — the `test.use` video/`slowMo`
    overrides, the raised timeout and the final hold are recording-only edits
    that would otherwise be left behind, permanently slowing that test. Copy the
-   spec into `.record-tmp/` (fixing relative imports for the new depth), apply
+   spec into `.record-tmp/<run-id>/` (fixing relative imports for the new
+   depth), apply
    the recording overrides to the copy, and delete it in Step 6 like any other
    throwaway. The original stays byte-identical.
 2. If none exists, decide the spec's fate **now**:
-   - **Throwaway** (evidence only) → write it under `<testDir>/.record-tmp/<slug>.spec.ts`,
-     delete in Step 6.
+   - **Throwaway** (evidence only) → write it under `<testDir>/.record-tmp/<run-id>/<slug>.spec.ts`
+     — a per-run directory, so overlapping recording sessions cannot delete each
+     other's specs — removed in Step 6.
    - **Permanent coverage** (`--keep-spec`, or the flow verifies a new feature
      that deserves regression coverage) → write it at its real location and obey
      the project's E2E conventions (fixtures/seeds committed alongside — check
@@ -162,8 +164,15 @@ Copy (don't move) the final file into the Step 0.3 artifact location, named
 
 ## Step 6 — Report and clean up
 
-- PASS/FAIL per golden-path step, navigation gaps found, and the artifact path.
-- Delete `<testDir>/.record-tmp/` if the spec was throwaway; if permanent,
+- Per-step status **read from the runner, never inferred**: wrap each golden-path
+  step in `test.step('<n>. <description>', …)` when writing the spec, so the
+  reporter names every step it executed. A step the runner never reached is
+  reported **NOT RUN** — a mid-flow failure proves nothing about later steps,
+  and inventing their status is worse than omitting it. Then: navigation gaps
+  found, and the artifact path.
+- Delete this run's `<testDir>/.record-tmp/<run-id>/` — only this run's, never
+  the whole `.record-tmp/`, which may hold a concurrent recording's spec. If
+  permanent,
   confirm its fixtures/seeds are staged alongside it.
 - Kill any dev servers Step 1 started.
 - **Never commit from this command** — the artifact directory may be tracked, and
@@ -211,4 +220,4 @@ Keep it under a screen — it is a caption, not a manual.
 | Walkthrough written from the plan instead of the spec that ran | Lists steps the footage doesn't contain; the reader loses sync in seconds. |
 | Naming test accounts by email instead of role | Leaks a credential into chat/tickets and tells the reader nothing. |
 | Bolting Playwright onto a project that doesn't have it | Out of scope for producing one video — report the gap instead. |
-| Editing an existing spec in place to force video/`slowMo` | The recording-only overrides outlive the recording — that test stays slowed and video-enabled for every future run. Record from a `.record-tmp/` copy. |
+| Editing an existing spec in place to force video/`slowMo` | The recording-only overrides outlive the recording — that test stays slowed and video-enabled for every future run. Record from a `.record-tmp/<run-id>/` copy. |
