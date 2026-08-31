@@ -66,7 +66,11 @@ sleep. Step 6 kills exactly the processes this command started, nothing else.
    intended test** (plus the imports/hooks it needs) — sibling tests would run
    too, slowly and with their own side effects, and produce extra videos; if
    trimming them out is impractical, add `-g '<exact test title>'` to the Step 3
-   run so only the intended test executes.
+   run so only the intended test executes. While editing the copy, wrap each
+   golden-path step in `test.step('<n>. <description>', …)` if the original
+   didn't — Step 6's per-step statuses are read from the reporter, and an
+   uninstrumented copy leaves it nothing to read (in which case report at test
+   level and say so, never invent step statuses).
 2. If none exists, decide the spec's fate **now**:
    - **Throwaway** (evidence only) → write it under `<testDir>/.record-tmp/<run-id>/<slug>.spec.ts`
      — a per-run directory, so overlapping recording sessions cannot delete each
