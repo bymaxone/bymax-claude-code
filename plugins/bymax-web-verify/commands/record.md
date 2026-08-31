@@ -145,8 +145,10 @@ delete the first run's video (Playwright clears its output directory at the star
 of each invocation — with a shared one, back-to-back recordings silently destroy
 each other). Add `--headed` only when the user asked to watch; headless records
 identically. **Confirm the assertions passed** — a failed run still produces a
-video, but that video documents a bug, not a verification. Report it as exactly
-that and stop the publishing path.
+video, but that video documents a bug, not a verification. On failure: report it
+as exactly that, skip Steps 4–5 (nothing gets published), and go **straight to
+Step 6** — cleanup is unconditional; a failed run must not leave the temporary
+spec or command-started servers behind.
 
 ## Step 4 — Recover the video
 
