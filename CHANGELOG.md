@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The `agents-sync` caller authenticates with the organisation's GitHub App, and the shared block
+  is at `v1`.** The reusable workflow's secret contract is `app-id` / `app-private-key`; the
+  organisation has `AGENTS_SYNC_APP_ID` and `AGENTS_SYNC_PRIVATE_KEY` and no `AGENTS_SYNC_TOKEN`, so
+  the `sync-token` mapping this repository shipped resolved to empty and read as configured while
+  falling back to `GITHUB_TOKEN` — whose pull requests start no workflow runs. It is deleted rather
+  than left dead. The App is installed org-wide and mints a token per run, scoped to this repository
+  and revoked afterwards.
+- **Shared block `075b9975` → `02b55a5`.** `docs/` language is now a per-repository statement,
+  English by default, instead of a blanket Portuguese carve-out; violations of a block rule carry a
+  P1 floor, since Codex surfaces only P0 and P1 on a pull request; the 50-line function limit is
+  scoped to what a change introduces and excludes test-grouping constructs; and the
+  empty-directory rule left the block for a CI check. None of this repository's narrowings depended
+  on the two rules that moved.
+
 Plugin versions: `bymax-quality` 1.6.0 → 1.6.1 · marketplace 1.9.0 → 1.9.1.
 
 ### Fixed
