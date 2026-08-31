@@ -34,12 +34,12 @@ jobs:
       # required together — the reusable treats exactly one as a hard failure
       # rather than falling back, which is the right shape for a credential.
       #
-      # `sync-token` is deliberately absent. It is still accepted, but this
-      # organisation has no AGENTS_SYNC_TOKEN, so mapping it would read as
-      # configured while resolving to empty — the failure this comment used to
-      # describe and now avoids.
+      # `sync-token` is deliberately absent. The reusable still accepts it, but
+      # this organisation has no AGENTS_SYNC_TOKEN: mapping it would read as
+      # configured while resolving to empty, and the run would fall back to the
+      # default GITHUB_TOKEN.
       #
-      # Why it is worth having: a pull request opened with the default
+      # Why that fallback matters: a pull request opened with the default
       # GITHUB_TOKEN starts no workflow runs, so the sync would merge without
       # `validate.yml` ever proving the synced file still parses.
       app-id: ${{ secrets.AGENTS_SYNC_APP_ID }}

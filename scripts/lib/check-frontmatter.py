@@ -11,12 +11,13 @@ unquoted `description:` stops being a string the moment a colon-space lands insi
 it (`Modes: quick | full`), and an unquoted `argument-hint: [a|b]` is a list, not
 the hint text.
 
-PyYAML is required rather than optional. An earlier version shipped a hand-written
-fallback for machines without it; that parser was measured to disagree with PyYAML
-in both directions — accepting `description: 12345`, `description: null` and
-`argument-hint: yes`, while rejecting folded scalars, literal scalars and trailing
-comments that YAML accepts. A gate whose verdict depends on which machine ran it is
-worse than one that says plainly what it needs. This file does not reimplement YAML.
+PyYAML is required rather than optional. A hand-written fallback for machines
+without it is not an acceptable substitute: measured against PyYAML, such a parser
+disagrees in both directions — accepting `description: 12345`, `description: null`
+and `argument-hint: yes`, while rejecting folded scalars, literal scalars and
+trailing comments that YAML accepts. A gate whose verdict depends on which machine
+ran it is worse than one that says plainly what it needs. This file does not
+reimplement YAML.
 
 Exit codes:
   0 — every file valid
