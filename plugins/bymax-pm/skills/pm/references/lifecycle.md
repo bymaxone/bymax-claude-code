@@ -73,8 +73,8 @@ not a box you ticked.
 | 2 — Evidence | does the claimed evidence exist, as the contract's Required evidence specified? | per the task type (table below): commit reachable and diff matching scope for code, a PR only where the contract requires one, written findings for investigations | all |
 | 3 — Checks | did the required verification run green, proven by a read the PM performed? | CI status via `gh` when the contract has CI; without CI, rerun the contract's named verification commands in a disposable checkout — `git worktree add <tmp> <claimed SHA>`, removed afterwards — or hand the rerun to an independent agent. Never run them in the worker's own checkout (build artifacts and caches would dirty it), and the worker's pasted output tail alone never satisfies this gate | all |
 | 4 — Review | did someone other than the owner approve it? | reviewer's `REVIEW_RESULT`, or PR review state | MEDIUM+ |
-| 5 — Integration | does it hold across repository boundaries? | consumer builds against the change; contract tests; migration order validated | HIGH+ |
-| 6 — PM verification | PM independently confirmed every gate this task's risk required (1–3 always; 4 for MEDIUM+; 5 for HIGH+) from the sources of truth | the commands above, run by the PM | all |
+| 5 — Integration | does it hold across repository boundaries? | consumer builds against the change; contract tests; migration order validated | HIGH+ whose effects cross a repository boundary (`multi-repo.md`); single-repository HIGH+ work has no Gate 5 — its extra weight is Gate 4's specialised review |
+| 6 — PM verification | PM independently confirmed every gate this task's risk required (1–3 always; 4 for MEDIUM+; 5 for HIGH+ with cross-repository effects) from the sources of truth | the commands above, run by the PM | all |
 
 Gate 4 means **independent** review: the implementing agent is never the only
 authority on its own work. Use a dedicated reviewer session when one exists; a PR
