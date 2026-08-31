@@ -241,7 +241,9 @@ paste next to the video. It narrates the *footage*, not the report:
 - Plain text in the chat reply — no artifact, no file, no code fences (the user
   copies it straight out of the terminal). English regardless of conversation
   language.
-- First line: ticket/slug, environment recorded, filename, duration.
+- First line: ticket/slug, environment recorded, filename, duration — measured
+  by `ffprobe` (Step 5); without it, take the duration from the test's runtime
+  in the reporter output (close enough for a caption) and mark it approximate.
 - **Identify signed-in users by ROLE, never by email/username** — "sign in as the
   admin account", not the address. The role tells the reader whether behaviour is
   permission-dependent; the address is a credential that would end up pasted into
