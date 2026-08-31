@@ -27,11 +27,12 @@
 #     that same runtime (`task`) from an agent.
 #   - What the flag protects is consent: a model must not start a billed Codex
 #     run on its own. Invoking the calling command does not supply that consent —
-#     no Bymax command sets `disable-model-invocation`, and fifteen files invoke
-#     the review command from a model. So the caller must pass `--mode
-#     adversarial` only when the user asked for it with the `--adversarial` flag,
-#     which is off by default. Anything that makes this mode reachable without
-#     that flag removes the only consent this integration has.
+#     no Bymax command sets `disable-model-invocation`, and commands and skills
+#     across the toolkit invoke the review command from a model. So the caller
+#     must pass `--mode adversarial` only when the user asked for it with the
+#     `--adversarial` flag, which is off by default. Anything that makes this
+#     mode reachable without that flag removes the only consent this
+#     integration has.
 #   - What the flag cannot express is "this runtime is internal": that is the
 #     version allowlist below, not the wrapper.
 # If upstream publishes a supported invocation surface for the adversarial
