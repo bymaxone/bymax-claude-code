@@ -42,9 +42,13 @@ new E2E stack onto a repo to produce one video.
 ## Step 1 — Servers (only when the config has no `webServer`)
 
 Follow the project's own dev-server rules (CLAUDE.md / AGENTS.md) if stated.
-Otherwise: pre-kill port stragglers, launch the discovered dev script(s) with
-`run_in_background: true`, and poll readiness with a capped loop — never a blind
-sleep. If this command started the servers, it kills them in Step 6.
+Otherwise, the same lifecycle as `/bymax-web-verify:test`: probe the discovered
+port first — a **healthy listener is reused**, never killed (it may be the
+user's own server); an unhealthy or unidentified listener is reported and the
+user decides — this command never terminates a process it did not start. Only
+on a free port: launch the discovered dev script(s) with
+`run_in_background: true` and poll readiness with a capped loop — never a blind
+sleep. Step 6 kills exactly the processes this command started, nothing else.
 
 ## Step 2 — Locate or create the spec
 
