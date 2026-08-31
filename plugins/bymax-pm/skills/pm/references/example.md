@@ -48,7 +48,10 @@ of asking for status later.
 Idle notice arrives; nest-logger sends `TASK_COMPLETE TASK-021` with branch, SHA,
 type-check output. PM verifies (Gate 2/3: commit exists, diff is types-only,
 check green), sends `REVIEW_REQUEST` to `reviewer` (Gate 4 — HIGH risk). Reviewer
-approves with one naming finding; worker fixes; reviewer re-approves. PM runs
+approves with one naming finding; worker fixes; reviewer re-approves. Gate 5
+(021 is HIGH): no consumer exists yet, so the PM performs the smallest real
+integration read a types-only contract permits — compile-checking a throwaway
+consumer stub against the published types in a scratch directory. PM runs
 Gate 6, marks 021 VERIFIED, and in the same turn:
 
 - `TASK_ASSIGN TASK-025` → nest-observability (now READY),

@@ -34,7 +34,8 @@ Rules that keep it trustworthy:
 - Index, don't mirror: the board stores task state and pointers (branch, PR number,
   commit SHA), never copies of diffs, CI logs or message threads. GitHub already
   stores those; duplicating them guarantees staleness.
-- Timestamps are absolute dates, never "today" or "2h ago".
+- Timestamps are absolute — a date, plus the time whenever a duration depends on
+  it (the silent-peer deadline) — never "today" or "2h ago".
 - No secrets, tokens, or credentials — ever. The workspace is git-friendly and may
   be committed or shared.
 

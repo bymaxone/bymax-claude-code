@@ -118,10 +118,10 @@ Two distinct cases — a peer still listed but silent, and a peer missing from
 receive a message.
 
 **Listed but silent** past its contract checkpoint: send one direct question and
-record its date in the task file, subscribe for an idle notice, then release the
-assignment if no signal has arrived within **24 hours of that question** — the
-deadline is set by the question itself, so it is always in the future and always
-checkable against the recorded date. A listed peer can still receive messages,
+record its timestamp — date **and time** — in the task file, subscribe for an
+idle notice, then release the assignment if no signal has arrived within
+**24 hours of that timestamp** — the deadline is set by the question itself, so
+it is always in the future and always checkable against the recorded moment. A listed peer can still receive messages,
 so send `CANCEL_TASK` directly **before** returning the task to READY or
 reassigning it. Only a peer that is actually absent gets the
 pending-cancellation record below.
