@@ -127,8 +127,13 @@ project's matching (staying inside the run-scoped directory), or pass a
 project whose matching covers it. Then run:
 
 ```bash
-npx playwright test <spec-path> --project=<project> --output <scratch>/record-run-<timestamp> --reporter=list
+PLAYWRIGHT_LIST_PRINT_STEPS=1 npx playwright test <spec-path> --project=<project> \
+  --output <scratch>/record-run-<timestamp> --reporter=list
 ```
+
+The env var matters: the list reporter does **not** print `test.step` entries by
+default (`printSteps` defaults to false), and Step 6's per-step statuses are read
+from this output — without it they would have to be invented.
 
 `--output` gives every recording its own directory, so a second run can never
 delete the first run's video (Playwright clears its output directory at the start
