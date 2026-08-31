@@ -25,7 +25,7 @@ The contract-first split (see `multi-repo.md`, partial unblocking):
 | TASK-021 | nest-logger | audit + publish the transport contract (types only, no impl) | — | HIGH (public API) |
 | TASK-022 | nest-logger | implement the contract changes behind the published types | 021 | MEDIUM |
 | TASK-025 | nest-observability | build the package against TASK-021's contract | 021 | MEDIUM |
-| TASK-027 | backend-template | consume both; integration + contract tests | 022, 025 | MEDIUM |
+| TASK-027 | backend-template | consume both; integration + contract tests | 022, 025 | HIGH (cross-repo contract) |
 
 TASK-021 is deliberately tiny: it unblocks 025 without waiting for 022.
 
