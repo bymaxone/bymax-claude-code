@@ -573,11 +573,11 @@ On `absent` or `unauthenticated`, add one line to the affected review offering
 `adversarial-absent`, read the second line: a missing plugin is fixed by installing the
 openai-codex plugin — `claude plugin marketplace add openai/codex-plugin-cc`, then
 `claude plugin install codex@openai-codex`, three names for one install — an unverified
-version by `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1`
-(the user's call — the script's contract with that runtime is unverified there), and a
-project-local install by `BYMAX_CODEX_COMPANION=<path>`. `codex-setup` installs the CLI
-and fixes none of those. Offer either once, and only in the report — never
-interrupt the review to ask, and never install anything on the user's behalf mid-review.
+version by `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` (the user's call — the script's
+contract with that runtime is unverified there), and a project-local install by
+`BYMAX_CODEX_COMPANION=<path>`. `codex-setup` installs the CLI and fixes none of those.
+Offer either once, and only in the report — never interrupt the review to ask, and never
+install anything on the user's behalf mid-review.
 
 ### The four independence rules
 

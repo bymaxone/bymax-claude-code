@@ -72,8 +72,11 @@
 #   unsupported-target the caller's scope cannot be expressed as a codex flag
 #   timeout            the run exceeded --budget
 #   failed             codex exited non-zero, or produced no usable output
-#   adversarial-absent --mode adversarial, but the openai-codex plugin (or node)
-#                      is not installed. Only this mode is affected.
+#   adversarial-absent --mode adversarial, and the runtime could not be used: node
+#                      absent, the plugin missing or disabled, the plugin list
+#                      unreadable, or the installed version not on
+#                      COMPANION_VERIFIED_VERSIONS. The second line names which.
+#                      Only this mode is affected.
 #
 # Usage:
 #   codex-review.sh [--mode standard|adversarial] --target uncommitted [--budget <sec>]

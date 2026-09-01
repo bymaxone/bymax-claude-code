@@ -16,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (or enable) the openai-codex plugin", leaving a new install to guess across three names: plugin
   `codex`, marketplace `openai-codex`, repo `openai/codex-plugin-cc`. The install pair now appears
   where each audience lands: `llms-install.md` Step 4 and its failure table, the root README's
-  external-tools table, `bymax-quality`'s Install section, and `codex-setup.md`'s plugin section and
-  remedy table. Both Codex rows are marked optional, since `code-review` runs without either.
+  external-tools table, `bymax-quality`'s Install section, `codex-setup.md`'s plugin section and
+  remedy table, and `code-review.md`'s own `adversarial-absent` remedy — the line a reader meets
+  at report time. Both Codex rows are marked optional, since `code-review` runs without either.
   `claude plugin install` accepts no version, so the docs state that the plugin arrives at whatever
   the marketplace publishes instead of naming a version to install; `COMPANION_VERIFIED_VERSIONS`
   stays the single source for the verified list, and the remedy row now says installing a listed
