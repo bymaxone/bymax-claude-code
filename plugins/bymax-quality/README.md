@@ -9,6 +9,21 @@ claude plugin marketplace add bymaxone/bymax-claude-code
 claude plugin install bymax-quality@bymax-claude-code
 ```
 
+### Optional — the two Codex reviews
+
+`/bymax-quality:code-review` works with neither of these and says so in one line where the second
+opinion would go. Each one buys a review:
+
+| Want | Install |
+|---|---|
+| **Review B, standard** (is this correct?) — runs in every mode | the `codex` CLI with an active session: run `/bymax-quality:codex-setup` |
+| **Review C, adversarial** (is this the right approach?) — only under `--adversarial` | the above, plus OpenAI's Codex plugin: `claude plugin marketplace add openai/codex-plugin-cc` then `claude plugin install codex@openai-codex` |
+
+Note the three names in that last command — plugin `codex`, marketplace `openai-codex`, repo
+`openai/codex-plugin-cc`. `claude plugin install` accepts no version, so you get what the
+marketplace publishes; `/bymax-quality:codex-setup` covers what to do when that version is ahead of
+what this plugin has verified.
+
 ## What you get
 
 ### Slash commands
