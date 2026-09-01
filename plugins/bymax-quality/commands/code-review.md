@@ -235,7 +235,7 @@ lives in that plugin's prompt, and its `/codex:adversarial-review` command is ma
 work around by pretending to be the user. What the script drives instead is the plain
 Node runtime underneath it, by absolute path. Reusing that runtime keeps the adversarial
 prompt tracking upstream rather than drifting in a copy here; the cost is that Review C
-reports `adversarial-absent` when the plugin is not installed, which changes nothing
+reports `adversarial-absent` when the runtime cannot be used, which changes nothing
 else. `--target commit` has no adversarial equivalent and reports
 `unsupported-target`.
 
@@ -687,7 +687,8 @@ Run /bymax-quality:codex-setup to enable it.
 
 ### Review C — Codex, adversarial (independent)
 
-Status: adversarial-absent — <the script's second line, verbatim>.
+Status: adversarial-absent — <the script's second line, verbatim>
+<the remedy for that line — see the disposition guidance above>
 ```
 
 Omit Review D's heading entirely in `quick`, rather than printing it as skipped — a

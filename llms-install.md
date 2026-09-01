@@ -76,7 +76,7 @@ Each row: check → install → verify. Skip rows whose plugin wasn't installed.
 | Rust extras (Rust repos) | `command -v cargo` | `cargo install cargo-llvm-cov cargo-mutants cargo-deny cargo-audit cargo-vet` | `cargo llvm-cov --version` |
 | `agent-browser` (for `bymax-web-verify`) | `command -v agent-browser` | run `/bymax-web-verify:setup` **inside Claude Code, after Step 3's restart** (downloads Chrome for Testing — tell the human first) | the setup command ends with its own smoke test |
 | `codex` CLI (for `bymax-quality`'s independent second review) | `command -v codex` | run `/bymax-quality:codex-setup` **inside Claude Code, after Step 3's restart** — it installs the CLI, then hands off: `codex login` is interactive, so **only the human can finish it** | the setup command ends with a real review run, not an exit code |
-| `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` with `Status: ✔ enabled` — a disabled plugin still prints its id, and the runtime skips it | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | `/bymax-quality:codex-setup` from a **feature branch with commits on it**. It makes two runs; only the **adversarial** one verifies this row — a green standard run says nothing about the plugin. That run answering `ok` or `ok-unpinned` is the pass; several other statuses are expected too, not failures — see below the table |
+| `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` with `Status: ✔ enabled` — a disabled plugin still prints its id, and the runtime skips it | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | **HUMAN HANDOFF:** verifying this row runs `/bymax-quality:codex-setup` from a **feature branch with commits on it**, which makes two billed Codex runs of ~40–60 s each — the second is the adversarial one this toolkit gates behind explicit user consent, so an agent must not start it. Ask the human to run it, then read the **adversarial** run's status against the table below; a green standard run says nothing about the plugin |
 
 Both Codex rows are **optional** — `/bymax-quality:code-review` runs without either and prints a
 one-line status where the second opinion would go. Type the last row's two commands exactly: the
@@ -86,18 +86,27 @@ version, so the plugin arrives at whatever the marketplace publishes; if that ve
 `bymax-quality` has verified its runtime contract against, the adversarial review answers
 `adversarial-absent` and `/bymax-quality:codex-setup` documents the ways out.
 
-**Reading the plugin row's verification.** `ok` and `ok-unpinned` are the passing answers.
-The statuses below are expected on a correct install and must not be reported as a failed step:
+Installing this plugin in Step 4 lands it **after** Step 3's restart, and it ships three hooks
+(`SessionStart`, `SessionEnd`, `Stop`) plus eight `/codex:*` commands that stay inert until the
+next fresh session. Review C is the exception and works immediately, because the script spawns
+the runtime by path rather than through the command surface — so a passing verification here is
+not evidence the rest of the plugin is live. Tell the human a second restart is needed if they
+want those commands.
 
-| Status | Why it is expected |
+**Reading the plugin row's verification.** Three verdicts, not two — several statuses are
+emitted before the script ever looks at the plugin, and those leave this row **unverified**
+rather than passed:
+
+| Status of the adversarial run | What it means for this row |
 |---|---|
-| `unsupported-target`, second line saying the range is **empty** or there is nothing to review | run from the default branch, where nothing is ahead of the base. Any other second line — a ref that does not resolve, a base sharing no history — is a real misconfiguration, so read it before excusing this status |
-| `unauthenticated` | the CLI row's `codex login` has not been completed yet — the script gates on the session before it looks for the plugin |
-| `absent` | the CLI row is not done, **or** its install landed outside the non-interactive shell's PATH. Finish that row; an `absent` that survives it is that row failing, and belongs in the report as such |
-| `adversarial-absent`, second line naming an **unverified version** | the install cannot pin a version, so a newly published plugin lands here with nothing wrong |
+| `ok` / `ok-unpinned` | **pass** — the plugin was found, enabled and usable |
+| `adversarial-absent`, second line naming an **unverified version** | **pass** for install purposes: the plugin is there, and the install cannot pin a version, so a newly published one lands here with nothing wrong |
+| `absent` / `unauthenticated` | **unverified** — both fire before the plugin gate. Finish the CLI row above and re-run. An `absent` that survives it is that row failing, and belongs in the report as such |
+| `unsupported-target` | **unverified** — the scope was rejected before the plugin gate. Read the second line: under this row's procedure, on a feature branch with commits, an empty range usually means the `--ref` named the wrong base, not that anything is installed correctly |
+| anything else, including `adversarial-absent` for any other reason | **failure** — take the second line to `/bymax-quality:codex-setup`'s remedy table, which has a row for each |
 
-`adversarial-absent` for any other reason is a real failure, as is any status other than
-these and the two passing answers above.
+Never record this row as passed on an *unverified* verdict: nothing about `codex@openai-codex`
+was checked, and the first `--adversarial` run is where the user would find out.
 
 ## Step 5 — MCP servers (optional — ask the human, default: context7 only)
 
