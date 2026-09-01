@@ -677,7 +677,7 @@ Same model family as Review A, different method — not an independent voice.
 - **Only B, C or D — needs your disposition:** <issue>
 ```
 
-Each review that did not run collapses to a single line, and nothing else changes:
+Each review that did not run collapses to its status and the remedy for it, nothing else:
 
 ```
 ### Review B — Codex, standard (independent)

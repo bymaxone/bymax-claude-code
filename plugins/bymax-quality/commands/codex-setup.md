@@ -100,8 +100,25 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
   --target commit --ref "$(git rev-parse --short HEAD)" --budget 300
 ```
 
-Then, if the openai-codex plugin is installed, **ask the human before exercising the
-adversarial path**. Invoking this command is consent to set the CLI up, not to start the run
+Then decide whether the adversarial path can be exercised at all. The read that settles
+it — **enabled**, not merely present, because the runtime selects on `.enabled == true` and
+skips a disabled one:
+
+```bash
+claude plugin list --json | jq -e '
+  map(select(.id == "codex@openai-codex" and .enabled == true)) | length > 0' >/dev/null \
+  && echo "adversarial path available" || echo "skip it"
+```
+
+Without `jq`, read `claude plugin list` and look for `codex@openai-codex` with
+`Status: ✔ enabled` beneath it. Anything else — absent, or present and disabled — means
+skip this check and say why. Not to save money: the availability gates run before any
+`codex` process starts and bill nothing, so a doomed run is free. It is to avoid asking a
+human to authorise a run that cannot succeed. For the same reason the check is necessary,
+not sufficient — the gate also wants `node`, a complete install, and a version on
+`COMPANION_VERIFIED_VERSIONS`, so a green pre-check can still end at `adversarial-absent`.
+
+When it is available, **ask the human before exercising the adversarial path**. Invoking this command is consent to set the CLI up, not to start the run
 upstream gates behind explicit user invocation — so name the cost (a second billed turn,
 ~40–60 s) and run it only on a yes. Nothing else will exercise it, since Review C is opt-in
 and this is the one place setup can prove it works. The
@@ -130,7 +147,7 @@ The first line is the contract:
 | `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or (adversarial mode) returned a parse-failure page or a review without `Target:`/`Verdict:` — see troubleshooting |
 | `CODEX_STATUS: timeout` | exceeded the budget; retry with a larger `--budget` |
 | `CODEX_STATUS: unsupported-target` | the requested scope has no Codex equivalent, or nothing to review: a file path, a ref range not ending at HEAD, `--target commit` in adversarial mode, a clean tree for `--target uncommitted`, an empty `<ref>...HEAD` on a clean tree (the verification example below hits this on the default branch itself — run it from a feature branch), or a base with no shared history |
-| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the runtime could not be used — see the remedy table below, which has a row for every second line the script emits. This command fixes none of them |
+| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the runtime could not be used — see the remedy table below, which has a row for each cause the second line can name. This command fixes none of them |
 | `CODEX_STATUS: bad-invocation` | the command line was wrong (a flag without its value, an unknown flag or `--mode`) — not a Codex problem |
 
 Expect roughly **40–60 seconds**, largely independent of diff size. A run that returns no
