@@ -21,8 +21,8 @@ opinion would go. Each one buys a review:
 
 Note the three names in that last command — plugin `codex`, marketplace `openai-codex`, repo
 `openai/codex-plugin-cc`. `claude plugin install` accepts no version, so you get what the
-marketplace publishes; `/bymax-quality:codex-setup` covers what to do when that version is ahead of
-what this plugin has verified.
+marketplace publishes; `/bymax-quality:codex-setup` covers what to do when that version is not one this
+plugin has verified.
 
 ## What you get
 

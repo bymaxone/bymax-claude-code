@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The Codex plugin is named where a fresh install looks for it.** `--adversarial` needs OpenAI's
+  Codex plugin, and no document said which one or where from — the remedy table stopped at "install
+  (or enable) the openai-codex plugin", leaving a new install to guess across three names: plugin
+  `codex`, marketplace `openai-codex`, repo `openai/codex-plugin-cc`. The install pair now appears
+  where each audience lands: `llms-install.md` Step 4 and its failure table, the root README's
+  external-tools table, `bymax-quality`'s Install section, and `codex-setup.md`'s plugin section and
+  remedy table. Both Codex rows are marked optional, since `code-review` runs without either.
+  `claude plugin install` accepts no version, so the docs state that the plugin arrives at whatever
+  the marketplace publishes instead of naming a version to install; `COMPANION_VERIFIED_VERSIONS`
+  stays the single source for the verified list, and the remedy row now says installing a listed
+  version is not among the ways out.
+
 ### Fixed
 
 - **`/bymax-pm:pm` appeared twice in the slash menu.** The plugin shipped a command and a
@@ -21,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the skill — so the invocation does not change. It is the only command/skill name collision in
   the repository; the other user-invocable skills ship no sibling command.
 
-Plugin versions: `bymax-pm` 1.0.0 → 1.0.1 · marketplace 1.12.0 → 1.12.1.
+Plugin versions: `bymax-quality` 1.6.2 → 1.6.3 · `bymax-pm` 1.0.0 → 1.0.1 · marketplace 1.12.0 → 1.12.2.
 
 ## [1.12.0] — 2026-08-31
 

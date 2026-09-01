@@ -154,8 +154,7 @@ and session that both need; only the standard one is complete at that point.
   Code — plugin `codex`, marketplace `openai-codex`, from `openai/codex-plugin-cc`, installed
   with `claude plugin marketplace add openai/codex-plugin-cc` then
   `claude plugin install codex@openai-codex` — and Review C drives that plugin's
-  `codex-companion.mjs` runtime directly. The flag
-  is the consent boundary: upstream marks its own adversarial command
+  `codex-companion.mjs` runtime directly. The flag is the consent boundary: upstream marks its own adversarial command
   `disable-model-invocation`, so a model must not start that billed run on its own, and no
   command in this toolkit is user-only. Without the plugin installed it reports
   `adversarial-absent` and nothing else changes.
