@@ -579,11 +579,11 @@ contract with that runtime is unverified there), and a project-local install by
 plugin one is ambiguous by construction: a plugin that is present but **disabled** yields
 the same `not found among installed, enabled plugins` text as one that was never
 installed, so offer `claude plugin enable codex@openai-codex` beside the install rather
-than choosing between them. For every other line, the remedy is its row in
-`/bymax-quality:codex-setup` — and none of those remedies is an install command, so
-reaching for one there leaves the real cause unsaid and the status in place. `codex-setup`
-installs the CLI and fixes none of these.
-Offer either once, and only in the report — never interrupt the review to ask, and never
+than choosing between them. For every other line, read it and take its row in
+`/bymax-quality:codex-setup` rather than defaulting to the install command: most of those
+rows do not call for one, and reaching for it there leaves the real cause unsaid and the
+status in place. `codex-setup` installs the CLI and fixes none of these.
+Offer the remedy once, and only in the report — never interrupt the review to ask, and never
 install anything on the user's behalf mid-review.
 
 ### The four independence rules

@@ -76,7 +76,9 @@
 #                      absent, the plugin missing, disabled or incomplete, the
 #                      plugin list unreadable, a BYMAX_CODEX_COMPANION path that
 #                      does not exist, or the installed version not on
-#                      COMPANION_VERIFIED_VERSIONS. The second line names which.
+#                      COMPANION_VERIFIED_VERSIONS. The second line carries what
+#                      was detected — except that a listing that will not parse
+#                      is reported as the plugin not being present.
 #                      Only this mode is affected.
 #
 # Usage:

@@ -91,8 +91,9 @@ The statuses below are expected on a correct install and must not be reported as
 
 | Status | Why it is expected |
 |---|---|
-| `unsupported-target` | run from the default branch — there is nothing ahead of the base to review |
-| `absent` / `unauthenticated` | the CLI row's `codex login` has not been completed yet; the script gates on the binary and its session before it ever looks for the plugin |
+| `unsupported-target`, second line saying the range is **empty** or there is nothing to review | run from the default branch, where nothing is ahead of the base. Any other second line — a ref that does not resolve, a base sharing no history — is a real misconfiguration, so read it before excusing this status |
+| `unauthenticated` | the CLI row's `codex login` has not been completed yet — the script gates on the session before it looks for the plugin |
+| `absent` | the CLI row is not done, **or** its install landed outside the non-interactive shell's PATH. Finish that row; an `absent` that survives it is that row failing, and belongs in the report as such |
 | `adversarial-absent`, second line naming an **unverified version** | the install cannot pin a version, so a newly published plugin lands here with nothing wrong |
 
 `adversarial-absent` for any other reason is a real failure, as is every other status.
