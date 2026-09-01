@@ -75,7 +75,7 @@ Each row: check → install → verify. Skip rows whose plugin wasn't installed.
 | Android SDK (`/sim-android`) | `command -v adb` | **HUMAN HANDOFF:** Android Studio GUI installer + PATH setup | `adb --version` |
 | Rust extras (Rust repos) | `command -v cargo` | `cargo install cargo-llvm-cov cargo-mutants cargo-deny cargo-audit cargo-vet` | `cargo llvm-cov --version` |
 | `agent-browser` (for `bymax-web-verify`) | `command -v agent-browser` | run `/bymax-web-verify:setup` **inside Claude Code, after Step 3's restart** (downloads Chrome for Testing — tell the human first) | the setup command ends with its own smoke test |
-| `codex` CLI (for `bymax-quality`'s independent second review) | `command -v codex` | run `/bymax-quality:codex-setup` **inside Claude Code, after Step 3's restart** — it installs the CLI, then hands off: `codex login` is interactive, so **only the human can finish it** | the setup command ends with a real review run, not an exit code — one billed Codex turn, and the standard review, which carries no consent gate |
+| `codex` CLI (for `bymax-quality`'s independent second review) | `command -v codex` | run `/bymax-quality:codex-setup` **inside Claude Code, after Step 3's restart** — it installs the CLI, then hands off: `codex login` is interactive, so **only the human can finish it** | **HUMAN HANDOFF for the whole command**, not just the login: `/bymax-quality:codex-setup` ends with a real review run rather than an exit code, and it drives the **adversarial** run too whenever `codex@openai-codex` is already present — so it costs one billed Codex turn, or two, and the second is the run this toolkit gates behind explicit user consent. The human runs it; the check passes when it reports a real review |
 | `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` with `Status: ✔ enabled` — a disabled plugin still prints its id, and the runtime skips it | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | **HUMAN HANDOFF:** verifying this row runs `/bymax-quality:codex-setup` from a **feature branch with commits on it**, which makes two billed Codex runs of ~40–60 s each — the second is the adversarial one this toolkit gates behind explicit user consent, so an agent must not start it. Ask the human to run it, then read the **adversarial** run's status against the table below; a green standard run says nothing about the plugin |
 
 Both Codex rows are **optional** — `/bymax-quality:code-review` runs without either and prints a
@@ -99,11 +99,12 @@ rather than passed:
 
 | Status of the adversarial run | What it means for this row |
 |---|---|
-| `ok` / `ok-unpinned` | **pass** — the plugin was found, enabled and usable |
+| `ok` / `ok-unpinned` | **pass** — the plugin was found, enabled and usable. One exception: with `BYMAX_CODEX_COMPANION` exported, the script uses that path and never looks the plugin up, so unset it before trusting this row |
 | `adversarial-absent`, second line naming an **unverified version** | **pass** for install purposes: the plugin is there, and the install cannot pin a version, so a newly published one lands here with nothing wrong |
 | `absent` / `unauthenticated` | **unverified** — both fire before the plugin gate. Finish the CLI row above and re-run. An `absent` that survives it is that row failing, and belongs in the report as such |
 | `unsupported-target` | **unverified** — the scope was rejected before the plugin gate. Read the second line: under this row's procedure, on a feature branch with commits, an empty range usually means the `--ref` named the wrong base, not that anything is installed correctly |
-| anything else, including `adversarial-absent` for any other reason | **failure** — take the second line to `/bymax-quality:codex-setup`'s remedy table, which has a row for each |
+| `adversarial-absent` for any other reason | **failure** — take the second line to `/bymax-quality:codex-setup`'s remedy table, which has a row for each |
+| `timeout` / `failed` / `bad-invocation` | **pass** for this row, and a problem for another: all three are emitted after the plugin has been found, enabled and version-checked, so they are evidence the install is fine. Take them to `codex-setup`'s Troubleshooting table, not its remedy table |
 
 Never record this row as passed on an *unverified* verdict: nothing about `codex@openai-codex`
 was checked, and the first `--adversarial` run is where the user would find out.

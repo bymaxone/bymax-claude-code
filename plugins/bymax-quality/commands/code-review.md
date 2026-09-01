@@ -513,7 +513,7 @@ reader, not for you to summarise.
 | `unsupported-target` | the scope has no Codex equivalent | idem |
 | `timeout` | exceeded the budget | report the status **and the line after it verbatim** — when the cancel failed it names the one command that still reaches a billing run |
 | `failed` | non-zero exit, no readable output, or — in adversarial mode — a parse-failure page or a review with no `Target:`/`Verdict:` lines; a standard review is accepted as whatever `codex exec review` returned | report the status and the line after it verbatim |
-| `adversarial-absent` | Review C only: the runtime could not be used — the plugin missing, disabled or incomplete, `node` absent, the plugin listing unreadable, or the installed version not one the script has verified. **The second line carries what was detected**, and `/bymax-quality:codex-setup` has a row per line | report the status and its line |
+| `adversarial-absent` | Review C only: the runtime could not be used — the plugin missing, disabled or incomplete, `node` absent, the plugin listing unreadable, a `BYMAX_CODEX_COMPANION` path that does not exist, or the installed version not one the script has verified. **The second line carries what was detected**, and `/bymax-quality:codex-setup` has a row per line | report the status and its line |
 
 `ok-unpinned` is followed by a `CODEX_SCOPE:` line naming the cause. For Review C it
 means the change was too large for the runtime to inline in the prompt (more than two
