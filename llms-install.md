@@ -104,7 +104,8 @@ rather than passed:
 | `absent` / `unauthenticated` | **unverified** — both fire before the plugin gate. Finish the CLI row above and re-run. An `absent` that survives it is that row failing, and belongs in the report as such |
 | `unsupported-target` | **unverified** — the scope was rejected before the plugin gate. Read the second line: under this row's procedure, on a feature branch with commits, an empty range usually means the `--ref` named the wrong base, not that anything is installed correctly |
 | `adversarial-absent` for any other reason | **failure** — take the second line to `/bymax-quality:codex-setup`'s remedy table, which has a row for each |
-| `timeout` / `failed` / `bad-invocation` | **pass** for this row, and a problem for another: all three are emitted after the plugin has been found, enabled and version-checked, so they are evidence the install is fine. Take them to `codex-setup`'s Troubleshooting table, not its remedy table |
+| `timeout` | **pass** for this row, and a problem for another: the run had already started, which means the plugin was found, enabled and version-checked. Take it to `codex-setup`'s Troubleshooting table, not its remedy table |
+| `failed` / `bad-invocation` | **unverified** — read the second line. An argument error never reaches the plugin at all, and one `failed` path (a temp file that could not be created) fires before the lookup; an interrupt during those gates lands here too, by way of the EXIT trap. Only a `failed` naming the review itself — a non-zero exit, unreadable or unparseable output — proves the plugin resolved. Troubleshooting table either way |
 
 Never record this row as passed on an *unverified* verdict: nothing about `codex@openai-codex`
 was checked, and the first `--adversarial` run is where the user would find out.

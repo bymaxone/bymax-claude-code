@@ -100,8 +100,11 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
   --target commit --ref "$(git rev-parse --short HEAD)" --budget 300
 ```
 
-Then, if the openai-codex plugin is installed, exercise the adversarial path too — nothing
-else will, since Review C is opt-in and this is the one place setup can prove it works. The
+Then, if the openai-codex plugin is installed, **ask the human before exercising the
+adversarial path**. Invoking this command is consent to set the CLI up, not to start the run
+upstream gates behind explicit user invocation — so name the cost (a second billed turn,
+~40–60 s) and run it only on a yes. Nothing else will exercise it, since Review C is opt-in
+and this is the one place setup can prove it works. The
 run above cannot produce its statuses, so a green standard run says nothing about it. Give
 it a scope that exists: on a clean tree the script now refuses `--target uncommitted`, and
 on a branch with nothing ahead of its base it refuses `--target base` — a review of nothing
@@ -156,8 +159,9 @@ and session that both need; only the standard one is complete at that point.
   `claude plugin install codex@openai-codex` — and Review C drives that plugin's
   `codex-companion.mjs` runtime directly. The flag is the consent boundary: upstream marks
   its own adversarial command `disable-model-invocation`, so a model must not start that
-  billed run on its own, and no command in this toolkit is user-only. Without the plugin
-  installed it reports `adversarial-absent` and nothing else changes.
+  billed run on its own, and no command in this toolkit is user-only. When the runtime
+  cannot be used — missing, disabled, incomplete, or at an unverified version — it reports
+  `adversarial-absent` and nothing else changes.
 
 Note what is *not* being called there. The plugin's own `/codex:review` and
 `/codex:adversarial-review` are marked `disable-model-invocation`, so a skill cannot
