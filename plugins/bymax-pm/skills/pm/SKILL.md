@@ -84,6 +84,12 @@ messages at agents on startup. If no workspace exists, this is a new program:
 interview the human briefly (goal, repos, which sessions exist), seed the roster
 and board, then operate.
 
+**Session identity.** The PM works best in a session the human started with an
+addressable name, e.g. `claude --name pm`, from the coordination directory (see
+the plugin README). If this session has no name yet, suggest `/rename pm` once —
+peers reply to the session's name, and a stable name keeps the roster and message
+threads coherent across restarts.
+
 ## The operating loop
 
 For any incoming work (human request, worker message, idle notice):

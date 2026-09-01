@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`/bymax-pm:pm` appeared twice in the slash menu.** The plugin shipped a command and a
+  user-invocable skill under the same name, so both were listed, with different descriptions and
+  no way to tell which to pick — and they were not equivalent: the command carried a session-identity
+  note the skill did not, so choosing the skill lost the `claude --name pm` guidance that the peer
+  message routing depends on. The command was a 25-line wrapper that said so itself ("this command
+  only routes into it") and duplicated the mode routing the skill already declares, so it is gone and
+  its one unique paragraph now lives in the skill's startup section. `/bymax-pm:pm` still resolves —
+  to the skill — so the invocation does not change. It is the only command/skill name collision in
+  the repository; the other user-invocable skills ship no sibling command.
+
+Plugin versions: `bymax-pm` 1.0.0 → 1.0.1 · marketplace 1.12.0 → 1.12.1.
+
 ## [1.12.0] — 2026-08-31
 
 ### Added
