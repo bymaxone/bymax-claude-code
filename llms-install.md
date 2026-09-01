@@ -105,13 +105,18 @@ rather than passed:
 
 | Status of the adversarial run | What it means for this row |
 |---|---|
-| `ok` / `ok-unpinned` | **pass** — the plugin was found, enabled and usable. One exception: with `BYMAX_CODEX_COMPANION` exported, the script uses that path and never looks the plugin up, so unset it before trusting this row |
+| `ok` / `ok-unpinned` | **pass** — the plugin was found, enabled and usable |
 | `adversarial-absent`, second line naming an **unverified version** | **pass** for install purposes: the plugin is there, and the install cannot pin a version, so a newly published one lands here with nothing wrong |
 | `absent` / `unauthenticated` | **unverified** — both fire before the plugin gate. Finish the CLI row above and re-run. An `absent` that survives it is that row failing, and belongs in the report as such |
 | `unsupported-target` | **unverified** — the scope was rejected before the plugin gate. Read the second line: under this row's procedure, on a feature branch with commits, an empty range usually means the `--ref` named the wrong base, not that anything is installed correctly |
 | `adversarial-absent` for any other reason | **failure** — take the second line to `/bymax-quality:codex-setup`'s remedy table, which has a row for each |
-| `timeout` | **pass** for this row, and a problem for another: the run had already started, which means the plugin was found, enabled and version-checked. Take it to `codex-setup`'s Troubleshooting table, not its remedy table |
+| `timeout` | **pass** for this row, and a problem for another: the run had already started, which means the runtime resolved. Take it to `codex-setup`'s Troubleshooting table, not its remedy table |
 | `failed` / `bad-invocation` | **unverified** — read the second line. An argument error never reaches the plugin at all; `cannot create a temp file` and an interrupt caught by the EXIT trap both fire before the lookup. Its near-twin `cannot create a temp dir` comes after, and does prove the plugin resolved — read the words, not the shape. Only a `failed` naming the review itself — a non-zero exit, unreadable or unparseable output — proves the plugin resolved. Troubleshooting table either way |
+
+**Unset `BYMAX_CODEX_COMPANION` before running this check, whatever the verdict says.** With it
+exported the script uses that path and returns before it ever reads the plugin list, so no row above
+is evidence about `codex@openai-codex` — a `pass` there can coexist with the plugin absent or
+disabled.
 
 Never record this row as passed on an *unverified* verdict: nothing about `codex@openai-codex`
 was checked, and the first `--adversarial` run is where the user would find out.
