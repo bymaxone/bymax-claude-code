@@ -76,8 +76,8 @@ same names at any time.
 ## What's inside
 
 ```
-commands/pm.md                → /bymax-pm:pm [status|standup|release-check]
-skills/pm/SKILL.md            → operating principles (the five laws, loop, boundaries)
+skills/pm/SKILL.md            → /bymax-pm:pm [status|standup|release-check]; the five laws,
+                                 the operating loop, boundaries
 skills/pm/references/
   peer-protocol.md            → discovery, message types, idle notices, stuck peers
   task-contract.md            → contract template, acks, risk & priority models
