@@ -513,7 +513,7 @@ reader, not for you to summarise.
 | `unsupported-target` | the scope has no Codex equivalent | idem |
 | `timeout` | exceeded the budget | report the status **and the line after it verbatim** — when the cancel failed it names the one command that still reaches a billing run |
 | `failed` | non-zero exit, no readable output, or — in adversarial mode — a parse-failure page or a review with no `Target:`/`Verdict:` lines; a standard review is accepted as whatever `codex exec review` returned | report the status and the line after it verbatim |
-| `adversarial-absent` | Review C only: the openai-codex plugin (or node) is missing, **or the installed version is not one the script has verified** — the second line says which | report the status and its line |
+| `adversarial-absent` | Review C only: the runtime could not be used — the plugin missing, disabled or incomplete, `node` absent, the plugin listing unreadable, or the installed version not one the script has verified. **The second line carries what was detected**, and `/bymax-quality:codex-setup` has a row per line | report the status and its line |
 
 `ok-unpinned` is followed by a `CODEX_SCOPE:` line naming the cause. For Review C it
 means the change was too large for the runtime to inline in the prompt (more than two
@@ -576,10 +576,11 @@ openai-codex plugin — `claude plugin marketplace add openai/codex-plugin-cc`, 
 version by `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` (the user's call — the script's
 contract with that runtime is unverified there), and a project-local install by
 `BYMAX_CODEX_COMPANION=<path>`. Those three do not cover every second line, and the
-plugin one is ambiguous by construction: a plugin that is present but **disabled** yields
-the same `not found among installed, enabled plugins` text as one that was never
-installed, so offer `claude plugin enable codex@openai-codex` beside the install rather
-than choosing between them. For every other line, read it and take its row in
+plugin one is ambiguous by construction: a plugin present but **disabled**, and a plugin
+listing that would not parse, both yield the same `not found among installed, enabled
+plugins` text as one that was never installed, so offer `claude plugin enable
+codex@openai-codex` beside the install rather than choosing between them, and say the
+listing may simply have been unreadable. For every other line, read it and take its row in
 `/bymax-quality:codex-setup` rather than defaulting to the install command: most of those
 rows do not call for one, and reaching for it there leaves the real cause unsaid and the
 status in place. `codex-setup` installs the CLI and fixes none of these.
@@ -686,7 +687,7 @@ Run /bymax-quality:codex-setup to enable it.
 
 ### Review C — Codex, adversarial (independent)
 
-Status: adversarial-absent — the openai-codex plugin is not installed.
+Status: adversarial-absent — <the script's second line, verbatim>.
 ```
 
 Omit Review D's heading entirely in `quick`, rather than printing it as skipped — a

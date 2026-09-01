@@ -127,7 +127,7 @@ The first line is the contract:
 | `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or (adversarial mode) returned a parse-failure page or a review without `Target:`/`Verdict:` — see troubleshooting |
 | `CODEX_STATUS: timeout` | exceeded the budget; retry with a larger `--budget` |
 | `CODEX_STATUS: unsupported-target` | the requested scope has no Codex equivalent, or nothing to review: a file path, a ref range not ending at HEAD, `--target commit` in adversarial mode, a clean tree for `--target uncommitted`, an empty `<ref>...HEAD` on a clean tree (the verification example below hits this on the default branch itself — run it from a feature branch), or a base with no shared history |
-| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the openai-codex plugin or node is missing, **or the installed plugin version is not one the script has verified** — the second line says which; this command fixes neither, see below |
+| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the runtime could not be used — see the remedy table below, which has a row for every second line the script emits. This command fixes none of them |
 | `CODEX_STATUS: bad-invocation` | the command line was wrong (a flag without its value, an unknown flag or `--mode`) — not a Codex problem |
 
 Expect roughly **40–60 seconds**, largely independent of diff size. A run that returns no
@@ -172,7 +172,7 @@ So: this command cannot fix `adversarial-absent`, and its second line says what 
 | node is required by the openai-codex plugin runtime | the runtime is a Node script — install Node.js and put it on the **non-interactive** shell's PATH, which is the one this script runs under |
 | the claude CLI is not on PATH / `claude plugin list` failed or returned nothing / neither jq nor python3 | the plugin list could not be read — fix that tool, not the plugin |
 | version `X` is not a verified version | the script's contract with that runtime is undocumented and was read in the listed versions only — the message names them, and `COMPANION_VERIFIED_VERSIONS` in `scripts/codex-review.sh` is the source. Installing a listed version is not an option: `claude plugin install` takes no version. So either wait for the plugin to be re-verified, or run the unverified one anyway with `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` — the user's explicit decision. Waiting is the only one of the two that restores the **pinned** path: `limits_known` is set only by a match against `COMPANION_VERIFIED_VERSIONS`, so a runtime let through by `ALLOW_UNVERIFIED` never answers `ok` — its successful runs answer `ok-unpinned`. The same holds for the `BYMAX_CODEX_COMPANION` override in the rows below, whose version the script reports as the literal `override` |
-| `codex-companion.mjs` does not exist / the record carries no `installPath` | the install is incomplete, not absent — reinstall with `claude plugin install codex@openai-codex` |
+| `codex-companion.mjs` does not exist / the record carries no `installPath` | the install is incomplete, not absent — replace it with `claude plugin uninstall codex@openai-codex`, then `claude plugin install codex@openai-codex` |
 | `BYMAX_CODEX_COMPANION` points at a file that does not exist | the override path is wrong — correct it, or unset the variable to fall back to the installed plugin |
 | a project-local or pinned install | point `BYMAX_CODEX_COMPANION` at its `codex-companion.mjs` |
 

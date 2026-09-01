@@ -76,7 +76,7 @@ Each row: check → install → verify. Skip rows whose plugin wasn't installed.
 | Rust extras (Rust repos) | `command -v cargo` | `cargo install cargo-llvm-cov cargo-mutants cargo-deny cargo-audit cargo-vet` | `cargo llvm-cov --version` |
 | `agent-browser` (for `bymax-web-verify`) | `command -v agent-browser` | run `/bymax-web-verify:setup` **inside Claude Code, after Step 3's restart** (downloads Chrome for Testing — tell the human first) | the setup command ends with its own smoke test |
 | `codex` CLI (for `bymax-quality`'s independent second review) | `command -v codex` | run `/bymax-quality:codex-setup` **inside Claude Code, after Step 3's restart** — it installs the CLI, then hands off: `codex login` is interactive, so **only the human can finish it** | the setup command ends with a real review run, not an exit code |
-| `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` with `Status: ✔ enabled` — a disabled plugin still prints its id, and the runtime skips it | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | `/bymax-quality:codex-setup` from a **feature branch with commits on it** → `ok` or `ok-unpinned`; several other statuses are expected too, not failures — see below the table |
+| `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` with `Status: ✔ enabled` — a disabled plugin still prints its id, and the runtime skips it | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | `/bymax-quality:codex-setup` from a **feature branch with commits on it**. It makes two runs; only the **adversarial** one verifies this row — a green standard run says nothing about the plugin. That run answering `ok` or `ok-unpinned` is the pass; several other statuses are expected too, not failures — see below the table |
 
 Both Codex rows are **optional** — `/bymax-quality:code-review` runs without either and prints a
 one-line status where the second opinion would go. Type the last row's two commands exactly: the
@@ -96,7 +96,8 @@ The statuses below are expected on a correct install and must not be reported as
 | `absent` | the CLI row is not done, **or** its install landed outside the non-interactive shell's PATH. Finish that row; an `absent` that survives it is that row failing, and belongs in the report as such |
 | `adversarial-absent`, second line naming an **unverified version** | the install cannot pin a version, so a newly published plugin lands here with nothing wrong |
 
-`adversarial-absent` for any other reason is a real failure, as is every other status.
+`adversarial-absent` for any other reason is a real failure, as is any status other than
+these and the two passing answers above.
 
 ## Step 5 — MCP servers (optional — ask the human, default: context7 only)
 
@@ -159,5 +160,5 @@ Report a pass/fail summary per step to the human. Done.
 | Commands missing after install | Step 3 restart not done → hand off to the human again |
 | MCP server missing from `claude mcp list` | Re-run the `claude mcp add` line; if listed but inactive, check `enabledMcpjsonServers` in `~/.claude/settings.local.json` |
 | Hooks not firing (`secret-scanner` etc.) | Plugin disabled or restart pending → `claude plugin list`, then restart handoff |
-| `adversarial-absent` from `/bymax-quality:code-review --adversarial` | The status has several causes and **the line under it names which one** — a missing plugin, but equally a missing `node`, an unreadable plugin list (no `claude` on PATH, neither `jq` nor `python3`), an install missing its runtime file, or an unverified version. Read that line, then take its row in `/bymax-quality:codex-setup`'s remedy table. Only the missing-plugin case is fixed by Step 4's last row |
+| `adversarial-absent` from `/bymax-quality:code-review --adversarial` | The status has several causes and **the line under it names which one** — a missing plugin, but equally a missing `node`, an unreadable plugin list (no `claude` on PATH, neither `jq` nor `python3`), an install missing its runtime file, or an unverified version. Read that line, then take its row in `/bymax-quality:codex-setup`'s remedy table — it has one per line, including the plugin that is present but merely **disabled**, which Step 4's install commands would not change (`claude plugin enable codex@openai-codex` does). Only a genuinely absent plugin is fixed by Step 4's last row |
 | `graphify: command not found` after install | Tool bin dir not on PATH → `uv tool update-shell` (or `pipx ensurepath`), new terminal |
