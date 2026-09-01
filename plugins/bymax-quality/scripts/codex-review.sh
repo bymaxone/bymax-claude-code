@@ -73,8 +73,9 @@
 #   timeout            the run exceeded --budget
 #   failed             codex exited non-zero, or produced no usable output
 #   adversarial-absent --mode adversarial, and the runtime could not be used: node
-#                      absent, the plugin missing or disabled, the plugin list
-#                      unreadable, or the installed version not on
+#                      absent, the plugin missing, disabled or incomplete, the
+#                      plugin list unreadable, a BYMAX_CODEX_COMPANION path that
+#                      does not exist, or the installed version not on
 #                      COMPANION_VERIFIED_VERSIONS. The second line names which.
 #                      Only this mode is affected.
 #
