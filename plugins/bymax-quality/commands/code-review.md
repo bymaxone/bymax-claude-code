@@ -575,12 +575,14 @@ openai-codex plugin — `claude plugin marketplace add openai/codex-plugin-cc`, 
 `claude plugin install codex@openai-codex`, three names for one install — an unverified
 version by `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` (the user's call — the script's
 contract with that runtime is unverified there), and a project-local install by
-`BYMAX_CODEX_COMPANION=<path>`. Those three do not cover every second line: a missing
-`node`, a `claude` off PATH, neither `jq` nor `python3`, or a plugin present but disabled
-each say so in their own words, and each has its own row in `/bymax-quality:codex-setup`.
-**Never answer one of those with an install command** — the plugin is already there, the
-status would persist, and the real cause goes unsaid. `codex-setup` installs the CLI and
-fixes none of these.
+`BYMAX_CODEX_COMPANION=<path>`. Those three do not cover every second line, and the
+plugin one is ambiguous by construction: a plugin that is present but **disabled** yields
+the same `not found among installed, enabled plugins` text as one that was never
+installed, so offer `claude plugin enable codex@openai-codex` beside the install rather
+than choosing between them. For every other line, the remedy is its row in
+`/bymax-quality:codex-setup` — and none of those remedies is an install command, so
+reaching for one there leaves the real cause unsaid and the status in place. `codex-setup`
+installs the CLI and fixes none of these.
 Offer either once, and only in the report — never interrupt the review to ask, and never
 install anything on the user's behalf mid-review.
 

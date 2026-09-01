@@ -76,7 +76,7 @@ Each row: check → install → verify. Skip rows whose plugin wasn't installed.
 | Rust extras (Rust repos) | `command -v cargo` | `cargo install cargo-llvm-cov cargo-mutants cargo-deny cargo-audit cargo-vet` | `cargo llvm-cov --version` |
 | `agent-browser` (for `bymax-web-verify`) | `command -v agent-browser` | run `/bymax-web-verify:setup` **inside Claude Code, after Step 3's restart** (downloads Chrome for Testing — tell the human first) | the setup command ends with its own smoke test |
 | `codex` CLI (for `bymax-quality`'s independent second review) | `command -v codex` | run `/bymax-quality:codex-setup` **inside Claude Code, after Step 3's restart** — it installs the CLI, then hands off: `codex login` is interactive, so **only the human can finish it** | the setup command ends with a real review run, not an exit code |
-| `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` with `Status: ✔ enabled` beneath it — the id alone is printed for a disabled plugin too, and the runtime skips those | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | Run `/bymax-quality:codex-setup` from a **feature branch with commits on it** — it ends by driving the adversarial path itself → `CODEX_STATUS: ok` or `ok-unpinned`. These outcomes are expected here, not failures: `unsupported-target` on the default branch (nothing to review); `absent`/`unauthenticated` until the row above's human `codex login` lands, since the CLI gates run before the plugin is ever looked for; and `adversarial-absent` **when its second line names an unverified version** — the install cannot pin one, so a newly published plugin lands there with nothing wrong. `adversarial-absent` for any other reason is a real failure, as is every other status |
+| `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` with `Status: ✔ enabled` — a disabled plugin still prints its id, and the runtime skips it | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | `/bymax-quality:codex-setup` from a **feature branch with commits on it** → `ok` or `ok-unpinned`; several other statuses are expected too, not failures — see below the table |
 
 Both Codex rows are **optional** — `/bymax-quality:code-review` runs without either and prints a
 one-line status where the second opinion would go. Type the last row's two commands exactly: the
@@ -85,6 +85,17 @@ plugin is `codex`, its marketplace is `openai-codex`, and the repo behind it is
 version, so the plugin arrives at whatever the marketplace publishes; if that version is not one
 `bymax-quality` has verified its runtime contract against, the adversarial review answers
 `adversarial-absent` and `/bymax-quality:codex-setup` documents the ways out.
+
+**Reading the plugin row's verification.** `ok` and `ok-unpinned` are the passing answers.
+The statuses below are expected on a correct install and must not be reported as a failed step:
+
+| Status | Why it is expected |
+|---|---|
+| `unsupported-target` | run from the default branch — there is nothing ahead of the base to review |
+| `absent` / `unauthenticated` | the CLI row's `codex login` has not been completed yet; the script gates on the binary and its session before it ever looks for the plugin |
+| `adversarial-absent`, second line naming an **unverified version** | the install cannot pin a version, so a newly published plugin lands here with nothing wrong |
+
+`adversarial-absent` for any other reason is a real failure, as is every other status.
 
 ## Step 5 — MCP servers (optional — ask the human, default: context7 only)
 
