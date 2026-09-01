@@ -76,7 +76,7 @@ Each row: check → install → verify. Skip rows whose plugin wasn't installed.
 | Rust extras (Rust repos) | `command -v cargo` | `cargo install cargo-llvm-cov cargo-mutants cargo-deny cargo-audit cargo-vet` | `cargo llvm-cov --version` |
 | `agent-browser` (for `bymax-web-verify`) | `command -v agent-browser` | run `/bymax-web-verify:setup` **inside Claude Code, after Step 3's restart** (downloads Chrome for Testing — tell the human first) | the setup command ends with its own smoke test |
 | `codex` CLI (for `bymax-quality`'s independent second review) | `command -v codex` | run `/bymax-quality:codex-setup` **inside Claude Code, after Step 3's restart** — it installs the CLI, then hands off: `codex login` is interactive, so **only the human can finish it** | the setup command ends with a real review run, not an exit code |
-| `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | `/bymax-quality:codex-setup`'s adversarial run answers `CODEX_STATUS: ok` (or `ok-unpinned`) — every other status is a failure, `adversarial-absent` among them |
+| `codex@openai-codex` plugin (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` **enabled** — the runtime skips a disabled one, and the plain listing prints the id either way | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | Run `/bymax-quality:codex-setup` from a **feature branch with commits on it** — it ends by driving the adversarial path itself → `CODEX_STATUS: ok` or `ok-unpinned`. Three statuses are expected here, not failures: `unsupported-target` on the default branch (nothing to review), and `absent`/`unauthenticated` until the row above's human `codex login` lands — the CLI gates run before the plugin is ever looked for. Every other status is a failure, `adversarial-absent` among them |
 
 Both Codex rows are **optional** — `/bymax-quality:code-review` runs without either and prints a
 one-line status where the second opinion would go. Type the last row's two commands exactly: the
@@ -84,7 +84,7 @@ plugin is `codex`, its marketplace is `openai-codex`, and the repo behind it is
 `openai/codex-plugin-cc` — three different names for one install. `claude plugin install` takes no
 version, so the plugin arrives at whatever the marketplace publishes; if that version is not one
 `bymax-quality` has verified its runtime contract against, the adversarial review answers
-`adversarial-absent` and `/bymax-quality:codex-setup` documents the two ways out.
+`adversarial-absent` and `/bymax-quality:codex-setup` documents the ways out.
 
 ## Step 5 — MCP servers (optional — ask the human, default: context7 only)
 

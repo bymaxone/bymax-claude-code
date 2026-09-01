@@ -154,8 +154,9 @@ and session that both need; only the standard one is complete at that point.
   Code — plugin `codex`, marketplace `openai-codex`, from `openai/codex-plugin-cc`, installed
   with `claude plugin marketplace add openai/codex-plugin-cc` then
   `claude plugin install codex@openai-codex` — and Review C drives that plugin's
-  `codex-companion.mjs` runtime directly. The flag is the consent boundary: upstream marks its own adversarial command
-  `disable-model-invocation`, so a model must not start that billed run on its own, and no
+  `codex-companion.mjs` runtime directly. The flag is the consent boundary: upstream marks
+  its own adversarial command `disable-model-invocation`, so a model must not start that
+  billed run on its own, and no
   command in this toolkit is user-only. Without the plugin installed it reports
   `adversarial-absent` and nothing else changes.
 
@@ -169,8 +170,9 @@ So: this command cannot fix `adversarial-absent`, and its second line says what 
 | Second line says | Remedy |
 | --- | --- |
 | plugin not found among installed, enabled plugins | install it — `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` — or enable it if it is installed but off |
+| node is required by the openai-codex plugin runtime | the runtime is a Node script — install Node.js and put it on the **non-interactive** shell's PATH, which is the one this script runs under |
 | the claude CLI is not on PATH / `claude plugin list` failed / neither jq nor python3 | the plugin list could not be read — fix that tool, not the plugin |
-| version `X` is not a verified version | the script's contract with that runtime is undocumented and was read in the listed versions only — the message names them, and `COMPANION_VERIFIED_VERSIONS` in `scripts/codex-review.sh` is the source. Installing a listed version is not an option: `claude plugin install` takes no version. So either wait for the plugin to be re-verified, or run it anyway with `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` — the user's explicit decision |
+| version `X` is not a verified version | the script's contract with that runtime is undocumented and was read in the listed versions only — the message names them, and `COMPANION_VERIFIED_VERSIONS` in `scripts/codex-review.sh` is the source. Installing a listed version is not an option: `claude plugin install` takes no version. So either wait for the plugin to be re-verified, point `BYMAX_CODEX_COMPANION` at a checkout of a verified version (the next row — an override clears the gate), or run the unverified one anyway with `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` — the user's explicit decision |
 | a project-local or pinned install | point `BYMAX_CODEX_COMPANION` at its `codex-companion.mjs` |
 
 If the user only wants the standard second opinion, they need nothing beyond this command.
