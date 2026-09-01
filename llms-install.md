@@ -66,6 +66,12 @@ Commands and hooks are only picked up on a fresh session. **An agent running ins
 
 Each row: check → install → verify. Skip rows whose plugin wasn't installed.
 
+**The two Codex rows are the exception to that rule.** `bymax-quality` is always installed, which
+would make them eligible on every default install — but they install external software and spend a
+billed Codex turn, so being eligible is not the same as being wanted. **Default to skipping both.**
+Run them only if the human has asked for the Codex second opinion; if they have not said, ask, and
+skip on no answer. Everything in `bymax-quality` works without them.
+
 | Tool | Check | Install | Verify |
 |---|---|---|---|
 | `gh` (for `bymax-pr`) | `command -v gh` | `brew install gh` | `gh auth status` |
@@ -75,6 +81,45 @@ Each row: check → install → verify. Skip rows whose plugin wasn't installed.
 | Android SDK (`/sim-android`) | `command -v adb` | **HUMAN HANDOFF:** Android Studio GUI installer + PATH setup | `adb --version` |
 | Rust extras (Rust repos) | `command -v cargo` | `cargo install cargo-llvm-cov cargo-mutants cargo-deny cargo-audit cargo-vet` | `cargo llvm-cov --version` |
 | `agent-browser` (for `bymax-web-verify`) | `command -v agent-browser` | run `/bymax-web-verify:setup` **inside Claude Code, after Step 3's restart** (downloads Chrome for Testing — tell the human first) | the setup command ends with its own smoke test |
+| `codex` CLI — **opt-in, ask first** (for `bymax-quality`'s independent second review) | `command -v codex` | run `/bymax-quality:codex-setup` **inside Claude Code, after Step 3's restart** — it installs the CLI, then hands off: `codex login` is interactive, so **only the human can finish it** | **HUMAN HANDOFF for the whole command**, not just the login: `/bymax-quality:codex-setup` ends with a real review run rather than an exit code — one billed Codex turn. If `codex@openai-codex` is installed and enabled it offers a second, adversarial run and **asks first**, because that is the run this toolkit gates behind explicit consent; a decline is a valid answer and leaves the row below unverified. The human runs it; this row passes when it reports a real review |
+| `codex@openai-codex` plugin — **opt-in, ask first** (only for `/bymax-quality:code-review --adversarial`) | `claude plugin list` shows `codex@openai-codex` with `Status: ✔ enabled` — a disabled plugin still prints its id, and the runtime skips it | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` | **HUMAN HANDOFF.** Install this plugin **before** running the row above's `/bymax-quality:codex-setup`, so one invocation covers both rows; done after, it needs a second run. Verifying means that command, from a **feature branch with commits on it**, and saying **yes** to its adversarial prompt — that run is billed (~40–60 s) and gated behind explicit consent, so an agent must not start it. Declining is fine and leaves this row unverified. Read the **adversarial** run's status against the table below; a green standard run says nothing about the plugin |
+
+Both Codex rows are **optional** — `/bymax-quality:code-review` runs without either and prints a
+one-line status where the second opinion would go. Type the last row's two commands exactly: the
+plugin is `codex`, its marketplace is `openai-codex`, and the repo behind it is
+`openai/codex-plugin-cc` — three different names for one install. `claude plugin install` takes no
+version, so the plugin arrives at whatever the marketplace publishes; if that version is not one
+`bymax-quality` has verified its runtime contract against, the adversarial review answers
+`adversarial-absent` and `/bymax-quality:codex-setup` documents the ways out.
+
+Installing this plugin in Step 4 lands it **after** Step 3's restart, and it ships three hooks
+(`SessionStart`, `SessionEnd`, `Stop`) plus eight `/codex:*` commands that stay inert until the
+next fresh session. Review C is the exception and works immediately, because the script spawns
+the runtime by path rather than through the command surface — so a passing verification here is
+not evidence the rest of the plugin is live. Tell the human a second restart is needed if they
+want those commands.
+
+**Reading the plugin row's verification.** Three verdicts, not two — several statuses are
+emitted before the script ever looks at the plugin, and those leave this row **unverified**
+rather than passed:
+
+| Status of the adversarial run | What it means for this row |
+|---|---|
+| `ok` / `ok-unpinned` | **pass** — the plugin was found, enabled and usable |
+| `adversarial-absent`, second line naming an **unverified version** | **pass** for install purposes: the plugin is there, and the install cannot pin a version, so a newly published one lands here with nothing wrong |
+| `absent` / `unauthenticated` | **unverified** — both fire before the plugin gate. Finish the CLI row above and re-run. An `absent` that survives it is that row failing, and belongs in the report as such |
+| `unsupported-target` | **unverified** — the scope was rejected before the plugin gate. Read the second line: under this row's procedure, on a feature branch with commits, an empty range usually means the `--ref` named the wrong base, not that anything is installed correctly |
+| `adversarial-absent` for any other reason | **failure** — take the second line to `/bymax-quality:codex-setup`'s remedy table, which has a row for each |
+| `timeout` | **pass** for this row, and a problem for another: the run had already started, which means the runtime resolved. Take it to `codex-setup`'s Troubleshooting table, not its remedy table |
+| `failed` / `bad-invocation` | **unverified** — read the second line. An argument error never reaches the plugin at all; `cannot create a temp file` and an interrupt caught by the EXIT trap both fire before the lookup. Its near-twin `cannot create a temp dir` comes after, and does prove the plugin resolved — read the words, not the shape. Only a `failed` naming the review itself — a non-zero exit, unreadable or unparseable output — proves the plugin resolved. Troubleshooting table either way |
+
+**Unset `BYMAX_CODEX_COMPANION` before running this check, whatever the verdict says.** With it
+exported the script uses that path and returns before it ever reads the plugin list, so no row above
+is evidence about `codex@openai-codex` — a `pass` there can coexist with the plugin absent or
+disabled.
+
+Never record this row as passed on an *unverified* verdict: nothing about `codex@openai-codex`
+was checked, and the first `--adversarial` run is where the user would find out.
 
 ## Step 5 — MCP servers (optional — ask the human, default: context7 only)
 
@@ -137,4 +182,5 @@ Report a pass/fail summary per step to the human. Done.
 | Commands missing after install | Step 3 restart not done → hand off to the human again |
 | MCP server missing from `claude mcp list` | Re-run the `claude mcp add` line; if listed but inactive, check `enabledMcpjsonServers` in `~/.claude/settings.local.json` |
 | Hooks not firing (`secret-scanner` etc.) | Plugin disabled or restart pending → `claude plugin list`, then restart handoff |
+| `adversarial-absent` from `/bymax-quality:code-review --adversarial` | The status has several causes and **the line under it names which one** — a missing plugin, but equally a missing `node`, an unreadable plugin list (no `claude` on PATH, neither `jq` nor `python3`), an install missing its runtime file, or an unverified version. Read that line, then take its row in `/bymax-quality:codex-setup`'s remedy table — it has one per line, including the plugin that is present but merely **disabled**, which Step 4's install commands would not change (`claude plugin enable codex@openai-codex` does). Only a genuinely absent plugin is fixed by Step 4's last row |
 | `graphify: command not found` after install | Tool bin dir not on PATH → `uv tool update-shell` (or `pipx ensurepath`), new terminal |

@@ -100,8 +100,28 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh" \
   --target commit --ref "$(git rev-parse --short HEAD)" --budget 300
 ```
 
-Then, if the openai-codex plugin is installed, exercise the adversarial path too — nothing
-else will, since Review C is opt-in and this is the one place setup can prove it works. The
+Then decide whether the adversarial path can be exercised at all. The read that settles
+it — **enabled**, not merely present, because the runtime selects on `.enabled == true` and
+skips a disabled one:
+
+```bash
+claude plugin list --json | jq -e '
+  map(select(.id == "codex@openai-codex" and .enabled == true)) | length > 0' >/dev/null \
+  && echo "adversarial path available" || echo "skip it"
+```
+
+Without `jq`, read `claude plugin list` and look for `codex@openai-codex` with
+`Status: ✔ enabled` beneath it. Anything else — absent, or present and disabled — means
+skip this check and say why. Not to save money: the availability gates run before any
+`codex` process starts and bill nothing, so a doomed run is free. It is to avoid asking a
+human to authorise a run that cannot succeed. For the same reason the check is necessary,
+not sufficient — the gate also wants `node`, a complete install, and a version on
+`COMPANION_VERIFIED_VERSIONS`, so a green pre-check can still end at `adversarial-absent`.
+
+When it is available, **ask the human before exercising the adversarial path**. Invoking this command is consent to set the CLI up, not to start the run
+upstream gates behind explicit user invocation — so name the cost (a second billed turn,
+~40–60 s) and run it only on a yes. Nothing else will exercise it, since Review C is opt-in
+and this is the one place setup can prove it works. The
 run above cannot produce its statuses, so a green standard run says nothing about it. Give
 it a scope that exists: on a clean tree the script now refuses `--target uncommitted`, and
 on a branch with nothing ahead of its base it refuses `--target base` — a review of nothing
@@ -127,7 +147,7 @@ The first line is the contract:
 | `CODEX_STATUS: failed` | the CLI ran and exited non-zero, returned nothing readable, or (adversarial mode) returned a parse-failure page or a review without `Target:`/`Verdict:` — see troubleshooting |
 | `CODEX_STATUS: timeout` | exceeded the budget; retry with a larger `--budget` |
 | `CODEX_STATUS: unsupported-target` | the requested scope has no Codex equivalent, or nothing to review: a file path, a ref range not ending at HEAD, `--target commit` in adversarial mode, a clean tree for `--target uncommitted`, an empty `<ref>...HEAD` on a clean tree (the verification example below hits this on the default branch itself — run it from a feature branch), or a base with no shared history |
-| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the openai-codex plugin or node is missing, **or the installed plugin version is not one the script has verified** — the second line says which; this command fixes neither, see below |
+| `CODEX_STATUS: adversarial-absent` | adversarial mode only: the runtime could not be used — see the remedy table below, which has a row for each cause the second line can name. This command fixes none of them |
 | `CODEX_STATUS: bad-invocation` | the command line was wrong (a flag without its value, an unknown flag or `--mode`) — not a Codex problem |
 
 Expect roughly **40–60 seconds**, largely independent of diff size. A run that returns no
@@ -151,10 +171,13 @@ and session that both need; only the standard one is complete at that point.
   nothing else. That is what this command delivers.
 - **Review C, adversarial** — **opt-in, and off unless `/bymax-quality:code-review` is given
   `--adversarial`.** The adversarial stance lives in the OpenAI **Codex plugin** for Claude
-  Code, and Review C drives that plugin's `codex-companion.mjs` runtime directly. The flag
-  is the consent boundary: upstream marks its own adversarial command
-  `disable-model-invocation`, so a model must not start that billed run on its own, and no
-  command in this toolkit is user-only. Without the plugin installed it reports
+  Code — plugin `codex`, marketplace `openai-codex`, from `openai/codex-plugin-cc`, installed
+  with `claude plugin marketplace add openai/codex-plugin-cc` then
+  `claude plugin install codex@openai-codex` — and Review C drives that plugin's
+  `codex-companion.mjs` runtime directly. The flag is the consent boundary: upstream marks
+  its own adversarial command `disable-model-invocation`, so a model must not start that
+  billed run on its own, and no command in this toolkit is user-only. When the runtime
+  cannot be used — missing, disabled, incomplete, or at an unverified version — it reports
   `adversarial-absent` and nothing else changes.
 
 Note what is *not* being called there. The plugin's own `/codex:review` and
@@ -166,9 +189,12 @@ So: this command cannot fix `adversarial-absent`, and its second line says what 
 
 | Second line says | Remedy |
 | --- | --- |
-| plugin not found among installed, enabled plugins | install (or enable) the openai-codex plugin |
-| the claude CLI is not on PATH / `claude plugin list` failed / neither jq nor python3 | the plugin list could not be read — fix that tool, not the plugin |
-| version `X` is not a verified version | the script's contract with that runtime is undocumented and was read in the listed versions only. Either wait for the plugin to be re-verified, or run it anyway with `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` — the user's explicit decision |
+| plugin not found among installed, enabled plugins — **this one line covers absent, merely disabled, and a listing that would not parse**, since the runtime selects on `.enabled == true` and treats an unreadable listing as no match | if it is installed but off, `claude plugin enable codex@openai-codex`; if it is absent, install it — `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex`; and if `claude plugin list` shows it installed **and** enabled, the listing did not parse — check that `claude plugin list --json` returns clean JSON, since a warning banner ahead of it lands here too |
+| node is required by the openai-codex plugin runtime | the runtime is a Node script — install Node.js and put it on the **non-interactive** shell's PATH, which is the one this script runs under |
+| the claude CLI is not on PATH / `claude plugin list` failed or returned nothing / neither jq nor python3 | the plugin list could not be read — fix that tool, not the plugin |
+| version `X` is not a verified version | the script's contract with that runtime is undocumented and was read in the listed versions only — the message names them, and `COMPANION_VERIFIED_VERSIONS` in `scripts/codex-review.sh` is the source. Installing a listed version is not an option: `claude plugin install` takes no version. So either wait for the plugin to be re-verified, or run the unverified one anyway with `BYMAX_CODEX_COMPANION_ALLOW_UNVERIFIED=1` — the user's explicit decision. Waiting is the only one of the two that restores the **pinned** path: `limits_known` is set only by a match against `COMPANION_VERIFIED_VERSIONS`, so a runtime let through by `ALLOW_UNVERIFIED` never answers `ok` — its successful runs answer `ok-unpinned`. The same holds for the `BYMAX_CODEX_COMPANION` override in the rows below, whose version the script reports as the literal `override` |
+| `codex-companion.mjs` does not exist / the record carries no `installPath` | the install is incomplete, not absent — replace it with `claude plugin uninstall codex@openai-codex`, then `claude plugin install codex@openai-codex` |
+| `BYMAX_CODEX_COMPANION` points at a file that does not exist | the override path is wrong — correct it, or unset the variable to fall back to the installed plugin |
 | a project-local or pinned install | point `BYMAX_CODEX_COMPANION` at its `codex-companion.mjs` |
 
 If the user only wants the standard second opinion, they need nothing beyond this command.
