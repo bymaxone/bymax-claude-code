@@ -39,6 +39,7 @@
 - A **loop-engineering autopilot** (`/bymax-workflow:autopilot`) that executes an approved roadmap **autonomously, end to end** — one merge-gated PR per phase, isolated worktree sub-agents, background CI/review watching, and dashboards kept in sync — turning the planning docs into a self-driving build. See [Loop Engineering](#-loop-engineering-the-autopilot).
 - **Strict quality gates** — `/code-review` (CRITICAL → LOW), `/tdd` (red-green-refactor), `/verify` (5 checks), and a `secret-scanner` hook that **blocks** writes containing credentials.
 - **Seven specialist sub-agents** (architect, code-reviewer, security-reviewer, typescript-reviewer, rust-reviewer, database-reviewer, planner) ready to delegate to.
+- **A whole-system QA + security audit** (`/bymax-qa:audit`) that runs as the Security QA engineer of your agent team. Point it at a **Jira ticket** (acceptance criteria verified PASS/FAIL with evidence), a **branch or PR** (the hunt scoped to the change), or the **whole system**: a stack + threat map, read-only per-domain finders, live probes against allow-listed hosts only, and a finding admitted **only after an independent verifier reproduces it** — then handed to the owning agent, filed as a GitHub issue, or commented back on the ticket, and re-tested until it holds.
 - **TypeScript _and_ Rust** — the quality + workflow skills are language-detecting: TypeScript rules for `package.json` projects, and a parallel **Rust track** (clippy/rustfmt with `-D warnings`, typed `thiserror` errors, `#![forbid(unsafe_code)]`, rustdoc, `cargo test` + `cargo llvm-cov`, `cargo deny`/`audit`/`vet`) for `Cargo.toml` projects.
 - **Project bootstrap** with strict TypeScript, ESLint flat-config (security plugin + import-order + suppression bans), Prettier, format-on-save VS Code, Husky + commitlint + lint-staged — for **Next.js, Expo / React Native, Vite + React, and Node backends (Express / Fastify / Hono / NestJS / plain Node)** stacks.
 - **Mobile sims** — `/sim-ios` and `/sim-android` boot the iOS Simulator and Android Emulator on Expo / React Native projects in one command (auto-detects whether to reattach Metro or do a full rebuild).
@@ -59,9 +60,10 @@ claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
 claude plugin install bymax-pm@bymax-claude-code
+claude plugin install bymax-qa@bymax-claude-code
 ```
 
-That's it. Restart Claude Code and you have **7 installable plugins** with **22 slash commands**, **5 skills**, **7 sub-agents**, **3 hooks**, and **23 templates** — the full workflow ready.
+That's it. Restart Claude Code and you have **8 installable plugins** with **23 slash commands**, **6 skills**, **10 sub-agents**, **4 hooks**, and **26 templates** — the full workflow ready.
 
 ---
 
@@ -85,6 +87,7 @@ claude plugin install bymax-mobile@bymax-claude-code        # iOS Simulator + An
 claude plugin install bymax-web-verify@bymax-claude-code    # real-browser verification (needs agent-browser)
 claude plugin install bymax-pr@bymax-claude-code            # autonomous PR babysitting (needs gh CLI)
 claude plugin install bymax-pm@bymax-claude-code            # engineering PM for multi-agent development
+claude plugin install bymax-qa@bymax-claude-code            # whole-system QA + security audit
 ```
 
 > Plugins install user-wide by default (available in every project). To pin a plugin to a single project instead, add it to `enabledPlugins` in that project's `.claude/settings.json`.
@@ -120,7 +123,10 @@ The plugins follow a **"require, don't embed"** philosophy: external CLIs and MC
 | Tool | Needed by | How to install |
 |---|---|---|
 | **Node.js ≥ 18** | plugin hooks (`secret-scanner`, `console-log-scan`, `check-agent-browser`), all `npx`-based tooling | `brew install node` (or `nvm`) — must be on the non-interactive shell's PATH |
-| **`git` + `gh` CLI** (authenticated) | `bymax-pr` — every GitHub operation in `/bymax-pr:babysit-pr` (PR checks, CI logs, thread resolution) | `brew install gh && gh auth login` |
+| **`git` + `gh` CLI** (authenticated) | `bymax-pr` — every GitHub operation in `/bymax-pr:babysit-pr` (PR checks, CI logs, thread resolution); `bymax-qa` — filing findings as issues or advisories and re-testing a claimed fix from a PR | `brew install gh && gh auth login` |
+| **Security scanners** — `semgrep`, `gitleaks`, `trufflehog`, `osv-scanner`, `trivy`, `nuclei`, `zap`, `sqlmap`, `jwt_tool` — **all optional** | `bymax-qa` — the deterministic layer of `/bymax-qa:audit` uses whichever are on PATH and records the rest as a coverage gap; none is bundled or required | install per tool as needed (e.g. `brew install semgrep gitleaks osv-scanner trivy`); run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/qa-tools.sh` inside an audit to see what is detected |
+| **`axe` + Lighthouse** — **optional** | `bymax-qa` frontend domain (accessibility + Core Web Vitals), driven through `bymax-web-verify` when a UI is present | `npm i -g @axe-core/cli lighthouse` |
+| **`docker` + `docker compose`** — optional | `bymax-qa` `--live` — brings a target stack up for live probes against `local`/`staging` hosts | [docs.docker.com](https://docs.docker.com/get-docker/) |
 | **`agent-browser`** | `bymax-web-verify` — drives the real browser | run `/bymax-web-verify:setup` once (installs the CLI + Chrome for Testing, ends with a smoke test) |
 | **Codex CLI** (authenticated) — **optional** | `bymax-quality` — Review B, the independent second opinion `/bymax-quality:code-review` runs in *every* mode | run `/bymax-quality:codex-setup` once (Homebrew cask or npm, then an interactive `codex login`, then a real review run to prove it) |
 | **OpenAI Codex plugin** — `codex@openai-codex`, **optional** | `bymax-quality` — Review C, the adversarial second opinion, only under `/bymax-quality:code-review --adversarial`; needs the row above as well, since the script gates on the CLI and its session before it looks for the plugin | `claude plugin marketplace add openai/codex-plugin-cc`, then `claude plugin install codex@openai-codex` — the plugin is `codex`, its marketplace `openai-codex`, the repo behind it `openai/codex-plugin-cc`; type both commands as written |
@@ -188,7 +194,7 @@ graphify hook install
 
 ## 📦 Plugins
 
-The toolkit ships as **six composable plugins** (plus a reference index). Use them à la carte or all at once via `bymax-all`.
+The toolkit ships as **eight composable plugins** (plus a reference index). Use them à la carte or all at once via `bymax-all`.
 
 ### 🧭 [`bymax-workflow`](./plugins/bymax-workflow/) — Planning + Execution
 
@@ -303,9 +309,22 @@ Turns one session into the PM/TPM above your other Claude Code sessions. You tal
 
 Start workers with names (`claude --name nest-logger`) — the name is the address. Workers need nothing installed; the PM's messages carry their own reply instructions.
 
+### 🔎 [`bymax-qa`](./plugins/bymax-qa/) — Whole-system QA + security audit
+
+The Security QA engineer of your agent team. Point `/bymax-qa:audit` at a **Jira ticket** (it verifies access, reads the acceptance criteria, and reports each PASS/FAIL/BLOCKED/NOT-VERIFIABLE with evidence), a **branch or PR** (it scopes the hunt to the change, like a code review), or the **whole system**. It maps the stack and its trust boundaries, hunts by domain with read-only finder agents, probes the running stack against allow-listed hosts only, and admits a finding **only after an independent verifier reproduces it**. Fixes are never applied by the auditor — each finding is handed to the agent that owns the code, filed as a GitHub issue, or commented back on the ticket, then re-tested until it holds.
+
+| Item | Purpose |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `/bymax-qa:audit <target>`         | Target is a ticket key, a branch, a range, a PR, or nothing (whole system); a free-text instruction after it steers focus. Modes `init`, `retest QA-NNN`, `status`. Flags `--domains`, `--depth`, `--live`, `--no-handoff`, `--no-issues`. |
+| `audit` skill + 18 references | Target resolution + Jira access, acceptance criteria, the security domains (auth, authz/tenant, injection, cache, database, transport), observability, architecture, frontend, supply chain, plus verification, the finding contract, hand-off and report templates. |
+| 3 sub-agents | `qa-recon` (map), `qa-hunter` (per-domain finder → candidates), `qa-verifier` (adversarial, opus). |
+| `qa-guard` hook | While an audit runs, confines network probes to allow-listed hosts and writes to `.claude/qa/`. |
+
+Findings carry ASVS 5.0, CWE and API Top 10 references and a CVSS vector, and live in a `.claude/qa/` workspace that survives restarts. External scanners (`semgrep`, `gitleaks`, `osv-scanner`, `trivy`, `zap`, `axe`, Lighthouse) are used when present and never bundled.
+
 ### 🎁 [`bymax-all`](./plugins/bymax-all/) — Reference index
 
-A docs-only marketplace entry that lists the full set. Claude Code's plugin manifest does **not** auto-install dependencies, so installing `bymax-all` does nothing on its own — install the seven sibling plugins individually for the complete toolkit.
+A docs-only marketplace entry that lists the full set. Claude Code's plugin manifest does **not** auto-install dependencies, so installing `bymax-all` does nothing on its own — install the eight sibling plugins individually for the complete toolkit.
 
 ---
 
@@ -419,8 +438,9 @@ bymax-claude-code/
 │   ├── bymax-bootstrap/                ← project scaffolding
 │   ├── bymax-mobile/                   ← iOS Simulator + Android Emulator
 │   ├── bymax-web-verify/               ← real-browser verification (needs agent-browser)
-│   ├── bymax-pr/               ← autonomous PR babysitting (needs gh CLI)
+│   ├── bymax-pr/                       ← autonomous PR babysitting (needs gh CLI)
 │   ├── bymax-pm/                       ← engineering PM for multi-agent development
+│   ├── bymax-qa/                       ← whole-system QA + security audit
 │   └── bymax-all/                      ← reference index (no auto-install in Claude Code)
 │
 ├── templates/                          ← project bootstrapping templates
@@ -458,6 +478,7 @@ claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
 claude plugin install bymax-pm@bymax-claude-code
+claude plugin install bymax-qa@bymax-claude-code
 ```
 
 Only the `plugins/` content is exposed via `/plugin install`. The vendor/ and personal/ folders are visible in the repo for backup but not installable.
@@ -492,6 +513,7 @@ claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
 claude plugin install bymax-pm@bymax-claude-code
+claude plugin install bymax-qa@bymax-claude-code
 claude plugin marketplace add anthropics/claude-plugins-official
 claude plugin install frontend-design@claude-plugins-official
 claude plugin marketplace add getsentry/sentry-mcp
@@ -612,6 +634,7 @@ claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
 claude plugin install bymax-pm@bymax-claude-code
+claude plugin install bymax-qa@bymax-claude-code
 ```
 
 ---
