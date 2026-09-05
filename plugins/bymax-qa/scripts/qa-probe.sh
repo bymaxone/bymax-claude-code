@@ -157,7 +157,8 @@ for a in "${args[@]}"; do
     --output | --remote-name | --remote-name-all | --remote-header-name \
       | --dump-header | --trace | --trace-ascii | --trace-config \
       | --cookie-jar | --etag-save | --config | --libcurl | --stderr | --output-dir \
-      | --output=* | --dump-header=* | --trace=* | --trace-ascii=* | --cookie-jar=* | --etag-save=* | --config=* | --libcurl=* | --stderr=* | --output-dir=*)
+      | --alt-svc | --hsts \
+      | --output=* | --dump-header=* | --trace=* | --trace-ascii=* | --cookie-jar=* | --etag-save=* | --config=* | --libcurl=* | --stderr=* | --output-dir=* | --alt-svc=* | --hsts=*)
       echo "qa-probe: output/config curl flag '$a' is not allowed — qa-probe captures the evidence itself, and the guard cannot see a file it writes" >&2
       exit 3 ;;
     # Any other long flag is fine here (redaction and the guard handle the rest).

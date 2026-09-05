@@ -240,18 +240,15 @@ case "$tool" in
               # Backslash escaping (not inside single quotes, where it is literal):
               # a `\"` inside double quotes is literal and does not close the quote,
               # and a `\;` is a literal semicolon that does not split — so an escaped
-              # quote cannot conceal a following command from detection.
+              # quote cannot conceal a following command from detection. Branches are
+              # kept flat (guard clauses) to stay within the nesting ceiling.
+              if (c == "\\" && i >= n) { out = out c; continue }
               if (c == "\\") {
-                if (i < n) {
-                  nc = substr(buf, i+1, 1)
-                  if (s == 2) {
-                    if (nc == "\"" || nc == "\\" || nc == "$" || nc == "\140") { out = out nc; i++; continue }
-                    out = out c; continue
-                  }
-                  if (nc == "\n") { i++; continue }
-                  out = out nc; i++; continue
-                }
-                out = out c; continue
+                nc = substr(buf, i + 1, 1)
+                if (s == 2 && (nc == "\"" || nc == "\\" || nc == "$" || nc == "\140")) { out = out nc; i++; continue }
+                if (s == 2) { out = out c; continue }
+                if (nc == "\n") { i++; continue }
+                out = out nc; i++; continue
               }
               if (c == "\047" && s == 0) { qs[depth]=1; continue }
               if (c == "\"") { qs[depth] = (s == 2) ? 0 : 2; continue }
@@ -326,7 +323,7 @@ case "$tool" in
     # sees. Refuse them — the host check would pass while the real connection
     # leaves the scope.
     if { [ "$is_url" -eq 1 ] || [ "$is_probe" -eq 1 ] || [ "$has_url" -eq 1 ]; } \
-       && printf '%s' "$dest" | grep -qE -- '(^|[[:space:]])(--connect-to|--resolve|--proxy|--preproxy|--proxy1\.0|--config)([[:space:]]|=|$)|(^|[[:space:]])-[A-Za-z]*[xK]'; then
+       && printf '%s' "$dest" | grep -qE -- '(^|[[:space:]])(--connect-to|--resolve|--proxy|--preproxy|--proxy1\.0|--config|--unix-socket|--abstract-unix-socket)([[:space:]]|=|$)|(^|[[:space:]])-[A-Za-z]*[xK]'; then
       block "🛡️ BLOCKED by qa-guard: a destination-override option (--connect-to / --resolve / --proxy / -x / -K config) can send the request to a host the URL does not name and the allow-list never sees. Remove it, or name the real target so it can be checked against the scope."
     fi
 
