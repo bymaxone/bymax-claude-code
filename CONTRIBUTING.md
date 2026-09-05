@@ -49,6 +49,8 @@ claude plugin install bymax-bootstrap@bymax-claude-code
 claude plugin install bymax-mobile@bymax-claude-code
 claude plugin install bymax-web-verify@bymax-claude-code
 claude plugin install bymax-pr@bymax-claude-code
+claude plugin install bymax-pm@bymax-claude-code
+claude plugin install bymax-qa@bymax-claude-code
 
 # Restart Claude Code, then verify your changes
 ```

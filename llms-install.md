@@ -47,6 +47,8 @@ Default when the human didn't specify: install the **core pair** plus whatever t
 | `bymax-mobile` | Expo / React Native projects only | `claude plugin install bymax-mobile@bymax-claude-code` |
 | `bymax-web-verify` | web projects only (needs Step 4's `agent-browser`) | `claude plugin install bymax-web-verify@bymax-claude-code` |
 | `bymax-pr` | only if `gh` will be authenticated (Step 4) | `claude plugin install bymax-pr@bymax-claude-code` |
+| `bymax-pm` | the human coordinates multiple Claude Code sessions | `claude plugin install bymax-pm@bymax-claude-code` |
+| `bymax-qa` | the human wants a whole-system QA / security audit | `claude plugin install bymax-qa@bymax-claude-code` |
 
 ⚠️ **Do NOT install `bymax-all`** — it is a documentation index; it installs no commands.
 
@@ -74,7 +76,8 @@ skip on no answer. Everything in `bymax-quality` works without them.
 
 | Tool | Check | Install | Verify |
 |---|---|---|---|
-| `gh` (for `bymax-pr`) | `command -v gh` | `brew install gh` | `gh auth status` |
+| `gh` (for `bymax-pr` and `bymax-qa`) | `command -v gh` | `brew install gh` | `gh auth status` |
+| Security scanners — **all optional** (for `bymax-qa`) | `bash ${CLAUDE_PLUGIN_ROOT}/scripts/qa-tools.sh` inside an audit | install per tool as needed, e.g. `brew install semgrep gitleaks osv-scanner trivy` | `/bymax-qa:audit` records any absent tool as a coverage gap — none is required |
 | `gh` auth | `gh auth status` | **HUMAN HANDOFF:** `gh auth login` is an interactive OAuth flow — the human must run it | `gh auth status` exits 0 |
 | pnpm (pnpm repos) | `command -v pnpm` | `corepack enable pnpm` | `pnpm --version` |
 | Xcode (`/sim-ios`) | `xcrun simctl help` | **HUMAN HANDOFF:** Xcode via App Store + `xcode-select --install` | `xcrun simctl list devices` |
@@ -157,7 +160,7 @@ graphify hook install          # post-commit graph refresh
 claude plugin marketplace list   # bymax-claude-code present
 claude plugin list               # every chosen plugin present
 claude mcp list                  # every chosen MCP present (if Step 5 ran)
-gh auth status                   # exit 0 (only if bymax-pr installed)
+gh auth status                   # exit 0 (only if bymax-pr or bymax-qa installed)
 ```
 
 Report a pass/fail summary per step to the human. Done.

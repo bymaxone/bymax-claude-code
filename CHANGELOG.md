@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`bymax-qa` — whole-system QA and security audit** (`1.0.0`). `/bymax-qa:audit` runs the session
+  as the Security QA engineer of a peer agent team. It is pointed at a **target**, resolved
+  deterministically and reported back: a **Jira ticket key** (it verifies Jira access — an Atlassian
+  MCP, the `jira`/`acli` CLI, or pasted criteria — reads the acceptance criteria, and reports each
+  one PASS / FAIL / BLOCKED / NOT-VERIFIABLE with evidence, a `PASS` inferred from code that "looks
+  right" being NOT-VERIFIABLE rather than a pass), a **branch, ref range or PR** (it scopes the hunt
+  to the changed surface the way a code review scopes a diff, complementing `/bymax-quality:code-review`
+  rather than replacing it), a **path or subtree** (`path:apps/backend` or a bare directory — it hunts
+  the files under that path, tracked and untracked, as the code stands), or **nothing** (the whole system, via a signed scope
+  `.claude/qa/scope.md` written and approved in `init` mode before any audit runs). A free-text
+  instruction after the target steers focus and depth. It maps the stack and its trust
+  boundaries, hunts by domain with read-only finder agents, probes the running stack against
+  allow-listed hosts only, and admits a finding **only after an independent `qa-verifier` reproduces
+  it** — candidate is not finding, and every finding carries a runnable reproduction, captured
+  evidence, an ASVS 5.0 / CWE / API-Top-10 reference and a CVSS vector. The auditor never edits the
+  target: findings are handed to the agent that owns the code over cross-session messaging, filed as
+  a GitHub issue when no peer is live (never a public issue for a HIGH/CRITICAL), commented back on
+  the ticket when the target is a ticket and write-back is allowed, or surfaced to the
+  human, and each is re-tested against the claimed fix before it closes (OPEN → HANDED-OFF →
+  FIX-CLAIMED → VALIDATED or REOPENED). A `qa-guard` `PreToolUse` hook makes the scope mechanical
+  rather than disciplinary: while `.claude/qa/.active` exists, a network tool may only reach a host
+  in `allowed-hosts` and a Write/Edit may only land in `.claude/qa/`. Eighteen references cover
+  target resolution and acceptance criteria plus the domains — security (auth, authorization/tenant,
+  injection, cache/Redis, database/Postgres,
+  transport/config), observability (log-leak, log forging, event coverage), architecture, frontend
+  and supply chain — each with a "what to expect by stack" table and a "common non-findings" list so
+  a delegated or intentional control is not reported as a gap. Three helper scripts ship with it:
+  `qa-tools.sh` (which external scanners are present — none bundled), `qa-probe.sh` (an HTTP probe
+  that captures request+response as redacted evidence), and `qa-log-audit.sh` (searches a log for a
+  secret through base64/url/hex/json decodings and states which it covered — a literal grep certifies
+  the leaking case). Built on ASVS 5.0 as the finding taxonomy, the OWASP API Top 10 for the API
+  layer, and the verify-before-report shape of Anthropic's Claude security tooling and Trail of Bits'
+  `fp-check`. Standalone plugin, distinct from `bymax-quality`: that reviews a diff and blocks a
+  commit; this audits a running system and drives each fix to a re-tested close. Marketplace to
+  `1.13.0`.
+
 ### Changed
 
 - **The Codex plugin is named where a fresh install looks for it.** `--adversarial` needs OpenAI's
@@ -36,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the skill — so the invocation does not change. It is the only command/skill name collision in
   the repository; the other user-invocable skills ship no sibling command.
 
-Plugin versions: `bymax-quality` 1.6.2 → 1.6.3 · `bymax-pm` 1.0.0 → 1.0.1 · marketplace 1.12.0 → 1.12.2.
+Plugin versions: `bymax-quality` 1.6.2 → 1.6.3 · `bymax-pm` 1.0.0 → 1.0.1 · `bymax-qa` new at 1.0.0 · `bymax-all` 1.4.0 → 1.5.0 · marketplace 1.12.0 → 1.13.0.
 
 ## [1.12.0] — 2026-08-31
 
