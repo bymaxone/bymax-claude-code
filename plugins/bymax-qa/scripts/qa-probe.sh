@@ -54,19 +54,88 @@ esac
 # curl's own output-directing flags would write files anywhere the process can,
 # outside the confined evidence dir and unseen by the PreToolUse guard. qa-probe
 # captures the evidence itself, so refuse them.
+# One message for every file-backed-body rejection below.
+fb() { echo "qa-probe: a file-backed request body ('$1') is not captured in evidence — inline the body so the capture is complete" >&2; exit 3; }
+
+# Classify a single-dash short-option cluster ($1 = the chars after '-'). curl
+# bundles short flags, and a value-taking flag consumes the REST of the cluster
+# as its value — so a body/output letter appearing AFTER one is data, not an
+# option (`-XPOST`, `-XDELETE`, `-HFooT`, `-sFname=John` are all ordinary). Walk
+# left to right and classify the first OPTION qa-probe must refuse:
+#   BODY    a file-backed request body   (-T upload, -d@file, -F field=@file/<file)
+#   OUTPUT  an output/config flag         (-o -O -D -c -K -J: writes a file / loads a config)
+#   EXPECTD / EXPECTF  a trailing -d / -F whose file value is the NEXT argument
+# or nothing when the cluster is harmless.
+scan_short() {
+  local rest="$1" ch after
+  while [ -n "$rest" ]; do
+    ch=${rest%"${rest#?}"}; after=${rest#?}
+    case "$ch" in
+      T)             echo BODY; return ;;
+      O | J)         echo OUTPUT; return ;;
+      o | D | c | K) echo OUTPUT; return ;;
+      d) if [ -n "$after" ]; then case "$after" in @*) echo BODY ;; esac
+         else echo EXPECTD; fi; return ;;
+      F) if [ -n "$after" ]; then case "$after" in *=@* | *=\<*) echo BODY ;; esac
+         else echo EXPECTF; fi; return ;;
+      [AbCeEHmPrtuUwxXyYz]) return ;;
+      *) rest="$after" ;;
+    esac
+  done
+}
+
 prev_arg=""
+expect=""   # a trailing -d/-F/--data*/--json/--form/--upload-file expects its value next
 for a in "${args[@]}"; do
-  # A file-backed request body (`--data @payload.json`, `-d @f`, `--data-binary
-  # @f`) sends bytes qa-probe never sees, so the evidence would record the
-  # literal `@file`, not the request — an incomplete capture. Reject it; inline
-  # the body instead so the evidence is the real request.
-  case "$prev_arg" in
-    -d | --data | --data-binary | --data-ascii | --data-raw)
-      case "$a" in @*) echo "qa-probe: a file-backed request body ('$prev_arg $a') is not captured in evidence — inline the body so the capture is complete" >&2; exit 3 ;; esac ;;
+  # curl reads request bytes from a file in several forms; qa-probe would then
+  # record only the literal `@file`/`<file`, not what was sent — an incomplete
+  # capture that breaks the full-request evidence contract. Reject every
+  # file-backed input: the `-d`/`--data*` family and `--json` (`@file`),
+  # `--data-urlencode`/`--url-query` (`@file`/`name@file`), the `-F`/`--form`
+  # uploads (`field=@file`/`field=<file`), `-T`/`--upload-file`, and any of
+  # these bundled behind other short flags (`-sTfile`, `-sd@file`, `-sFf=@x`).
+  # `--data-raw` is NOT here: it sends `@x` literally (no file read), so it is
+  # captured intact.
+
+  # A value the previous token asked for (a trailing upload/form/data option).
+  case "$expect" in
+    UPLOAD) fb "$prev_arg $a" ;;
+    FORM)   case "$a" in *=@* | *=\<*) fb "$prev_arg $a" ;; esac ;;
+    DATA)   case "$a" in @*) fb "$prev_arg $a" ;; esac ;;
   esac
+  expect=""
+
+  case "$prev_arg" in
+    -d | --data | --data-binary | --data-ascii | --json)
+      case "$a" in @*) fb "$prev_arg $a" ;; esac ;;
+    --data-urlencode | --url-query)
+      # curl reads a file when the FIRST separator is `@` (`@file`, `name@file`);
+      # a `name=` prefix (first separator `=`) is a literal value that may still
+      # contain a later `@` (`q=a@b.com`). Decide by the first separator, not by
+      # the mere presence of both.
+      case "$a" in
+        *@*) case "${a%%@*}" in *=*) : ;; *) fb "$prev_arg $a" ;; esac ;;
+      esac ;;
+  esac
+
   case "$a" in
-    -d@* | --data=@* | --data-binary=@* | --data-ascii=@*)
-      echo "qa-probe: a file-backed request body ('$a') is not captured in evidence — inline the body so the capture is complete" >&2; exit 3 ;;
+    --upload-file) expect=UPLOAD ;;
+    --form)        expect=FORM ;;
+    --upload-file=*) fb "$a" ;;
+    --form=*=@* | --form=*=\<*) fb "$a" ;;
+    --json=@*) fb "$a" ;;
+    -d@* | --data=@* | --data-binary=@* | --data-ascii=@*) fb "$a" ;;
+    --data-urlencode=* | --url-query=*)
+      # same first-separator rule as the separated form. curl rejects the
+      # `=value` form for these anyway, so this only runs on input curl refuses.
+      v="${a#*=}"; case "$v" in *@*) case "${v%%@*}" in *=*) : ;; *) fb "$a" ;; esac ;; esac ;;
+    --*) : ;;
+    -*) case "$(scan_short "${a#-}")" in
+          BODY)    fb "$a" ;;
+          OUTPUT)  echo "qa-probe: output/config curl short flag in '$a' is not allowed — qa-probe captures the evidence itself, and the guard cannot see a file it writes" >&2; exit 3 ;;
+          EXPECTF) expect=FORM ;;
+          EXPECTD) expect=DATA ;;
+        esac ;;
   esac
   prev_arg="$a"
   case "$a" in
@@ -80,12 +149,8 @@ for a in "${args[@]}"; do
       exit 3 ;;
     # Any other long flag is fine here (redaction and the guard handle the rest).
     --*) : ;;
-    # Single-dash SHORT flags, including bundled clusters (-sO, -sD, -sc, -sK)
-    # and glued values (-ofile): curl's O/o/D/c/J short options direct output
-    # and -K loads a config. Match a single-dash cluster that contains any.
-    -*[OoDcJK]*)
-      echo "qa-probe: output/config curl short flag in '$a' is not allowed — qa-probe captures the evidence itself" >&2
-      exit 3 ;;
+    # Single-dash short clusters (-sO, -sD, -ofile, and the bundled body forms)
+    # are classified once by scan_short above, so nothing to do here.
   esac
 done
 

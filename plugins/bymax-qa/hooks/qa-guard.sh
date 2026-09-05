@@ -134,18 +134,29 @@ case "$tool" in
     # comment (`gh api https://… # run instead of curl`) is not read as a probe.
     # Quote-aware: a `#` inside a quoted argument (`-d 'note=a # b'`) or glued to
     # a token (a URL fragment `…#frag`) is NOT a comment and is preserved; only a
-    # `#` at a word boundary OUTSIDE quotes ends the line.
-    cmd=$(printf '%s' "$cmd" | awk '{
-      out=""; inq=0; q=""
-      for (i = 1; i <= length($0); i++) {
-        c = substr($0, i, 1)
-        if (inq) { out = out c; if (c == q) inq = 0; continue }
-        if (c == "\047" || c == "\"") { inq = 1; q = c; out = out c; continue }
-        if (c == "#") { p = (i == 1) ? " " : substr($0, i - 1, 1); if (p == " " || p == "\t") break }
-        out = out c
-      }
-      print out
-    }')
+    # `#` at a word boundary OUTSIDE quotes ends its line. The whole command is
+    # accumulated and walked in one pass (`buf`/END) so quote state holds ACROSS
+    # newlines: a `#` inside a quoted string that spans lines stays quoted and
+    # does not end a line, so a `; curl …` after it stays visible.
+    cmd=$(printf '%s' "$cmd" | awk '
+      { buf = buf $0 "\n" }
+      END {
+        out=""; inq=0; q=""; n=length(buf)
+        for (i = 1; i <= n; i++) {
+          c = substr(buf, i, 1)
+          if (inq) { out = out c; if (c == q) inq = 0; continue }
+          if (c == "\047" || c == "\"") { inq = 1; q = c; out = out c; continue }
+          if (c == "#") {
+            p = (i == 1) ? " " : substr(buf, i - 1, 1)
+            if (p == " " || p == "\t" || p == "\n") {
+              while (i <= n && substr(buf, i, 1) != "\n") i++
+              out = out "\n"; continue
+            }
+          }
+          out = out c
+        }
+        print out
+      }')
 
     # Does the command INVOKE a network tool in command position, not merely
     # mention one as an argument (`grep curl helper.ts` must not trip)? Rather
@@ -190,13 +201,67 @@ case "$tool" in
     [ "$tool_word" -eq 1 ] && printf '%s' "$dest" | grep -qE 'https?://[^/?#[:space:]"'"'"']' && has_url=1
 
     # Command-position detection additionally covers the host-argument and ssh
-    # tools that carry a bare host, not a URL. Split on operators, strip a
-    # leading keyword and env assignments, and a leading path, then match the
+    # tools that carry a bare host, not a URL. Split into simple commands, strip
+    # a leading keyword and env assignments and a leading path, then match the
     # tool at a line start. It is a FLOOR: a host-argument tool hidden behind a
     # wrapper's own options and carrying no URL (an exotic, off-by-default case)
     # is not caught — the scope discipline is the real control.
+    # The split is QUOTE-AWARE: an operator inside a quoted argument
+    # (`printf '%s' 'curl http://x; y'`) is literal and must not begin a new
+    # segment. It walks the string tracking quote state — single-quoted text is
+    # literal and never splits; inside double quotes only command substitution
+    # (`$(...)`, backticks) begins a new command while `; | & { }` stay literal;
+    # the quote delimiters are dropped so a quoted command path
+    # (`"/usr/bin/curl"`, a bare `"curl"`) resolves to its real tool token.
     starts=$(printf '%s' "$cmd" \
-      | tr '|&;(){}`' '\n' \
+      | awk '
+          { buf = buf $0 "\n" }
+          END {
+            # A stack-based tokenizer: each command substitution ($(...) or a
+            # backtick pair) is its own context with independent quote state, so
+            # a quote INSIDE $(...) does not toggle the OUTER quote. ctype
+            # stacks each level close-type (p = $() closed by ), b = backtick).
+            # A separator ( | & ; ( ) { } backtick newline ) OUTSIDE quotes
+            # begins a new simple command; single quotes are fully literal.
+            ctype=""; depth=0; qs[0]=0; out=""; n=length(buf)
+            for (i=1; i<=n; i++) {
+              c=substr(buf,i,1); s=qs[depth]
+              if (s == 1) {
+                if (c == "\047") { qs[depth]=0 }
+                else if (c == "\n") { out = out " " }
+                else { out = out c }
+                continue
+              }
+              # Backslash escaping (not inside single quotes, where it is literal):
+              # a `\"` inside double quotes is literal and does not close the quote,
+              # and a `\;` is a literal semicolon that does not split — so an escaped
+              # quote cannot conceal a following command from detection.
+              if (c == "\\") {
+                if (i < n) {
+                  nc = substr(buf, i+1, 1)
+                  if (s == 2) {
+                    if (nc == "\"" || nc == "\\" || nc == "$" || nc == "\140") { out = out nc; i++; continue }
+                    out = out c; continue
+                  }
+                  if (nc == "\n") { i++; continue }
+                  out = out nc; i++; continue
+                }
+                out = out c; continue
+              }
+              if (c == "\047" && s == 0) { qs[depth]=1; continue }
+              if (c == "\"") { qs[depth] = (s == 2) ? 0 : 2; continue }
+              if (c == "$" && i < n && substr(buf,i+1,1) == "(") { out = out "\n"; i++; depth++; qs[depth]=0; ctype = ctype "p"; continue }
+              if (c == "\140") {
+                if (depth > 0 && substr(ctype,depth,1) == "b") { depth--; ctype = substr(ctype,1,depth); out = out "\n"; continue }
+                else { out = out "\n"; depth++; qs[depth]=0; ctype = ctype "b"; continue }
+              }
+              if (s == 2) { if (c == "\n") { out = out " " } else { out = out c }; continue }
+              if (c == ")") { if (depth > 0 && substr(ctype,depth,1) == "p") { depth--; ctype = substr(ctype,1,depth) } out = out "\n"; continue }
+              if (c == "|" || c == "&" || c == ";" || c == "(" || c == "{" || c == "}" || c == "\n") { out = out "\n"; continue }
+              out = out c
+            }
+            print out
+          }' \
       | sed -E 's/^[[:space:]]*(if|then|elif|else|while|until|do|in|!)[[:space:]]+//' \
       | sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)+//' \
       | sed -E 's#^[[:space:]]*(command|env|exec|nice|nohup|time|stdbuf|xargs|sudo|doas|proxychains|proxychains4|torify|torsocks|unbuffer)[[:space:]]+##' \

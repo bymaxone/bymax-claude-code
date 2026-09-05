@@ -102,7 +102,9 @@ first removing the recognized flags **and their values** (`--depth <level>`,
 never makes `full` the target — then taking the first remaining positional word:
 a Jira ticket key (`BYM-123`, adds the acceptance-criteria axis of
 `references/acceptance.md`), a branch / range / PR (scopes the hunt to the
-change), or nothing (the whole system via `scope.md`). `init`, `retest` and
+change), a path or subtree (`path:apps/backend` or a bare directory, scopes the
+hunt to those files), or nothing (the whole system via `scope.md`). `init`,
+`retest` and
 `status` take no target. Anything left after the target is a free-text
 instruction that steers focus and depth.
 
@@ -149,7 +151,7 @@ and marker steps below. `init` has its own flow (`references/authorization.md`).
 | target resolves | classify the first argument per `references/targets.md`; record "Target: <what> → <scope>" for the run header | stop when an argument matches nothing and is not empty — ask which target was meant |
 | Jira access, if the target is a ticket | walk the access ladder (`targets.md`): an Atlassian MCP, else a `jira`/`acli` CLI, else the pasted criteria | stop and ask the human to paste the ticket's description + acceptance criteria, or give a branch/PR target |
 | scope exists and is approved | `.claude/qa/scope.md` exists **and** the `approved-by:` value is non-empty after you strip any trailing `# comment` and surrounding whitespace — the untouched template's `approved-by:` is empty and does NOT count as approved | stop: "no approved scope — run `/bymax-qa:audit init`". Every run is authorized by the scope (Law 1). A ticket or branch target needs only a minimal scope (its `repo` and `approved-by`); `--live` additionally requires `allowed-hosts` and `base-url`, and is refused with that reason if they are absent |
-| target is in scope | the target's repository matches the scope's `repo` — for a ticket, the change's repo; for a branch/range/PR, `git rev-parse --show-toplevel` | stop; never audit a repository the scope does not name |
+| target is in scope | the target's repository matches the scope's `repo` — for a ticket, the change's repo; for a branch/range/PR or a path, `git rev-parse --show-toplevel` (a path target must also exist under it) | stop; never audit a repository the scope does not name |
 | no other audit is active | `.claude/qa/.active` absent, or its `session` line is this session's | stop; a stale marker from a dead session is removed only with the human's ok |
 | git is clean enough to stamp a commit | `git rev-parse HEAD` succeeds; note `git status --porcelain` count in the run header | dirty tree is allowed but recorded — findings are stamped to HEAD plus "dirty" |
 | `gh` ready, if issues are on | `gh auth status` exit 0 and `gh repo view <slug>` exit 0 for each `issues.repo` | continue with `--no-issues` behaviour and say so in the report |
@@ -165,12 +167,15 @@ Remove the marker in the closing step. `status` never writes it.
 ## The run
 
 0. **Resolve the target** (`references/targets.md`) — classify the argument into
-   a ticket, a branch/range/PR, or the whole system, and fix the surface the
-   hunt will cover. For a **ticket**, fetch it through the Jira access ladder,
+   a ticket, a branch/range/PR, a path/subtree, or the whole system, and fix the
+   surface the hunt will cover. For a **ticket**, fetch it through the Jira access ladder,
    read its acceptance criteria, and find the linked change (branch/PR) to
    audit. For a **branch/range/PR**, compute the changed surface
-   (`git diff --name-only <base>...<head>`). For the **whole system**, the
-   surface is everything recon finds. Write the resolved target into the run
+   (`git diff --name-only <base>...<head>`). For a **path**, the surface is the
+   files under it — tracked and untracked-but-not-ignored (`git ls-files` plus
+   `git ls-files --others --exclude-standard`, both `-- <path>`) — plus the
+   routes and config they touch. For the **whole system**, the surface is
+   everything recon finds. Write the resolved target into the run
    header.
 1. **Recon** (`references/recon.md`) — detect the stack, inventory the HTTP
    surface, draw the trust boundaries, write `evidence/<run>/recon.md`. Spawn

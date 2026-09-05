@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one PASS / FAIL / BLOCKED / NOT-VERIFIABLE with evidence, a `PASS` inferred from code that "looks
   right" being NOT-VERIFIABLE rather than a pass), a **branch, ref range or PR** (it scopes the hunt
   to the changed surface the way a code review scopes a diff, complementing `/bymax-quality:code-review`
-  rather than replacing it), or **nothing** (the whole system, via a signed scope
+  rather than replacing it), a **path or subtree** (`path:apps/backend` or a bare directory — it hunts
+  the files under that path, tracked and untracked, as the code stands), or **nothing** (the whole system, via a signed scope
   `.claude/qa/scope.md` written and approved in `init` mode before any audit runs). A free-text
   instruction after the target steers focus and depth. It maps the stack and its trust
   boundaries, hunts by domain with read-only finder agents, probes the running stack against
