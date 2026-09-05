@@ -107,6 +107,14 @@ case "$tool" in
     # actually lands, physically, and confirm it stays under the workspace root.
     if [ -d "${qa_dir%/}" ]; then
       qa_phys=$(cd "${qa_dir%/}" 2>/dev/null && pwd -P)
+      # .claude/qa (or .claude) may itself be a symlink pointing into the
+      # source tree; then qa_phys is that target and every "descendant" check
+      # trusts it. Require the physical workspace to be the canonical
+      # <project>/.claude/qa, so a symlinked root is refused outright.
+      cwd_phys=$(cd "$cwd" 2>/dev/null && pwd -P)
+      if [ -z "$cwd_phys" ] || [ "$qa_phys" != "$cwd_phys/.claude/qa" ]; then
+        block "🛡️ BLOCKED by qa-guard: .claude/qa is not a real directory at ${cwd}/.claude/qa (a symlinked workspace root?). The auditor writes only inside the canonical workspace, never a link into the source tree."
+      fi
       # If the target is itself a symlink, follow the WHOLE chain
       # (a -> b -> /tmp/escaped) to where the write ultimately lands — bounded to
       # break a cycle. Then take the deepest existing DIRECTORY of that path (a
@@ -263,11 +271,21 @@ case "$tool" in
               out = out c
             }
             print out
-          }' \
-      | sed -E 's/^[[:space:]]*(if|then|elif|else|while|until|do|in|!)[[:space:]]+//' \
-      | sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)+//' \
-      | sed -E 's#^[[:space:]]*(command|env|exec|nice|nohup|time|stdbuf|xargs|sudo|doas|proxychains|proxychains4|torify|torsocks|unbuffer)[[:space:]]+##' \
-      | sed -E 's#^[[:space:]]*timeout[[:space:]]+[0-9]+[smhd.]*[[:space:]]+##')
+          }')
+    # Strip a leading keyword, env-assignments, wrappers and a timeout to a FIXED
+    # POINT: `env A=b nmap` needs the env wrapper removed AND then the `A=b`
+    # assignment removed, in an order one pass cannot know. Loop until the line
+    # stops shrinking (bounded — it only ever shortens).
+    _sp=0
+    while [ "$_sp" -lt 20 ]; do
+      _stripped=$(printf '%s' "$starts" \
+        | sed -E 's/^[[:space:]]*(if|then|elif|else|while|until|do|in|!)[[:space:]]+//' \
+        | sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)+//' \
+        | sed -E 's#^[[:space:]]*(command|env|exec|nice|nohup|time|stdbuf|xargs|sudo|doas|proxychains|proxychains4|torify|torsocks|unbuffer)[[:space:]]+##' \
+        | sed -E 's#^[[:space:]]*timeout[[:space:]]+[0-9]+[smhd.]*[[:space:]]+##')
+      [ "$_stripped" = "$starts" ] && break
+      starts="$_stripped"; _sp=$((_sp + 1))
+    done
     # `([^[:space:]]*/)?` before the name matches an absolute or relative path
     # (`/usr/bin/curl`, `./curl`) as the same tool, without matching `mycurl`.
     starts_with() { printf '%s' "$starts" | grep -qE "^[[:space:]]*([^[:space:]]*/)?($1)([[:space:]]|$)"; }
@@ -360,6 +378,14 @@ case "$tool" in
     #                                   as the `80` in `nmap -p 80 host` is not
     #                                   FQDN/IP-shaped, so it is not taken)
     host_shape='^(localhost|([0-9]{1,3}\.){3}[0-9]{1,3}|([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z][A-Za-z0-9-]*)$'
+
+    # Model shell quote removal before extracting a host: bash concatenates
+    # adjacent fragments, so `http://localhost".evil"/` is the host
+    # `localhost.evil`. Strip quote characters (spaces — the real word
+    # boundaries — are kept) so a mid-token quote cannot split an off-scope host
+    # into an allowed prefix. Done here, after the flag-name checks above.
+    dest=$(printf '%s' "$dest" | tr -d '\042\047')
+    cmd=$(printf '%s' "$cmd" | tr -d '\042\047')
 
     hosts=$(
       {

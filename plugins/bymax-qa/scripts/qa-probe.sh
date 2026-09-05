@@ -55,7 +55,7 @@ esac
 # outside the confined evidence dir and unseen by the PreToolUse guard. qa-probe
 # captures the evidence itself, so refuse them.
 # One message for every file-backed-body rejection below.
-fb() { echo "qa-probe: a file-backed request body ('$1') is not captured in evidence — inline the body so the capture is complete" >&2; exit 3; }
+fb() { echo "qa-probe: a file-backed request input ('$1') is not captured in evidence — inline it so the capture is complete" >&2; exit 3; }
 # curl's --write-out value can write outside the evidence dir two ways: a
 # `%output{file}` directive, or a file-backed format `@file`/`@-` (curl reads the
 # format from that file, which may itself carry `%output{...}`). Both are refused,
@@ -86,7 +86,9 @@ scan_short() {
          else echo EXPECTF; fi; return ;;
       w) if [ -n "$after" ]; then case "$after" in @* | *'%output{'*) echo WRITEOUT ;; esac
          else echo EXPECTW; fi; return ;;
-      [AbCeEHmPrtuUxXyYz]) return ;;
+      H) if [ -n "$after" ]; then case "$after" in @*) echo BODY ;; esac
+         else echo EXPECTH; fi; return ;;
+      [AbCeEmPrtuUxXyYz]) return ;;
       *) rest="$after" ;;
     esac
   done
@@ -111,6 +113,7 @@ for a in "${args[@]}"; do
     FORM)     case "$a" in *=@* | *=\<*) fb "$prev_arg $a" ;; esac ;;
     DATA)     case "$a" in @*) fb "$prev_arg $a" ;; esac ;;
     WRITEOUT) case "$a" in @* | *'%output{'*) wo ;; esac ;;
+    HEADER)   case "$a" in @*) fb "$prev_arg $a" ;; esac ;;
   esac
   expect=""
 
@@ -132,6 +135,8 @@ for a in "${args[@]}"; do
     --form)        expect=FORM ;;
     --write-out)   expect=WRITEOUT ;;
     --write-out=@* | --write-out=*'%output{'*) wo ;;
+    --header | --proxy-header) expect=HEADER ;;
+    --header=@* | --proxy-header=@*) fb "$a" ;;
     --upload-file=*) fb "$a" ;;
     --form=*=@* | --form=*=\<*) fb "$a" ;;
     --json=@*) fb "$a" ;;
@@ -148,6 +153,7 @@ for a in "${args[@]}"; do
           EXPECTF)  expect=FORM ;;
           EXPECTD)  expect=DATA ;;
           EXPECTW)  expect=WRITEOUT ;;
+          EXPECTH)  expect=HEADER ;;
         esac ;;
   esac
   prev_arg="$a"
@@ -192,6 +198,11 @@ esac
 # root before creating or writing anything.
 [ -d "$qa_root" ] || { echo "qa-probe: no .claude/qa workspace under $PWD" >&2; exit 3; }
 qa_phys=$(cd "$qa_root" && pwd -P) || { echo "qa-probe: cannot resolve $qa_root" >&2; exit 3; }
+# .claude/qa (or .claude) may itself be a symlink into the source tree; then
+# qa_phys is that target and the ancestor check below trusts it. Require the
+# physical workspace to be the canonical $PWD/.claude/qa.
+pwd_phys=$(pwd -P) || { echo "qa-probe: cannot resolve $PWD" >&2; exit 3; }
+[ "$qa_phys" = "$pwd_phys/.claude/qa" ] || { echo "qa-probe: .claude/qa is not a real directory at $PWD/.claude/qa (a symlinked workspace root?) — refusing" >&2; exit 3; }
 anc="$abs_out"
 while [ ! -e "$anc" ]; do anc=$(dirname "$anc"); done
 anc_phys=$(cd "$anc" && pwd -P) || { echo "qa-probe: cannot resolve $anc" >&2; exit 3; }
