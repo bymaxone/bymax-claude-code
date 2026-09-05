@@ -107,11 +107,16 @@ case "$tool" in
     # actually lands, physically, and confirm it stays under the workspace root.
     if [ -d "${qa_dir%/}" ]; then
       qa_phys=$(cd "${qa_dir%/}" 2>/dev/null && pwd -P)
-      # If the target is itself a symlink, follow it one level to where the write
-      # lands. Then take the deepest existing DIRECTORY of that path (a file is
-      # not cd-able) and resolve it physically; re-append the leaf name.
-      resolved="$abs"
-      [ -L "$abs" ] && { lt=$(readlink "$abs"); case "$lt" in /*) resolved="$lt" ;; *) resolved="$(dirname "$abs")/$lt" ;; esac; }
+      # If the target is itself a symlink, follow the WHOLE chain
+      # (a -> b -> /tmp/escaped) to where the write ultimately lands — bounded to
+      # break a cycle. Then take the deepest existing DIRECTORY of that path (a
+      # file is not cd-able), resolve it physically, and re-append the leaf name.
+      resolved="$abs"; links=0
+      while [ -L "$resolved" ] && [ "$links" -lt 40 ]; do
+        lt=$(readlink "$resolved")
+        case "$lt" in /*) resolved="$lt" ;; *) resolved="$(dirname "$resolved")/$lt" ;; esac
+        links=$((links + 1))
+      done
       leaf=$(basename "$resolved")
       rdir=$(dirname "$resolved")
       while [ -n "$rdir" ] && [ ! -d "$rdir" ]; do rdir=$(dirname "$rdir"); done

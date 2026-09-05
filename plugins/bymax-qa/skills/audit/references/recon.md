@@ -73,7 +73,7 @@ Draw where data crosses a trust level: the public internet → the API; the API
 → the database; the API → the cache; the API → a downstream service; one
 tenant → another; an unauthenticated user → an authenticated one → an admin.
 A C4 container sketch in prose is enough. Every boundary is a place a finder
-will look.
+can look.
 
 ## 5. Threat model — STRIDE per boundary
 
@@ -83,5 +83,8 @@ One line per applicable threat: the threat, the control that should stop it,
 and its state from §3. A boundary with a missing or unwired control for a
 plausible threat is where a `qa-hunter` is pointed first.
 
-This table is the hunt's plan. `--domains` selects which boundaries' threats
-get a finder; `--depth deep` gives each a second, adversarial pass.
+This table is the hunt's plan. `--domains` selects which boundaries' threats a
+finder covers; `--depth` sets how deeply they are hunted: `quick` runs **no**
+finder agents (recon plus the deterministic scans only), `full` points one
+`qa-hunter` at each selected boundary, and `deep` gives each a second,
+adversarial pass.

@@ -56,6 +56,12 @@ esac
 # captures the evidence itself, so refuse them.
 # One message for every file-backed-body rejection below.
 fb() { echo "qa-probe: a file-backed request body ('$1') is not captured in evidence — inline the body so the capture is complete" >&2; exit 3; }
+# curl's --write-out value can write outside the evidence dir two ways: a
+# `%output{file}` directive, or a file-backed format `@file`/`@-` (curl reads the
+# format from that file, which may itself carry `%output{...}`). Both are refused,
+# but ONLY for a -w/--write-out value — a `%output{` or leading `@` elsewhere (a
+# URL, header or body) is ordinary data.
+wo() { echo "qa-probe: a curl --write-out file destination ('%output{...}' or a file-backed '@' format) is not allowed — qa-probe writes evidence only inside its --out directory" >&2; exit 3; }
 
 # Classify a single-dash short-option cluster ($1 = the chars after '-'). curl
 # bundles short flags, and a value-taking flag consumes the REST of the cluster
@@ -78,7 +84,9 @@ scan_short() {
          else echo EXPECTD; fi; return ;;
       F) if [ -n "$after" ]; then case "$after" in *=@* | *=\<*) echo BODY ;; esac
          else echo EXPECTF; fi; return ;;
-      [AbCeEHmPrtuUwxXyYz]) return ;;
+      w) if [ -n "$after" ]; then case "$after" in @* | *'%output{'*) echo WRITEOUT ;; esac
+         else echo EXPECTW; fi; return ;;
+      [AbCeEHmPrtuUxXyYz]) return ;;
       *) rest="$after" ;;
     esac
   done
@@ -99,9 +107,10 @@ for a in "${args[@]}"; do
 
   # A value the previous token asked for (a trailing upload/form/data option).
   case "$expect" in
-    UPLOAD) fb "$prev_arg $a" ;;
-    FORM)   case "$a" in *=@* | *=\<*) fb "$prev_arg $a" ;; esac ;;
-    DATA)   case "$a" in @*) fb "$prev_arg $a" ;; esac ;;
+    UPLOAD)   fb "$prev_arg $a" ;;
+    FORM)     case "$a" in *=@* | *=\<*) fb "$prev_arg $a" ;; esac ;;
+    DATA)     case "$a" in @*) fb "$prev_arg $a" ;; esac ;;
+    WRITEOUT) case "$a" in @* | *'%output{'*) wo ;; esac ;;
   esac
   expect=""
 
@@ -121,6 +130,8 @@ for a in "${args[@]}"; do
   case "$a" in
     --upload-file) expect=UPLOAD ;;
     --form)        expect=FORM ;;
+    --write-out)   expect=WRITEOUT ;;
+    --write-out=@* | --write-out=*'%output{'*) wo ;;
     --upload-file=*) fb "$a" ;;
     --form=*=@* | --form=*=\<*) fb "$a" ;;
     --json=@*) fb "$a" ;;
@@ -131,10 +142,12 @@ for a in "${args[@]}"; do
       v="${a#*=}"; case "$v" in *@*) case "${v%%@*}" in *=*) : ;; *) fb "$a" ;; esac ;; esac ;;
     --*) : ;;
     -*) case "$(scan_short "${a#-}")" in
-          BODY)    fb "$a" ;;
-          OUTPUT)  echo "qa-probe: output/config curl short flag in '$a' is not allowed — qa-probe captures the evidence itself, and the guard cannot see a file it writes" >&2; exit 3 ;;
-          EXPECTF) expect=FORM ;;
-          EXPECTD) expect=DATA ;;
+          BODY)     fb "$a" ;;
+          OUTPUT)   echo "qa-probe: output/config curl short flag in '$a' is not allowed — qa-probe captures the evidence itself, and the guard cannot see a file it writes" >&2; exit 3 ;;
+          WRITEOUT) wo ;;
+          EXPECTF)  expect=FORM ;;
+          EXPECTD)  expect=DATA ;;
+          EXPECTW)  expect=WRITEOUT ;;
         esac ;;
   esac
   prev_arg="$a"
@@ -209,9 +222,9 @@ redact() {
     -e 's/(Bearer[[:space:]]+)[A-Za-z0-9._~+/=-]+/\1<redacted>/g' \
     -e 's/("?[A-Za-z0-9_-]*(token|password|passwd|secret|api[_-]?key|apikey|session|csrf|xsrf|auth|jwt|credential|cookie)[A-Za-z0-9_-]*"?[[:space:]]*[:=][[:space:]]*")[^"]*/\1<redacted>/Ig' \
     -e 's/("?[A-Za-z0-9_-]*(token|password|passwd|secret|api[_-]?key|apikey|session|csrf|xsrf|auth|jwt|credential|cookie)[A-Za-z0-9_-]*"?[[:space:]]*[:=][[:space:]]*)[^"[:space:],}]+/\1<redacted>/Ig' \
-    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass)[[:space:]]+)'\''[^'\'']*'\''/\1<redacted>/g' \
-    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass)[[:space:]]+)"[^"]*"/\1<redacted>/g' \
-    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass)[[:space:]]+)[^[:space:]]+/\1<redacted>/g' \
+    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer)[[:space:]]+)'\''[^'\'']*'\''/\1<redacted>/g' \
+    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer)[[:space:]]+)"[^"]*"/\1<redacted>/g' \
+    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer)[[:space:]]+)[^[:space:]]+/\1<redacted>/g' \
     -e 's/((^|[?&"'\''{,;[:space:]])(code|otp|pin|nonce|id_token|access_token|refresh_token|client_secret)"?[[:space:]]*[:=][[:space:]]*"?)[^"&[:space:],}]+/\1<redacted>/Ig'
 }
 
@@ -237,12 +250,12 @@ redact_args() {
   local prev="" a
   for a in "${args[@]}"; do
     case "$prev" in
-      -u | --user | -b | --cookie | -U | --proxy-user | -E | --cert | --key | --pass | --tlspassword)
+      -u | --user | -b | --cookie | -U | --proxy-user | -E | --cert | --key | --pass | --tlspassword | --oauth2-bearer)
         printf '%s\n' "<redacted>"; prev="$a"; continue ;;
     esac
     case "$a" in
       -u?* | -b?* | -U?* | -E?*)         printf '%s\n' "$a" | sed -E 's/^(-[a-zA-Z]).*/\1<redacted>/' ;;
-      --user=* | --cookie=* | --proxy-user=* | --pass=* | --tlspassword=* | --cert=* | --key=*)
+      --user=* | --cookie=* | --proxy-user=* | --pass=* | --tlspassword=* | --cert=* | --key=* | --oauth2-bearer=*)
         printf '%s\n' "$a" | sed -E 's/^(--[a-z-]+=).*/\1<redacted>/' ;;
       *) printf '%s\n' "$a" | redact ;;
     esac

@@ -113,8 +113,8 @@ Flags for a run:
 | Flag | Effect | Default |
 | --- | --- | --- |
 | `--domains a,b` | restrict the hunt to these domains | every domain with a reference |
-| `--depth quick\|full\|deep` | `quick`: recon + deterministic scans + one finder per domain; `full`: adds live probes when `--live`; `deep`: adds a second, adversarial finder per domain and the built-in `/security-review` as an extra candidate source | `full` |
-| `--live` | run the probes in each domain's **Live** section against `base-url` from the scope | off — static only |
+| `--depth quick\|full\|deep` | finder intensity only (each tier adds to the one before): `quick`: recon + deterministic scans, **no** finder agents — a fast mechanical pass over grep-detectable issues; `full`: adds one `qa-hunter` finder per domain (the standard hunt); `deep`: adds a **second**, adversarial finder per domain and the built-in `/security-review` as an extra candidate source | `full` |
+| `--live` | run each domain's **Live**-section probes against `base-url` from the scope. **Orthogonal to `--depth`** — live probes run at every depth when `--live` is set, and never without it; depth changes the finders, not whether live runs | off — static only |
 | `--no-handoff` | record findings, do not message peers or file issues | hand-off on |
 | `--no-issues` | message peers, never file issues | issues on |
 
@@ -196,10 +196,14 @@ Remove the marker in the closing step. `status` never writes it.
    advisory with no reachable path in this target is a supply-chain observation
    (`references/verification.md`), not a bespoke finding. Re-open the cited line
    before writing anything up.
-4. **Hunt** — one `qa-hunter` agent per selected domain, in parallel, capped
-   at **four** at a time; `deep` adds a second pass per domain with the
-   adversarial brief. Finders are read-only and never run a test suite. Their
-   output goes to `candidates/<run>/<domain>.md`, untouched.
+4. **Hunt** — the finder agents run in `full` and `deep`, not in `quick`.
+   `quick` skips **only** these agents (its candidates come from recon and the
+   deterministic scans); every other step, including live probes under `--live`
+   (step 5), still runs at every depth. In `full`, one `qa-hunter` agent per
+   selected domain, in parallel, capped at **four** at a time; `deep` adds a
+   second pass per domain with the adversarial brief. Finders are read-only and
+   never run a test suite. Their output goes to `candidates/<run>/<domain>.md`,
+   untouched.
 5. **Live probes** (`--live` only) — the **Live** section of each domain
    reference, executed **in this session**, never by a subagent: a subagent
    cannot wait on a running stack and its sends carry your name anyway. Use
