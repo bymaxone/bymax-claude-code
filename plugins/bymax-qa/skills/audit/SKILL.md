@@ -157,7 +157,7 @@ and marker steps below. `init` has its own flow (`references/authorization.md`).
 | `gh` ready, if issues are on | `gh auth status` exit 0 and `gh repo view <slug>` exit 0 for each `issues.repo` | continue with `--no-issues` behaviour and say so in the report |
 | peers, if hand-off is on | `ListAgents` output captured now, not remembered | continue; owners without a live peer route to issues |
 | **arm the guard** — once the checks above pass, write `.claude/qa/.active` (`session: <name>`, `started: <ISO time>`, `run: <run>`) **before any network probe** | the file exists | — |
-| live target reachable, if `--live` | with the marker now armed, `curl -sS -o /dev/null -w '%{http_code}' <health-url>` returns the code the scope expects | run static only and mark every Live section "not run: target unreachable" |
+| live target reachable, if `--live` | with the marker now armed, `curl -q --noproxy '*' -sS -o /dev/null -w '%{http_code}' <health-url>` returns the code the scope expects (the `-q --noproxy '*'` matches `qa-probe`, so an ambient `HTTP(S)_PROXY` cannot route even this first probe off-scope) | run static only and mark every Live section "not run: target unreachable" |
 
 `.claude/qa/.active` is armed **before** the reachability probe above precisely
 so that first `curl` is subject to the host allow-list like every later one —

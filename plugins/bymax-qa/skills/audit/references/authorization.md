@@ -60,7 +60,21 @@ list, while `.claude/qa/.active` exists. This means:
 2. Interview: which hosts and environments, how the stack comes up, who owns
    each component (run `ListAgents` and offer the live sessions as candidates),
    whether issues may be filed and where, what is off-limits.
-3. Write `.claude/qa/scope.md` from the template, create `registry.md` from
-   `templates/registry.template.md`, create the empty subdirectories.
+3. **Validate the workspace root, then create it, then write — in this order.**
+   The `qa-guard` confinement is **not yet armed** during `init` (no `.active`
+   marker), so a symlinked root (e.g. `.claude/qa -> ../src`) would redirect
+   these writes into the source tree. Guard against it explicitly:
+   1. **Check the existing path components.** If `.claude` exists and is a
+      symlink, or `.claude/qa` exists and is a symlink, **refuse** and ask the
+      human to remove the link. (On a first `init`, `.claude/qa` normally does
+      not exist yet — that is fine; only an existing component that is a symlink
+      is refused here.)
+   2. **Create the workspace directory:** `mkdir -p .claude/qa`.
+   3. **Verify the physical path is canonical:** `cd .claude/qa && pwd -P` must
+      equal `<project>/.claude/qa`. If it does not (a symlinked `.claude`
+      ancestor), **refuse** — do not write into it.
+   4. **Only then write files:** `.claude/qa/scope.md` from the template,
+      `registry.md` from `templates/registry.template.md`, and the empty
+      subdirectories.
 4. **Stop.** Print the scope path and ask the human to review it and fill
    `approved-by`. Never continue into a run from `init`.

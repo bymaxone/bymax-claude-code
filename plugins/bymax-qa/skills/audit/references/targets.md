@@ -123,8 +123,11 @@ range the human names alongside the ticket.
 ## The free-text instruction
 
 Whatever follows the target steers the run without new flags: "focus on the
-auth changes", "only the acceptance criteria, skip the security sweep", "run it
-live", "just the two endpoints the ticket adds". Read it as intent and reflect
-what you did in the report. The instruction narrows or directs; it never widens
-the target beyond what the scope authorizes, and it never turns a static run
-into a live one against a host the scope does not list.
+auth changes", "only the acceptance criteria, skip the security sweep", "just
+the two endpoints the ticket adds". Read it as intent and reflect what you did
+in the report. The instruction narrows or directs; it never widens the target
+beyond what the scope authorizes. It also **cannot enable live probes**: those
+run only under the `--live` flag (with the scope's `allowed-hosts` + `base-url`,
+per `SKILL.md`). A free-text "run it live" is a prompt to re-run with `--live`,
+never a trigger for a live request on its own — a run without the flag stays
+static against every host.

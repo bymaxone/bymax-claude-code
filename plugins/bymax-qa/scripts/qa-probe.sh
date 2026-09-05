@@ -234,9 +234,9 @@ redact() {
     -e 's/(Bearer[[:space:]]+)[A-Za-z0-9._~+/=-]+/\1<redacted>/g' \
     -e 's/("?[A-Za-z0-9_-]*(token|password|passwd|secret|api[_-]?key|apikey|session|csrf|xsrf|auth|jwt|credential|cookie)[A-Za-z0-9_-]*"?[[:space:]]*[:=][[:space:]]*")[^"]*/\1<redacted>/Ig' \
     -e 's/("?[A-Za-z0-9_-]*(token|password|passwd|secret|api[_-]?key|apikey|session|csrf|xsrf|auth|jwt|credential|cookie)[A-Za-z0-9_-]*"?[[:space:]]*[:=][[:space:]]*)[^"[:space:],}]+/\1<redacted>/Ig' \
-    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer)[[:space:]]+)'\''[^'\'']*'\''/\1<redacted>/g' \
-    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer)[[:space:]]+)"[^"]*"/\1<redacted>/g' \
-    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer)[[:space:]]+)[^[:space:]]+/\1<redacted>/g' \
+    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer|--proxy-pass|--proxy-tlspassword|--proxy-cert|--proxy-key)[[:space:]]+)'\''[^'\'']*'\''/\1<redacted>/g' \
+    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer|--proxy-pass|--proxy-tlspassword|--proxy-cert|--proxy-key)[[:space:]]+)"[^"]*"/\1<redacted>/g' \
+    -e 's/((-u|--user|-b|--cookie|-U|--proxy-user|-E|--cert|--key|--pass|--oauth2-bearer|--proxy-pass|--proxy-tlspassword|--proxy-cert|--proxy-key)[[:space:]]+)[^[:space:]]+/\1<redacted>/g' \
     -e 's/((^|[?&"'\''{,;[:space:]])(code|otp|pin|nonce|id_token|access_token|refresh_token|client_secret)"?[[:space:]]*[:=][[:space:]]*"?)[^"&[:space:],}]+/\1<redacted>/Ig'
 }
 
@@ -262,12 +262,12 @@ redact_args() {
   local prev="" a
   for a in "${args[@]}"; do
     case "$prev" in
-      -u | --user | -b | --cookie | -U | --proxy-user | -E | --cert | --key | --pass | --tlspassword | --oauth2-bearer)
+      -u | --user | -b | --cookie | -U | --proxy-user | -E | --cert | --key | --pass | --tlspassword | --oauth2-bearer | --proxy-pass | --proxy-tlspassword | --proxy-cert | --proxy-key)
         printf '%s\n' "<redacted>"; prev="$a"; continue ;;
     esac
     case "$a" in
       -u?* | -b?* | -U?* | -E?*)         printf '%s\n' "$a" | sed -E 's/^(-[a-zA-Z]).*/\1<redacted>/' ;;
-      --user=* | --cookie=* | --proxy-user=* | --pass=* | --tlspassword=* | --cert=* | --key=* | --oauth2-bearer=*)
+      --user=* | --cookie=* | --proxy-user=* | --pass=* | --tlspassword=* | --cert=* | --key=* | --oauth2-bearer=* | --proxy-pass=* | --proxy-tlspassword=* | --proxy-cert=* | --proxy-key=*)
         printf '%s\n' "$a" | sed -E 's/^(--[a-z-]+=).*/\1<redacted>/' ;;
       *) printf '%s\n' "$a" | redact ;;
     esac

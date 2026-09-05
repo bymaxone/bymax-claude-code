@@ -189,11 +189,11 @@ case "$tool" in
     # test, a `-L` token inside POST data. Strip those flag values first, so the
     # destination is all that the URL signal, the redirect check, and host
     # extraction below ever read. `hf` is that flag set.
-    hf='-H|--header|-e|--referer|--referrer|-d|--data|--data-raw|--data-binary|--data-ascii|--data-urlencode|-F|--form|--form-string'
+    hf='-H|--header|-e|--referer|--referrer|-d|--data|--data-raw|--data-binary|--data-ascii|--data-urlencode|-F|--form|--form-string|-o|--output|-D|--dump-header|-c|--cookie-jar|-b|--cookie|-w|--write-out|-A|--user-agent|-X|--request'
     dest=$(printf '%s' "$cmd" | sed -E \
-      -e "s/($hf)[[:space:]]+'[^']*'//g" \
-      -e "s/($hf)[[:space:]]+\"[^\"]*\"//g" \
-      -e "s/($hf)[[:space:]]+[^[:space:]]+//g")
+      -e "s/(^|[[:space:]])($hf)[[:space:]]+'[^']*'/ /g" \
+      -e "s/(^|[[:space:]])($hf)[[:space:]]+\"[^\"]*\"/ /g" \
+      -e "s/(^|[[:space:]])($hf)[[:space:]]+[^[:space:]]+/ /g")
 
     # The wrapper-proof signal is: a URL-fetching tool WORD appears in the command
     # (curl/wget/httpie/…, even behind `sudo -u x`, `env A=b`, a path) AND a
@@ -321,6 +321,33 @@ case "$tool" in
 
     [ $((is_url + is_ssh + is_ossl + is_hostarg + is_probe + has_url)) -eq 0 ] && exit 0
 
+    # The redirect and destination-override checks below test whether a shell
+    # WORD is a dangerous flag, so split the destination into shell words the way
+    # bash would: on UNQUOTED whitespace only, quotes removed and their content
+    # kept within one word. A flag name inside a quoted value
+    # (`-o "report --proxy copy"`) then stays one word and is not mistaken for a
+    # flag, while a quoted flag (`"--socks5"`) resolves to the bare option.
+    shell_words() {
+      awk '
+        { buf = buf $0 "\n" }
+        END {
+          n = length(buf); s = 0; w = ""; started = 0
+          for (i = 1; i <= n; i++) {
+            c = substr(buf, i, 1)
+            if (s != 1 && c == "\\") { if (i < n) { i++; nc = substr(buf, i, 1); if (nc != "\n") { w = w nc; started = 1 } } else { w = w c; started = 1 }; continue }
+            if (s == 1) { if (c == "\047") { s = 0 } else if (c == "\n") { w = w " "; started = 1 } else { w = w c; started = 1 }; continue }
+            if (s == 2) { if (c == "\042") { s = 0 } else if (c == "\n") { w = w " "; started = 1 } else { w = w c; started = 1 }; continue }
+            if (c == "$" && i < n && (substr(buf, i + 1, 1) == "\047" || substr(buf, i + 1, 1) == "\042")) { started = 1; continue }
+            if (c == "\047") { s = 1; started = 1; continue }
+            if (c == "\042") { s = 2; started = 1; continue }
+            if (c == " " || c == "\t" || c == "\n" || c == ">" || c == "<" || c == "|" || c == "&" || c == ";" || c == "(" || c == ")" || c == "{" || c == "}" || c == "\140") { if (started) { print w; w = ""; started = 0 }; continue }
+            w = w c; started = 1
+          }
+          if (started) { print w }
+        }'
+    }
+    dest_words=$(printf '%s' "$dest" | shell_words)
+
     # Redirect following escapes the allow-list: an allowed host can 30x to an
     # unlisted one, which only the client sees at runtime. Refuse `-L` in any
     # form — standalone, bundled in a short-flag cluster (`-sL`), or
@@ -328,7 +355,7 @@ case "$tool" in
     # wrapper (which forwards its args to curl). Refuse `wget` (which follows by
     # default) unless it disables redirects with `--max-redirect=0`.
     if { [ "$is_url" -eq 1 ] || [ "$is_probe" -eq 1 ] || [ "$has_url" -eq 1 ]; } \
-       && printf '%s' "$dest" | grep -qE -- '(^|[[:space:]])(-[A-Za-z]*L[A-Za-z]*|--location(-trusted)?)([[:space:]]|=|$)'; then
+       && printf '%s' "$dest_words" | grep -qE -- '^(-[A-Za-z]*L[A-Za-z]*|--location(-trusted)?)(=|$)'; then
       block "🛡️ BLOCKED by qa-guard: redirect following (-L / --location) can leave the allow-list — an allowed host may redirect to an unlisted one. Probe without -L, or follow the redirect target explicitly after checking it against the scope."
     fi
     if [ "$is_wget" -eq 1 ] && ! printf '%s' "$cmd" | grep -qE -- '--max-redirect[[:space:]=]0([[:space:]]|$)'; then
@@ -341,7 +368,7 @@ case "$tool" in
     # sees. Refuse them — the host check would pass while the real connection
     # leaves the scope.
     if { [ "$is_url" -eq 1 ] || [ "$is_probe" -eq 1 ] || [ "$has_url" -eq 1 ]; } \
-       && printf '%s' "$dest" | grep -qE -- '(^|[[:space:]])(--connect-to|--resolve|--proxy|--preproxy|--proxy1\.0|--config|--unix-socket|--abstract-unix-socket)([[:space:]]|=|$)|(^|[[:space:]])-[A-Za-z]*[xK]'; then
+       && printf '%s' "$dest_words" | grep -qE -- '^(--connect-to|--resolve|--proxy|--preproxy|--proxy1\.0|--socks[0-9a-z-]*|--config|--unix-socket|--abstract-unix-socket)(=|$)|^-[A-Za-z]*[xK]'; then
       block "🛡️ BLOCKED by qa-guard: a destination-override option (--connect-to / --resolve / --proxy / -x / -K config) can send the request to a host the URL does not name and the allow-list never sees. Remove it, or name the real target so it can be checked against the scope."
     fi
 
@@ -379,11 +406,11 @@ case "$tool" in
     #                                   FQDN/IP-shaped, so it is not taken)
     host_shape='^(localhost|([0-9]{1,3}\.){3}[0-9]{1,3}|([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z][A-Za-z0-9-]*)$'
 
-    # Model shell quote removal before extracting a host: bash concatenates
-    # adjacent fragments, so `http://localhost".evil"/` is the host
-    # `localhost.evil`. Strip quote characters (spaces — the real word
-    # boundaries — are kept) so a mid-token quote cannot split an off-scope host
-    # into an allowed prefix. Done here, after the flag-name checks above.
+    # For host extraction, model shell quote concatenation with a plain quote
+    # strip: `http://localhost".evil"/` becomes the host `localhost.evil`. A flag
+    # substring inside a value is harmless here — every extracted token must be
+    # FQDN/IP/localhost-shaped. (`cmd` is stripped after the tokenizer, which
+    # needs the quotes.)
     dest=$(printf '%s' "$dest" | tr -d '\042\047')
     cmd=$(printf '%s' "$cmd" | tr -d '\042\047')
 
