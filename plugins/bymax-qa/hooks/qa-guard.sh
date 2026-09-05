@@ -341,7 +341,7 @@ case "$tool" in
     # sees. Refuse them — the host check would pass while the real connection
     # leaves the scope.
     if { [ "$is_url" -eq 1 ] || [ "$is_probe" -eq 1 ] || [ "$has_url" -eq 1 ]; } \
-       && printf '%s' "$dest" | grep -qE -- '(^|[[:space:]])(--connect-to|--resolve|--proxy|--preproxy|--proxy1\.0|--config|--unix-socket|--abstract-unix-socket)([[:space:]]|=|$)|(^|[[:space:]])-[A-Za-z]*[xK]'; then
+       && printf '%s' "$dest" | grep -qE -- '(^|[[:space:]])(--connect-to|--resolve|--proxy|--preproxy|--proxy1\.0|--socks[0-9a-z-]*|--config|--unix-socket|--abstract-unix-socket)([[:space:]]|=|$)|(^|[[:space:]])-[A-Za-z]*[xK]'; then
       block "🛡️ BLOCKED by qa-guard: a destination-override option (--connect-to / --resolve / --proxy / -x / -K config) can send the request to a host the URL does not name and the allow-list never sees. Remove it, or name the real target so it can be checked against the scope."
     fi
 

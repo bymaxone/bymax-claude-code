@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`bymax-qa` `1.0.1`** — post-release hardening of the `qa-guard` hook and `qa-probe` wrapper: reject SOCKS proxy destination overrides (`--socks4`/`--socks4a`/`--socks5`/`--socks5-hostname`); redact `--proxy-pass`, `--proxy-tlspassword` and `--proxy-cert` credentials from captured evidence; validate the physical `.claude/qa` workspace root during `init`, before the guard is armed; route the reachability probe through `--noproxy '*'`; and state that free text cannot enable live mode (only `--live` does).
+
 ### Added
 
 - **`bymax-qa` — whole-system QA and security audit** (`1.0.0`). `/bymax-qa:audit` runs the session
